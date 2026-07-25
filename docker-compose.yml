@@ -1,0 +1,98 @@
+# ClaimTrace local development environment.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Ports (host -> container):
+#   web       3000 -> 3000   Next.js dev server
+#   api       8000 -> 8000   FastAPI (docs at http://localhost:8000/docs)
+#   postgres  5432 -> 5432   PostgreSQL 17 + pgvector
+#
+# Every value comes from .env; nothing secret is committed.
+
+name: claimtrace
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Keeps initdb deterministic across host locales.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs once on an empty data directory; migrations remain the source of truth.
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-ClaimTrace API}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      API_V1_PREFIX: ${API_V1_PREFIX:-/api/v1}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
+      # Inside the compose network PostgreSQL is reachable by service name.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # Hot reload during development; the image remains self-contained.
+      - ./apps/api/src:/app/src:ro
+      - ./apps/api/alembic:/app/alembic:ro
+      - ./apps/api/tests:/app/tests:ro
+    command:
+      - uvicorn
+      - claimtrace_api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      # Server-side fetches stay on the compose network.
+      API_INTERNAL_BASE_URL: ${API_INTERNAL_BASE_URL:-http://api:8000}
+      # Fallback, and the value any future browser-side call would use.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      # Source is mounted for hot reload; node_modules stays inside the image.
+      - ./apps/web/app:/app/app
+      - ./apps/web/components:/app/components
+      - ./apps/web/lib:/app/lib
+      - ./apps/web/public:/app/public
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
