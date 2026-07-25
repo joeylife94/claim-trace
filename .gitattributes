@@ -1,0 +1,9 @@
+# Keep line endings stable across Windows, macOS, and Linux. Files are checked out
+# with LF everywhere: the Makefile, Dockerfiles, and SQL init scripts are consumed
+# by Linux tooling, where a stray CR breaks recipes and shebangs.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
