@@ -1,8 +1,13 @@
 # ClaimTrace Architecture
 
-Status: **Phase 3A - claim indexing and hybrid retrieval.** This document
-describes what exists today and the boundaries where later phases will attach. It
-intentionally does not specify the internals of reranking or generation.
+Status: **Phase 4A-1 - local LLM provider boundary.** This document describes
+what exists today and the boundaries where later phases will attach. It
+intentionally does not specify the internals of reranking, or of grounding
+generation in retrieved evidence.
+
+Phase 4A-1 adds the ability to *generate*. It deliberately does not connect
+generation to retrieval: there is no evidence-grounded answering, no claim
+analysis, and no citation. That is Phase 4A-2.
 
 ---
 
@@ -31,10 +36,27 @@ intentionally does not specify the internals of reranking or generation.
                     │ - app_metadata               │
                     │ - vector extension enabled   │
                     └──────────────────────────────┘
+
+   the API additionally speaks to one optional, configurable model server:
+
+                    ┌──────────────────────────────┐
+   api ────────────▶│ LLM provider (Phase 4A-1)    │
+     HTTP (JSON)    │ ollama | openai_compatible   │
+                    │ or "fake", in-process        │
+                    │ - never on the request path  │
+                    │   of ingestion or retrieval  │
+                    └──────────────────────────────┘
 ```
 
-All three services run as containers described by `docker-compose.yml`. There is no
-message broker, cache, or object store yet; none is needed by the current scope.
+The three core services run as containers described by `docker-compose.yml`. There
+is no message broker, cache, or object store yet; none is needed by the current
+scope.
+
+The model server is *optional and out of band*. `docker compose up` starts the
+stack with `LLM_PROVIDER=fake`, which needs no model, no weights, and no network;
+`/health` and `/ready` do not consult it. An Ollama container is available behind
+the `llm` Compose profile, and the documented default instead points the API at
+an Ollama running on the host. See section 10.
 
 ### Deployment posture
 
@@ -60,12 +82,25 @@ apps/api/src/claimtrace_api/
 │   └── v1/
 │       ├── router.py    aggregates every v1 router
 │       ├── system.py    GET /api/v1/system/info
+│       ├── llm.py       LLM status + development generation diagnostics
 │       └── documents.py document upload, listing, detail, page text
 ├── services/
 │   ├── ingestion.py     the ingestion use case: validate → store → parse → persist
 │   ├── claim_parsing.py the claim structural parsing use case
 │   ├── claim_indexing.py the indexing use case: embed → persist search records
-│   └── claim_search.py  the search use case: profile → retrieve → fuse → hydrate
+│   ├── claim_search.py  the search use case: profile → retrieve → fuse → hydrate
+│   └── llm_generation.py the generation use case: validate → bound → generate
+├── llm/                 the LLM boundary (Phase 4A-1). Imports no web framework
+│   ├── base.py          LLMProvider protocol, StructuredGeneration
+│   ├── models.py        messages, options, response, capabilities, metadata
+│   ├── errors.py        LLMErrorCode taxonomy + typed exceptions
+│   ├── json_output.py   strict JSON extraction and schema validation
+│   ├── retry.py         conservative retry policy
+│   ├── transport.py     URL validation, timeouts, httpx error mapping
+│   ├── fake.py          deterministic provider (tests, offline, CI)
+│   ├── ollama.py        Ollama adapter
+│   ├── openai_compatible.py  local OpenAI-compatible (vLLM) adapter
+│   └── registry.py      builds the one configured provider
 ├── indexing/
 │   ├── normalization.py the normalised search representation
 │   ├── profile.py       IndexProfile: what makes two index runs comparable
@@ -1093,7 +1128,567 @@ cache path or a URL with a token.
 
 ---
 
-## 10. Extension points for later phases
+## 10. Local LLM provider boundary (Phase 4A-1)
+
+This phase adds the ability to generate text with a local model, and nothing
+that uses it. There is no retrieval-grounded answering, no claim analysis, no
+chat, and no citation - those are Phase 4A-2 and later. What exists is the
+boundary, three implementations of it, and a narrow diagnostics surface to prove
+it works.
+
+The reason for building it as its own phase: generation quality is unmeasurable
+until generation is *reliable*, and reliability here means timeouts, error
+mapping, and schema enforcement rather than prompt design. Getting those wrong
+under a prompt is much harder to see.
+
+### What the boundary is
+
+`claimtrace_api/llm/` imports no web framework, no ORM, no database driver, and
+nothing that knows what a claim is. A test asserts this by scanning the package
+for forbidden imports, so it is a property of the build rather than a habit.
+
+The protocol (`llm/base.py`):
+
+```python
+class LLMProvider(Protocol):
+    @property
+    def name(self) -> str: ...
+    def get_metadata(self) -> ProviderMetadata: ...          # sync, no network
+    async def check_health(self) -> HealthStatus: ...        # never raises
+    async def generate(self, request) -> GenerationResponse: ...
+    async def generate_structured(self, request, output_model) -> StructuredGeneration[T]: ...
+    async def aclose(self) -> None: ...
+```
+
+Two generation methods rather than one. `generate` returns whatever the model
+said; `generate_structured` returns a *validated instance of a type the caller
+named*, or raises. Collapsing them into one method returning `str` would push
+JSON parsing, schema validation, and the choice of how hard to constrain the
+model onto every caller, and each caller would get it slightly wrong.
+
+`get_metadata()` is synchronous and side-effect free so the status endpoint can
+render configuration even when the provider is unreachable. `check_health()`
+never raises, because an unavailable model server is a result to report, not an
+exception to survive.
+
+### Request and response types
+
+Plain frozen dataclasses (`llm/models.py`), validated on construction.
+
+A `GenerationRequest` carries an ordered `tuple[Message, ...]`, a
+`GenerationOptions`, and a correlation id. The message sequence is constrained
+rather than free-form: at least one message, at most one system message and only
+in first position, and the last message must be from the user. Every target
+server treats a mid-conversation system turn differently, and a request ending on
+an assistant turn is asking the model to continue its own text - a different
+operation this phase does not offer.
+
+**There is no model field on the request.** The model comes from server
+configuration and cannot be selected per call, so nothing reaching the
+diagnostics endpoint can repoint the deployment at another model. A test asserts
+the attribute's absence.
+
+`GenerationOptions` covers temperature, max output tokens, stop sequences, seed,
+and a per-request timeout, each bounded absolutely as well as by configuration.
+`None` means "the provider's default", which is deliberately not the same as a
+zero: `temperature=0.0` requests greedy decoding, `temperature=None` leaves
+whatever the server was started with.
+
+A `GenerationResponse` carries the text, provider, model, model version, finish
+reason, `TokenUsage`, duration, provider request id, the structured-output mode
+used, the attempt count, and `warnings`. Every token count is independently
+nullable, because "the provider did not report it" is a real state and reporting
+it as `0` would be a fabricated measurement.
+
+`warnings` is where a degraded capability becomes visible - a prompt-only JSON
+fallback, a seed requested at non-zero temperature, or output truncated at the
+token limit. A caller that ignores warnings still gets a correct answer; a caller
+that reads them can tell how strongly it was enforced.
+
+### Capability model
+
+Every capability defaults to *unsupported*. A flag is turned on only where the
+adapter implements it against a documented API and a test covers it - "the server
+might support this" is not a capability, because the service above uses these
+flags to decide whether an answer can be trusted.
+
+| Capability | fake | ollama | openai_compatible |
+|---|---|---|---|
+| text generation | yes | yes | yes |
+| structured output | native JSON Schema | native JSON Schema | configurable |
+| seed | yes | yes | yes |
+| usage metadata | yes | yes | yes |
+| model listing | yes | yes | yes |
+| streaming | **no** | **no** | **no** |
+
+Streaming is represented in the contract and reported unsupported everywhere.
+Ollama's `/api/chat` does support it; this adapter does not implement it, and a
+capability describes what the adapter has been validated to do.
+
+`StructuredOutputMode` is ordered by strength:
+
+- `native_json_schema` - the server constrains decoding to the schema.
+- `native_json_object` - valid JSON guaranteed, the schema is not.
+- `prompt_constrained_json` - nothing enforced; the schema is described in the
+  prompt and the reply is validated strictly on arrival. Always warned about.
+- `unsupported` - structured output is refused rather than faked.
+
+`supports_structured_output` and `structured_output_is_native` are separate
+properties, and the diagnostics UI shows both. "Supported" and "enforced by the
+server" are different claims.
+
+### Structured output pipeline
+
+1. Convert the requested Pydantic model to JSON Schema.
+2. Send the strongest structured-output instruction the provider supports.
+3. Receive the reply.
+4. Extract exactly one JSON value.
+5. Validate it against the schema.
+6. Return the validated value *and* the response metadata.
+
+Step 5 runs even when the server enforced the schema in step 2. An older Ollama
+silently ignores an unknown `format`, a truncated reply is still truncated, and -
+as Phase 4A-1 validation established - **constrained decoding does not enforce
+value constraints** (see "What real Ollama validation found"). Enforcement
+upstream is a reason to expect valid output, never a reason to skip checking it.
+
+Nothing is coerced. A reply that does not satisfy the schema produces
+`llm_structured_output_validation_failed`, never a partially populated model.
+
+### JSON extraction and validation policy
+
+`llm/json_output.py` is deliberately unforgiving. A model that wraps its answer
+in an apology, emits two objects, or stops half way through has not answered the
+question, and a parser that digs the "probably intended" object out of that text
+turns a visible failure into an invisible one.
+
+Accepted:
+
+- exactly one complete JSON value, with only whitespace around it;
+- an object when the schema describes one, an array when it describes one
+  (detected from the model's own JSON Schema, so a `RootModel[list[...]]` works);
+- that value wrapped in a single Markdown fence, in one narrow anchored form.
+
+Rejected, each with its own message:
+
+- prose before the JSON, prose after it, or a second JSON value;
+- **truncated** JSON, reported distinctly - the usual cause is the output token
+  limit, which is fixed by raising it rather than by reprompting;
+- comments, trailing commas, and every other JSON5-ism;
+- values that parse but fail the schema;
+- **unknown fields**, unless the schema opts in with `extra="allow"`. Pydantic
+  ignores them by default, which for generated output is the wrong default: a
+  model that invents a field has misunderstood the schema, and dropping the
+  evidence hides that.
+
+Fence removal is anchored at both ends of the whole text, and refuses when a
+third fence appears. An unterminated fence is left alone so the failure is
+reported rather than silently repaired.
+
+Notably absent is any search for the first `{` in a blob of prose. That technique
+works right up until a model writes `{` in a sentence.
+
+Validation failures are summarised as field path plus rule - `confidence:
+less_than_equal` - derived from the schema and never from the generated values.
+Pydantic's own `str(exc)` embeds the offending input, which for a model response
+is exactly the content this project keeps out of logs and error bodies.
+
+### Error taxonomy
+
+`LLMErrorCode` (`llm/errors.py`) is provider-neutral; adapters map every provider
+failure onto it. Each code has a matching `ErrorCode` and HTTP status in
+`core/errors.py`, and a test asserts the two enums stay in step, so a new provider
+failure cannot reach HTTP unmapped.
+
+| Code | HTTP | Retryable | Meaning |
+|---|---|---|---|
+| `llm_configuration_error` | 500 | no | a required setting is missing or invalid |
+| `llm_provider_unavailable` | 503 | **yes** | reachable but not ready to serve |
+| `llm_connection_error` | 503 | **yes** | the request was never delivered |
+| `llm_request_timeout` | 504 | no | the deadline expired |
+| `llm_model_not_found` | 503 | no | the configured model is not present |
+| `llm_authentication_error` | 500 | no | *our* credential to the upstream was rejected |
+| `llm_rate_limited` | 429 | **yes** | the provider is throttling us |
+| `llm_context_length_exceeded` | 422 | no | prompt + output exceeds the window |
+| `llm_invalid_request` | 400 | no | malformed request |
+| `llm_invalid_provider_response` | 502 | no | unrecognised response shape |
+| `llm_malformed_json` | 502 | no | structured output was not parseable JSON |
+| `llm_structured_output_validation_failed` | 422 | no | JSON parsed, schema not satisfied |
+| `llm_generation_cancelled` | 503 | no | the caller went away |
+| `llm_unsupported_capability` | 501 | no | asked for something unvalidated |
+| `llm_internal_provider_error` | 502 | no | the provider failed internally |
+| `llm_diagnostics_disabled` | 404 | no | the diagnostics endpoints are off |
+
+The split that matters is between "the operator must change something" (5xx - a
+caller cannot fix a missing model or a wrong base URL) and "the request was
+wrong" (4xx - too long, or a schema the model cannot satisfy). `model_not_found`
+is 503 rather than 404 because the *model* is missing, not the endpoint, and the
+remedy is an `ollama pull` on the server.
+
+Every error carries a safe public code, a safe public message, a retryable flag,
+the provider and model where known, and the upstream status where safe. The
+originating exception is attached with `raise ... from` so a traceback reaches the
+log, and is never rendered into the message.
+
+**Provider error bodies are read to classify and then discarded.** Every message
+returned from an adapter is written from values the adapter already holds. An
+OpenAI-compatible error routinely echoes part of the offending request back, which
+for this application is patent text; tests assert that a prompt planted in an
+error body does not reach the message or the repr.
+
+### Timeout policy
+
+Three deadlines, because they mean different things and are tuned against
+different failures:
+
+- `LLM_CONNECT_TIMEOUT_SECONDS` (5s) - "nothing is listening" should fail in a
+  second or two.
+- `LLM_READ_TIMEOUT_SECONDS` (120s) - a small model on CPU genuinely takes this
+  long. Generous on purpose.
+- `LLM_MAX_TIMEOUT_SECONDS` (180s) - bounds one whole call *including retries*.
+
+A per-request timeout may only ever **lower** the ceiling; anything larger is
+clamped rather than rejected, because the configured maximum is the operator's
+decision and a caller does not get to raise it. Lowering the overall deadline also
+lowers the read timeout, so the call fails at the deadline with a timeout error
+rather than hanging past it.
+
+The overall deadline wraps the retry loop, not each attempt. `asyncio.timeout`
+re-raises `TimeoutError` only when it was the one that cancelled the body, so an
+external `CancelledError` passes straight through and stays a cancellation -
+never converted into a generic internal error. The service logs cancellation and
+re-raises it unchanged.
+
+### Retry policy
+
+Two attempts by default, not five. A local model server is not a flaky cloud API:
+when it refuses a connection the usual cause is that it is not running, and
+hammering it four more times converts a fast, clear failure into a slow one.
+
+Retried: connection failures, connect and pool timeouts (the request was never
+delivered, so a replay has no side effects), `429` with an optional `Retry-After`,
+and `502/503/504`.
+
+Not retried: authentication, invalid request, model-not-found, context length,
+malformed JSON, and schema validation failures - each fixed by changing
+something, never by asking again. And **not read timeouts**: by the time a read
+times out the server may already be generating, and a replay doubles the load on a
+machine that has just demonstrated it is too slow.
+
+Backoff is exponential from 250 ms, capped per-wait at 4 s and in total at 8 s, so
+a generous attempt count can never become an unbounded wait. A provider-supplied
+`Retry-After` wins over the computed backoff but is still clamped - an upstream
+does not get to hold a request open for five minutes.
+
+Retryability is decided by the adapter that mapped the failure and travels on the
+error; the retry module only reads the flag and never re-inspects a status code.
+`run_with_retry` takes its sleep function as an argument, so tests exercise the
+real backoff arithmetic without spending the real seconds.
+
+### The Ollama adapter
+
+Speaks the documented HTTP API directly: `GET /api/tags` to enumerate installed
+models, `POST /api/chat` with `stream: false` to generate. Structured output uses
+the `format` parameter, which since v0.5 accepts a full JSON Schema and constrains
+decoding to it.
+
+Health separates two states that fail separately and are fixed differently: an
+unreachable server is an infrastructure problem, a missing model tag is one
+`ollama pull` away. The health message includes the exact command.
+
+A bare model name is matched against the `:latest` form as well, because
+`ollama pull qwen2.5` installs `qwen2.5:latest` and the most common way to pull a
+model would otherwise report as missing. The model digest discovered from
+`/api/tags` is recorded as the model version: an Ollama tag is mutable, so the
+digest is what actually identifies the weights that answered.
+
+### The OpenAI-compatible adapter
+
+Targets a model server **on your own network** - vLLM, llama.cpp's server, LM
+Studio, TGI. The hosted OpenAI service is explicitly not a supported target and is
+not documented as one: ClaimTrace processes unpublished patent text, and sending
+that to a third party is a decision for a deployment to make deliberately, not
+something an adapter should make easy by accident.
+
+No vendor SDK. `POST /chat/completions` and `GET /models` are a few dozen lines
+against `httpx`, and the `openai` package would bring a second retry policy, a
+second timeout model, and a second exception hierarchy into the one place in this
+codebase whose job is to have exactly one of each. `httpx` moved from the dev
+extra to a runtime dependency for this.
+
+Structured output is **configurable** rather than assumed, because compatibility
+is a spectrum: vLLM enforces a schema through guided decoding, llama.cpp's server
+historically honoured only `json_object`, and some servers accept
+`response_format` and quietly ignore it. Guessing optimistically produces
+unvalidated output that looks enforced. In `prompt_constrained_json` mode the
+adapter sends **no** `response_format` at all and appends the schema as a final
+user turn - sending a field a server ignores is precisely how an unenforced
+request comes back looking enforced.
+
+The API key is held as a `SecretStr` for its whole life, never stored on the
+instance as plain text, and reaches `str()` only inside per-request header
+construction. Tests assert it appears in no repr, no metadata, no log record, and
+no error.
+
+### The fake provider
+
+Not a mock: a real implementation of the protocol that runs the same request
+validation, the same JSON extraction, and the same schema validation as the
+network adapters, with only the transport replaced. A test that passes against it
+has exercised every layer except the socket.
+
+It is also the default (`LLM_PROVIDER=fake`), which is what keeps `docker compose
+up` working with nothing downloaded and CI free of network. Given any schema it
+synthesises a conforming payload, so the whole application - diagnostics UI
+included - works end to end with no model present.
+
+Everything a test needs to steer is a constructor argument: the text to return, a
+raw string for structured calls (so malformed JSON and schema mismatches are
+reachable through the production pipeline), an error to raise, how many calls it
+applies to before succeeding, and how long to take. Calls are recorded so a test
+can assert what the layer above actually sent. Nothing is monkey-patched.
+
+### Provider selection
+
+A factory (`llm/registry.py`), not a plugin system. `LLM_PROVIDER` is a `Literal`,
+so an unknown name fails at configuration load. The branch that is not taken is
+never constructed: a fake-provider deployment never validates an Ollama URL it
+does not use, and adapter imports are deferred into their branches.
+
+Construction opens no socket. The application must come up, serve `/health`, and
+report the LLM as unreachable, rather than refusing to start because a model
+server is down. The provider is built once at startup and shared, because the
+HTTP adapters own a connection pool; `get_llm_provider` is the dependency a test
+overrides to inject a fake.
+
+### The application service
+
+`services/llm_generation.py` validates requests, enforces the configured
+ceilings, resolves the provider, maps the LLM taxonomy onto the application's, and
+emits the safe operational log line.
+
+Bounds are applied two different ways on purpose. An oversized prompt is
+**rejected**, because silently truncating patent text would change the question
+being asked. An oversized token limit or timeout is **clamped**, because those
+only describe how much room the answer is given.
+
+What it does not do, asserted by a test on its constructor signature: it takes no
+database session and no retrieval collaborator. Phase 4A-1 generates; it does not
+ground. Keeping this class empty of retrieval is what makes Phase 4A-2 a new
+collaborator rather than an untangling.
+
+### Diagnostics API
+
+`GET /api/v1/llm/status` is always served and always returns 200, including when
+the provider is unreachable - an unavailable model server is what this endpoint
+exists to report. It distinguishes four states as separate fields (`configured`,
+`available`, `model_available`, `diagnostics_enabled`) rather than collapsing them
+into one status string, because "Ollama is not running" and "Ollama is running
+without the model" have completely different fixes. It returns no secrets; the
+base URL is reported with any userinfo removed.
+
+`POST /api/v1/llm/diagnostics/generate` and
+`POST /api/v1/llm/diagnostics/structured` are development tooling, gated on
+`LLM_DIAGNOSTICS_ENABLED`. That setting is tri-state: unset follows the
+environment (on in development, off everywhere else), and `true`/`false` override.
+Disabled returns **404** rather than 403 - when off, the route is not part of the
+deployment's surface, and "forbidden" would confirm it exists.
+
+Neither endpoint accepts a model, a provider, a base URL, or a JSON Schema.
+Request models are `extra="forbid"`, so attempting any of them is a 422 rather
+than a silently ignored field. The structured endpoint validates against one fixed
+built-in schema (`title`, `keywords[]`, `confidence`); internal Python callers may
+pass any approved Pydantic model to the service directly.
+
+The structured endpoint returns the *validated object*, never the raw text. That
+would be the one place in this API where unvalidated model output is echoed back
+verbatim.
+
+`/health` and `/ready` are untouched. The LLM is optional infrastructure, and
+making the liveness of the whole service depend on a model server would be a
+regression in operability.
+
+### Diagnostics UI
+
+`/llm` renders provider identity, reachability, capability flags, and the
+configured limits, then offers two independent one-shot forms. It is not a chat
+interface: no history, no message list, no streaming, no retrieval context, and no
+arbitrary schema input.
+
+Nullable usage fields render as an em dash rather than `0`, matching the
+convention the search UI already uses for an absent retrieval channel: "not
+reported" and "zero" are different facts and only one is a measurement. Warnings
+render rather than being swallowed, so a prompt-only fallback is visibly
+distinguishable from a server-enforced one.
+
+### Observability and privacy
+
+Structured log lines carry provider, model, request id, prompt **character
+count**, message count, requested token limit, structured-or-plain mode, attempt
+number, duration, finish reason, token counts, safe error code, and retryable
+flag.
+
+They never carry prompts, system instructions, generated output, structured
+values, API keys, authorization headers, raw HTTP payloads, or document and claim
+text. `log_fields()` on the request, the response, and the error is the only path
+into a log line, and tests plant confidential strings in prompts, replies, and
+error bodies and assert they do not appear in emitted records.
+
+The request correlation id is a random `uuid4` prefix, not a hash of the prompt. A
+content-derived id would be a weak fingerprint of confidential text sitting in
+every log line.
+
+Expected failures - an unreachable server, a schema mismatch - log at info with
+safe fields and no traceback. A stack trace for "the model server is not running"
+is noise that trains an operator to ignore stack traces.
+
+### Security
+
+Provider URLs come only from server configuration, never from a request body,
+query parameter, or header, so there is no user-controlled URL to defend. What
+`validate_base_url` guards is operator error: the scheme must be `http` or
+`https`, a host must be present, and plaintext `http` is permitted only for a
+local address - loopback, a private or link-local IP, `host.docker.internal`, or a
+single-label Compose service name. Anything with a dot must use TLS, so a
+credential cannot be sent in the clear to a routable host. Rejection names the
+setting rather than quoting the URL, which might carry a credential.
+
+Prompt size, output tokens, and timeout are bounded at the schema, at the service,
+and absolutely in the domain model.
+
+### Database policy
+
+**No migration was added, and this is deliberate.** The schema remains at revision
+0004. Prompts, responses, model diagnostics, provider health history, and token
+usage are not persisted: provider diagnostics are runtime infrastructure, not
+domain data, and persisting prompts and completions would create a store of
+confidential patent text with no feature depending on it. No empty migration was
+created to advance the revision number.
+
+### The model this phase was validated with
+
+| | |
+|---|---|
+| Model | `qwen2.5:1.5b` (Ollama) |
+| Digest | `65ec06548149` |
+| Size on disk | 986.1 MB |
+| Pull time | 61 s |
+| Host | Windows 11, Docker Desktop, CPU-only, Ollama 0.17.1 |
+| Health check | 28-46 ms |
+| Cold generation | **27.58 s** (first call; includes model load into memory) |
+| Warm generation | **0.18-0.38 s** (31-45 output tokens, temperature 0) |
+| Structured generation | **0.61-0.94 s**, validated against the built-in schema |
+
+Chosen because it is small, multilingual with usable Korean, instruction-tuned,
+practical on CPU, and capable of schema-constrained JSON. Reasoning-mode models
+were avoided: their thinking preamble is expensive on CPU and interacts badly with
+constrained decoding.
+
+**This model is a smoke test, not a patent analyst.** A 1.5B model is not fit for
+claim analysis, and no measurement here says anything about analysis quality. It
+exists to prove the boundary works.
+
+### What real Ollama validation found
+
+Two findings worth recording, both of which changed the code.
+
+**Constrained decoding does not enforce value constraints.** Given a schema with
+`confidence: {type: number, minimum: 0.0, maximum: 1.0}`, `qwen2.5:1.5b` returned
+`"confidence": 3` - and `5` on a second prompt - in both Korean and English.
+Ollama's grammar guarantees a *number in that position*, not a number within
+bounds. The post-validation step rejected it with
+`llm_structured_output_validation_failed`, which is the designed behaviour and the
+clearest possible argument for validating even in `native_json_schema` mode.
+
+The fix is not to relax the bound. The range is now also stated in prose in the
+smoke test's system instruction, because words are the only lever that reaches the
+model; the bound is still enforced on arrival, and a model that ignores both is
+reported rather than corrected. With the instruction in place, all three test
+prompts validate (`confidence: 0.95`).
+
+**A schema description is prompt text.** The smoke-test model's class docstring
+became the JSON Schema `description` and was sent to the model - several hundred
+characters of internal rationale spent from a small model's context window to tell
+it something it must not act on. The rationale moved to a comment above the class;
+descriptions in that model are now written *for the model* and kept short.
+
+### vLLM validation status
+
+**Contract-tested only. No real vLLM server was run.**
+
+The adapter is covered by tests against `httpx.MockTransport` reproducing the
+chat-completions wire format: model listing, plain completion, all three
+structured-output modes, usage parsing, finish-reason mapping, authentication
+failure, rate limiting, model-not-found, context-length errors, timeouts,
+malformed and unexpected response shapes, retry behaviour, and API-key redaction.
+The real request is built, serialised, and routed by httpx; only the socket is
+replaced.
+
+Actual vLLM runtime validation was not performed: no suitable GPU hardware or
+compatible local model assets were already available, and the phase brief
+explicitly rules out installing GPU infrastructure to satisfy it. To do it later:
+
+```bash
+# on a CUDA host, with a model already present
+vllm serve Qwen/Qwen2.5-1.5B-Instruct --port 8000
+
+# then, in .env
+LLM_PROVIDER=openai_compatible
+LLM_OPENAI_COMPATIBLE_BASE_URL=http://<host>:8000/v1
+LLM_OPENAI_COMPATIBLE_MODEL=Qwen/Qwen2.5-1.5B-Instruct
+LLM_STRUCTURED_OUTPUT_MODE=native_json_schema
+
+curl -s localhost:8000/api/v1/llm/status | jq
+```
+
+### Reproduction commands
+
+```bash
+# Default stack: no model server needed, LLM_PROVIDER=fake
+docker compose up -d
+curl -s localhost:8000/api/v1/llm/status | jq
+
+# Option A (documented default): Ollama on the host
+ollama serve
+ollama pull qwen2.5:1.5b
+LLM_PROVIDER=ollama docker compose up -d api
+
+# Option B: Ollama as an optional Compose service
+docker compose --profile llm up -d ollama
+docker compose exec ollama ollama pull qwen2.5:1.5b
+LLM_PROVIDER=ollama LLM_OLLAMA_BASE_URL=http://ollama:11434 docker compose up -d api
+
+# Diagnostics
+open http://localhost:3000/llm
+
+# Backend checks (host Python is unreliable; run in Docker)
+docker compose run --rm api pytest
+docker compose run --rm api ruff check --no-cache .
+docker compose run --rm api ruff format --check --no-cache .
+```
+
+### Known limitations of this phase
+
+- **Nothing uses generation yet.** The model is not connected to retrieval; there
+  is no grounding, no citation, and no analysis.
+- Streaming is not implemented, in the contract or in either adapter.
+- No tool calling, no function calling, no multimodal input.
+- `strict_model` tightens unknown-field policy at the **top level only**. A nested
+  model keeps whatever policy it declares.
+- Structured-output capability for the OpenAI-compatible adapter is *declared* by
+  configuration, not probed. A deployment that declares `native_json_schema`
+  against a server that ignores `response_format` gets prompt-quality enforcement
+  with a native-quality label - the strict post-validation still catches bad
+  output, but the warning that would explain it is absent.
+- Only the delta-seconds form of `Retry-After` is honoured.
+- No real vLLM validation (above).
+- Generation is synchronous and in-request. A slow model holds a worker for the
+  duration, bounded by `LLM_MAX_TIMEOUT_SECONDS`.
+- No token accounting, quota, or per-caller rate limiting.
+
+---
+
+## 11. Extension points for later phases
 
 Each item below names the seam, not the implementation. The intent is that adding a
 capability means adding a module behind an existing boundary, not reshaping the
@@ -1132,13 +1727,26 @@ application.
 - Absence of a reranker is a valid configuration; the pipeline must produce results
   without one.
 
-### LLM providers (Phase 4)
+### LLM providers (Phase 4A-1 - built)
 
-- Seam: an `LLMProvider` protocol covering completion and structured output, with
-  provider selection and endpoint driven by environment variables.
+- Built as described in section 10: `LLMProvider` covers plain and structured
+  generation, provider selection is an environment variable, and no vendor SDK is
+  committed.
 - Local, self-hosted inference is the target; the protocol exists so the choice of
   runtime is a deployment decision rather than a code dependency.
-- No prompt content, model, or vendor SDK is committed in this phase.
+
+### Evidence-grounded generation (Phase 4A-2)
+
+- Seam: a service that composes the existing `ClaimSearchService` with the
+  existing `LLMGenerationService`. Neither needs to change - `llm_generation.py`
+  takes no session and no retrieval collaborator today precisely so that this is
+  an addition.
+- Constraint that shapes the design: a generated citation must resolve to a
+  canonical stored source locator `(document_id, page_number, start_char,
+  end_char)`. This phase introduces no second citation coordinate system, and
+  structured output is how a citation becomes checkable rather than asserted.
+- Anything the model produces that does not resolve to a stored span is a
+  failure to surface, not a result to render.
 
 ### Claim analysis (Phase 5)
 
@@ -1156,9 +1764,9 @@ application.
 
 ---
 
-## 11. Known architectural gaps
+## 12. Known architectural gaps
 
-Deliberate as of Phase 3A, listed so they are not mistaken for oversights:
+Deliberate as of Phase 4A-1, listed so they are not mistaken for oversights:
 
 - No authentication, authorisation, or multi-tenancy; no rate limiting.
 - No request-ID propagation or tracing.
@@ -1173,6 +1781,9 @@ Deliberate as of Phase 3A, listed so they are not mistaken for oversights:
   and lexical retrieval has no Korean morphological analysis (section 9).
 - One embedding width. A model of a different dimension needs a migration.
 - No reranking, and no evaluation gate in CI.
+- Generation exists but nothing uses it: the LLM is not connected to retrieval,
+  and there is no grounded answering or citation (section 10).
+- No streaming anywhere, and generation is synchronous and in-request.
 - No production web image (the container runs `next dev`); no CI pipeline.
 - The whole upload is held in memory while hashing and parsing. Bounded by
   `UPLOAD_MAX_BYTES`, so it is a known ceiling rather than an open-ended one.

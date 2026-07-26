@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, 2B, and 3A complete; Phase 4A is next.**
+Current state: **Phases 1, 2A, 2B, 3A, and 4A-1 complete; Phase 4A-2 is next.**
 
 Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
 claim graph that 2B already produces, so it could be built and measured
@@ -182,23 +182,55 @@ reranker can be switched on without touching the retrieval or API layers.
 
 ---
 
-## Phase 4A - Local LLM provider abstraction (next)
+## Phase 4A - Local generation
+
+### Phase 4A-1 - LLM provider boundary (complete)
 
 **Goal:** make generation a deployment choice, not a code dependency.
 
-- `LLMProvider` protocol for completion and schema-constrained output, selected by
+- `LLMProvider` protocol for plain and schema-constrained output, selected by
   environment variables - built the same way `EmbeddingProvider` was in 3A:
-  plain Python in and out, no framework types crossing the boundary.
+  plain Python in and out, no framework types crossing the boundary. A test
+  asserts the package imports no web framework or ORM.
 - Two self-hosted implementations, consistent with the on-premise constraint and
   so the protocol is proven by more than one caller: Ollama, and an
-  OpenAI-compatible endpoint such as vLLM. No data leaves the deployment.
-- Timeouts, retries, and graceful degradation when the provider is unavailable -
-  the API must fail clearly rather than hang.
-- Readiness reporting extended to include the configured provider.
-- A deterministic fake provider for tests, so CI never needs a model.
+  OpenAI-compatible endpoint such as vLLM. No data leaves the deployment, and the
+  hosted OpenAI service is deliberately not a supported target.
+- A provider-neutral error taxonomy, a conservative retry policy (only failures
+  that never reached the server are replayed), and three-level timeout control
+  with correct cancellation propagation.
+- Structured JSON output with strict extraction and schema validation that runs
+  *even when* the server enforced the schema - which Phase 4A-1 validation proved
+  necessary: constrained decoding guarantees types, not value ranges.
+- A deterministic fake provider, the default, so CI and offline work never need a
+  model and the whole application runs with nothing downloaded.
+- Narrow diagnostics: `GET /api/v1/llm/status`, two development-only generation
+  endpoints, and a `/llm` page. No chat, no history, no streaming.
+- No database migration: prompts, completions, and provider health are runtime
+  infrastructure, not domain data.
 
-Exit criteria: generation works against a locally hosted model, and the test suite
-still runs with no model present.
+Exit criteria met: generation works against a locally hosted model
+(`qwen2.5:1.5b`, warm 0.18-0.38 s, structured 0.61-0.94 s), and the 621-test suite
+runs with no model present. vLLM is contract-tested against a mocked transport;
+no real vLLM server was run. See
+[docs/ARCHITECTURE.md](ARCHITECTURE.md) section 10.
+
+### Phase 4A-2 - Evidence-grounded generation (next)
+
+**Goal:** answers that can be checked, not answers that sound right.
+
+- Compose the existing `ClaimSearchService` with the existing
+  `LLMGenerationService`. Neither changes: 4A-1 deliberately left the generation
+  service with no session and no retrieval collaborator so this is an addition.
+- Retrieved claims become model context; the answer comes back as *structured
+  output* so citations are fields rather than prose to be parsed.
+- Every citation must resolve to a canonical stored source locator
+  `(document_id, page_number, start_char, end_char)`. No second citation
+  coordinate system is introduced.
+- A citation that does not resolve to a stored span is a failure to surface, not
+  a result to render. Ungrounded output is a bug, not a degraded mode.
+- Still no legal conclusion: this phase answers *about* retrieved text, and does
+  not determine infringement, validity, novelty, or patentability.
 
 ---
 
