@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phase 1 complete.**
+Current state: **Phase 1 complete. Phase 2A complete; Phase 2B is next.**
 
 ---
 
@@ -32,21 +32,57 @@ Exit criteria: `docker compose up --build` yields a green status panel; `make te
 
 ## Phase 2 - Patent document ingestion and structural parsing
 
-**Goal:** turn a patent document into a stored, structured, citable representation.
+Split in two, because the ingestion boundary is useful and verifiable on its own,
+and because structural parsing is where the domain judgement lives.
 
-- Upload endpoint under `/api/v1/documents` with size and type limits.
-- `DocumentParser` protocol; first implementation for text-based patent documents.
-- Structural extraction: bibliographic header, abstract, description sections,
-  claim set with numbering and dependency relationships.
-- Schema for documents, sections, and claims, with stable source locators
-  (page/section/character offsets) so every later answer can cite a location.
-- Ingestion status tracking, so a failed parse is observable rather than silent.
-- Tests built on small synthetic fixtures committed to the repository.
+### Phase 2A - Ingestion boundary and page provenance (complete)
 
-Exit criteria: a document can be uploaded, parsed, persisted, and its claim
-structure retrieved through the API.
+**Goal:** get a patent PDF into the system as stored, citable page text.
 
-Explicit non-goals: OCR of scanned images, multi-language parsing, drawing analysis.
+Delivered:
+
+- `POST /api/v1/documents` accepting one PDF, with validation by extension,
+  declared type, `%PDF-` signature, size (streaming-bounded), and emptiness.
+- Content-addressed local storage behind a `FileStorage` protocol; the client's
+  filename never determines a path.
+- SHA-256 identity with a unique constraint: duplicates return the existing record
+  rather than storing a second copy.
+- `DocumentParser` protocol with a PyMuPDF implementation for digital PDFs,
+  returning ordered page text and parser identity.
+- `documents` and `document_pages` tables (revision `0002`), with pages and the
+  `completed` status written in one transaction.
+- Explicit lifecycle (`uploaded → processing → completed | failed`) with persisted
+  error codes, so failures stay traceable.
+- `SourceLocator` — `(document_id, page_number, start_char, end_char)` over stored
+  page text — defined, validated, and returned with every page.
+- Minimal upload + document status + page text UI.
+- Structured ingestion logging that never records document text.
+
+Exit criteria met: a synthetic PDF can be uploaded, parsed, persisted, listed, and
+read back page by page, with duplicates and every rejection path behaving as
+documented.
+
+Explicit non-goals honoured: no OCR, no section detection, no claim parsing, no
+chunking, no queue.
+
+### Phase 2B - Structural parsing (next)
+
+**Goal:** turn page text into patent structure without inventing a new coordinate
+system.
+
+- Detect bibliographic header, abstract, description sections, and the claim set.
+- Claim numbering, independent/dependent classification, and dependency edges.
+- Persist each structural element as one or more page-anchored spans, so a claim's
+  location is a `SourceLocator`, not a parallel addressing scheme.
+- Report structural confidence, and treat "no claims found" as a visible outcome
+  rather than an empty success.
+- API for retrieving a document's claim tree; UI for reading it.
+- Tests over synthetic patent-shaped fixtures with known structure.
+
+Exit criteria: a document's claim set can be retrieved with dependencies intact,
+and every claim resolves to text on a page.
+
+Explicit non-goals: multi-language parsing, drawing analysis, OCR.
 
 ---
 
