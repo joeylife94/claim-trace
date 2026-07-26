@@ -19,13 +19,24 @@ from claimtrace_api.db.base import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers defaults to True, which would switch off every
+    # already-created claimtrace_api logger. That is invisible when Alembic runs
+    # as its own process and silently fatal when it is driven in-process.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    """Resolve the migration target URL, forcing the synchronous psycopg driver."""
+    """Resolve the migration target URL.
+
+    An explicit override in ``config.attributes`` wins, which lets the test suite
+    migrate a throwaway database. Attributes are used rather than a main option so
+    the value skips ConfigParser interpolation and a '%' in a password is safe.
+    """
+    override = config.attributes.get("sqlalchemy_url")
+    if override:
+        return str(override)
     return get_settings().sqlalchemy_database_uri
 
 
