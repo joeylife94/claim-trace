@@ -42,3 +42,13 @@ desktop.ini
 *.log
 tmp/
 .scratch/
+
+# --- Uploaded documents ----------------------------------------------------
+# Uploaded originals must never be committed: they are user data, and in this
+# domain they are usually confidential. STORAGE_ROOT should point outside the
+# repository entirely; these rules catch a misconfigured local run.
+var/
+data/
+uploads/
+*.pdf
+!apps/api/tests/**/*.py
