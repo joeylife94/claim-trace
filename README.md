@@ -4,9 +4,11 @@ An on-premise RAG service for patent claim decomposition, evidence retrieval, an
 document comparison.
 
 > **MVP portfolio project.** ClaimTrace is built to demonstrate retrieval
-> engineering practice. It does **not** provide legal advice and does **not**
-> determine patent infringement, validity, or patentability. Any output is a
-> textual correspondence between documents and must be reviewed by a qualified
+> engineering practice. It does **not** provide legal advice, does **not**
+> determine patent infringement, does **not** determine validity, and does
+> **not** determine patentability. Claim classifications such as "dependent" are
+> descriptions of document structure, not legal characterisations. Any output is
+> a textual correspondence between documents and must be reviewed by a qualified
 > professional before it informs a decision.
 
 ---
@@ -23,9 +25,10 @@ routinely confidential.
 
 ## Current implementation scope
 
-This repository is at **Phase 2A: the document ingestion boundary**. A text-based
-patent PDF can be uploaded, stored, parsed into page text, and read back with the
-page coordinates that future citations will refine.
+This repository is at **Phase 2B: deterministic claim structural parsing**. A
+text-based Korean patent PDF can be uploaded, stored, parsed into page text, then
+parsed again into a claim graph - claim numbers, types, dependencies, and exact
+page-anchored source spans for every claim.
 
 **Implemented**
 
@@ -39,19 +42,28 @@ page coordinates that future citations will refine.
 - `DocumentParser` protocol with a PyMuPDF implementation for digital PDFs
 - Page-level text persistence and `SourceLocator` provenance
   (`document_id`, `page_number`, `start_char`, `end_char`)
-- PostgreSQL 17 + pgvector, Alembic revisions `0001` (baseline) and `0002`
-  (ingestion tables)
-- Next.js UI: live system status, PDF upload, document list, per-page text viewer
+- Deterministic Korean claim structural parsing: `ClaimParser` protocol with a
+  rule-based implementation, claim boundaries, numbering, classification, and
+  dependency edges
+- Claim source stored as ordered page-relative spans, including claims that cross
+  a page break
+- A claim parsing lifecycle separate from ingestion, with `no_claims_found` as an
+  explicit outcome and idempotency per parser version
+- Claim endpoints under `/api/v1/documents/{id}/claims`
+- PostgreSQL 17 + pgvector, Alembic revisions `0001` (baseline), `0002`
+  (ingestion) and `0003` (claim parsing)
+- Next.js UI: live system status, PDF upload, document list, per-page text viewer,
+  claim structure with source spans that highlight the exact range
 - `docker compose` development environment (api, web, postgres) with health checks
 - Test suite that needs no network or model provider; the PostgreSQL-backed tier
   skips itself when no database is reachable
 - Architecture and roadmap documentation
 
 **Not implemented yet** - deliberately, see [docs/ROADMAP.md](docs/ROADMAP.md):
-OCR and scanned-document recovery, patent section detection, claim parsing and
-dependencies, chunking, embeddings, vector search, hybrid retrieval, reranking,
-LLM integration, claim decomposition, evidence comparison, evaluation,
-authentication, background queues, and any deployment tooling.
+OCR and scanned-document recovery, bibliographic/abstract/description section
+parsing, claim element decomposition, chunking, embeddings, vector search,
+keyword and hybrid retrieval, reranking, LLM integration, evidence comparison,
+evaluation, authentication, background queues, and any deployment tooling.
 
 ## Architecture overview
 
@@ -130,6 +142,11 @@ curl -F "file=@your-document.pdf;type=application/pdf" \
      http://localhost:8000/api/v1/documents
 curl http://localhost:8000/api/v1/documents
 curl http://localhost:8000/api/v1/documents/<id>/pages
+
+# Parse its claim structure and read the claim graph
+curl -X POST http://localhost:8000/api/v1/documents/<id>/claims/parse
+curl http://localhost:8000/api/v1/documents/<id>/claims
+curl http://localhost:8000/api/v1/documents/<id>/claims/1
 ```
 
 Ports are configurable through `API_PORT`, `WEB_PORT`, and `POSTGRES_PORT` in
@@ -271,6 +288,69 @@ embeddings, and retrieval strategy. Offsets index persisted text rather than a
 transient parser buffer, so a span recorded today still resolves to the same
 characters later.
 
+## Claim structural parsing
+
+Once a document has ingested, `POST /api/v1/documents/{id}/claims/parse` extracts
+its claim structure using **deterministic rules only** - no model, no embedding,
+no legal reasoning. The same page text always produces the same claim graph.
+
+Full rules, schema, and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8.
+
+### Supported claim patterns
+
+Primary support is Korean. Headings are matched at the start of a line:
+`【청구항 1】`, `[청구항 1]`, `〔청구항 1〕`, `청구항 1`, `청구항 1.`, `청구항 제1항`,
+and full-width digits (`청구항 １`). A minimal, line-anchored `Claim 1` English
+fallback exists and is deliberately isolated.
+
+Dependencies require a claim reference **and** a dependency particle
+(`에 있어서`, `에 따른`, `에 따라`, `에 기재된`, `에 기재의`, `에 의한`):
+
+| Expression | Edges |
+| --- | --- |
+| `제1항에 있어서` / `청구항 1에 있어서` / `제1항에 따른` | → 1 |
+| `제1항 또는 제2항에 있어서` | → 1, → 2 |
+| `제1항 및 제2항에 있어서` | → 1, → 2 |
+| `제1항 내지 제3항 중 어느 한 항에 있어서` | → 1, → 2, → 3 |
+
+Requiring the particle is what keeps arbitrary technical numbers - `온도 100도`,
+`도 2에 도시된`, `3개의 부재` - out of the dependency graph.
+
+### Classification
+
+`independent` (no reference), `dependent` (one resolved reference),
+`multiple_dependent` (two or more, including an expanded range), or `unknown`
+when references were detected but none could be resolved. `unknown` is used
+instead of a guess. Classification is syntactic and is **not** a legal
+characterisation.
+
+### Claims that cross a page break
+
+A claim is stored as one or more ordered spans, one per page it touches:
+
+```
+Claim 3 · seq 0 · page 1 · [100, 125)
+          seq 1 · page 2 · [0, 16)
+```
+
+Claim text is *defined* as those spans resolved against `document_pages.text` and
+joined with a single `"\n"`. There is no flattened document offset anywhere; the
+page locator from Phase 2A remains the only citation coordinate.
+
+### Lifecycle, parser versioning, and idempotency
+
+Claim parsing has its own lifecycle - `processing → completed | no_claims_found |
+failed` - and **never changes `documents.status`**. A document that ingested
+cleanly stays `completed` even if it turns out to contain no claims.
+
+`no_claims_found` is an explicit status, not an empty success: "this document has
+no claims" and "we could not parse it" call for different responses.
+
+Results are unique per `(document, parser_name, parser_version)`. Re-running the
+same version returns the existing result with **200** instead of **201**; a failed
+or stranded attempt is retried in place; a future parser version creates a new
+result beside the current one, so existing citations are never overwritten.
+
 ### Uploaded files are never committed
 
 `STORAGE_ROOT` points outside the repository (a Docker volume by default), and
@@ -279,8 +359,13 @@ is committed as a fixture; test PDFs are generated at runtime.
 
 ## Current limitations
 
-- Ingestion stops at page text. No section detection, claim parsing, chunking,
-  embeddings, retrieval, or analysis - see [docs/ROADMAP.md](docs/ROADMAP.md).
+- Structure stops at the claim graph. No bibliographic/abstract/description
+  parsing, no claim element decomposition, no chunking, embeddings, retrieval, or
+  analysis - see [docs/ROADMAP.md](docs/ROADMAP.md).
+- Claim parsing supports Korean conventions plus a minimal English heading
+  fallback. Other languages are not attempted.
+- Claim parsing is deterministic and conservative: a document whose formatting it
+  does not recognise reports `no_claims_found` rather than guessing.
 - Text-based PDFs only. No OCR, and no recovery of scanned documents.
 - No authentication or authorisation; do not expose this service beyond a trusted
   network. Anyone who can reach the API can upload and read every document.
@@ -307,7 +392,8 @@ Summarised from [docs/ROADMAP.md](docs/ROADMAP.md):
 | --- | --- |
 | 1 | Foundation - **complete** |
 | 2A | Document ingestion boundary and page-level provenance - **complete** |
-| 2B | Structural parsing: bibliographic header, sections, claim set and dependencies |
+| 2B | Deterministic claim structural parsing and dependency graph - **complete** |
+| 2C | Claim element decomposition schema and deterministic review boundary |
 | 3 | Chunking, embeddings, pgvector indexing, hybrid retrieval, optional reranking |
 | 4 | Local LLM provider abstraction with a deterministic fake for tests |
 | 5 | Claim decomposition and element-level evidence comparison, with grounding enforced |

@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phase 1 complete. Phase 2A complete; Phase 2B is next.**
+Current state: **Phases 1, 2A, and 2B complete; Phase 2C is next.**
 
 ---
 
@@ -65,24 +65,63 @@ documented.
 Explicit non-goals honoured: no OCR, no section detection, no claim parsing, no
 chunking, no queue.
 
-### Phase 2B - Structural parsing (next)
+### Phase 2B - Deterministic claim structural parsing (complete)
 
-**Goal:** turn page text into patent structure without inventing a new coordinate
+**Goal:** turn page text into a claim graph without inventing a new coordinate
 system.
 
-- Detect bibliographic header, abstract, description sections, and the claim set.
-- Claim numbering, independent/dependent classification, and dependency edges.
-- Persist each structural element as one or more page-anchored spans, so a claim's
-  location is a `SourceLocator`, not a parallel addressing scheme.
-- Report structural confidence, and treat "no claims found" as a visible outcome
-  rather than an empty success.
-- API for retrieving a document's claim tree; UI for reading it.
-- Tests over synthetic patent-shaped fixtures with known structure.
+Delivered:
 
-Exit criteria: a document's claim set can be retrieved with dependencies intact,
-and every claim resolves to text on a page.
+- `ClaimParser` protocol with `KoreanRuleBasedClaimParser`
+  (`korean-rule-based-claims` 0.1.0). Rules only - no model, no embedding, no
+  legal reasoning.
+- Claims-region detection, heading detection across the common Korean forms
+  (`청구항 1`, `청구항 제1항`, `[청구항 1]`, `【청구항 1】`, full-width digits) and a
+  minimal line-anchored `Claim 1` fallback.
+- Dependency extraction for `에 있어서` / `에 따른` / `에 기재된` forms, including
+  `또는`, `및`, comma lists, and `내지` ranges, with a required dependency particle
+  so technical numbers never become edges.
+- Classification into `independent` / `dependent` / `multiple_dependent` /
+  `unknown`, with `unknown` used instead of a guess.
+- Dependencies persisted as a graph; self-references, unresolved references, and
+  backwards ranges are refused with warnings, and cycles are detected.
+- Claim source stored as ordered page-relative spans; a page-crossing claim gets
+  one span per page, and claim text is defined as those spans joined by `"\n"`.
+- A parse lifecycle (`processing → completed | no_claims_found | failed`) that is
+  fully separate from document ingestion status.
+- Idempotency per parser version, with in-place retry of a failed attempt.
+- `POST /claims/parse`, `GET /claims`, `GET /claims/{claim_number}`.
+- UI: parse action, claim list with types and dependency lists, source span
+  buttons that open and highlight the exact range in the page viewer.
+- Migration `0003`, and tests covering the parser rules, persistence, and the API.
 
-Explicit non-goals: multi-language parsing, drawing analysis, OCR.
+Exit criteria met: a document's claim set is retrievable with dependencies intact,
+and every claim resolves exactly to text on a page.
+
+Explicit non-goals honoured: no element decomposition, no other languages, no
+OCR, no retrieval, no LLM.
+
+### Phase 2C - Claim element decomposition and review boundary (next)
+
+**Goal:** break each claim into individually addressable elements, still
+deterministically, and give a reviewer a way to confirm or correct them.
+
+- Element decomposition schema: elements belong to a claim and carry their own
+  page-anchored spans, so an element is a sub-span of its claim rather than a new
+  coordinate system.
+- Deterministic splitting of Korean claim bodies on structural markers
+  (`~와/과`, `; `, enumerated limitations, `상기` reference chains), with an explicit
+  confidence or warning when a claim resists splitting.
+- A review boundary: a reviewer can accept a decomposition or mark it wrong, and
+  that judgement is persisted separately from the parser's output so a re-parse
+  never silently discards it.
+- API and UI for reading and reviewing elements, reusing the existing span viewer.
+
+Exit criteria: a claim can be decomposed into elements whose spans resolve exactly,
+and a reviewer's verdict survives a re-parse.
+
+Explicit non-goals: retrieval, embeddings, and any LLM generation - Phase 2C
+stops at the deterministic boundary that later phases will build on.
 
 ---
 

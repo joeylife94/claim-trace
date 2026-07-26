@@ -433,23 +433,250 @@ scanning, and rate limiting. This service belongs on a trusted network.
 
 ---
 
-## 8. Extension points for later phases
+## 8. Claim structural parsing (Phase 2B)
+
+Deterministic rules only. No model, no embedding, no similarity, no legal
+reasoning: the same page text always produces the same claim graph.
+
+### Lifecycle, separate from ingestion
+
+```
+claim_parse_results.status:  processing → completed | no_claims_found | failed
+```
+
+**A claim parse never changes `documents.status`.** A document that ingested
+cleanly stays `completed` even when parsing finds nothing or fails outright.
+Conflating the two would make a perfectly readable PDF look broken because it
+happens not to be a patent.
+
+`no_claims_found` is its own status, not an empty success. The distinction
+matters: "this document has no claims" and "we could not parse it" call for
+different actions from the reader.
+
+### Parser boundary
+
+```python
+class ClaimParser(Protocol):
+    name: str
+    version: str
+    def parse(self, pages: Sequence[SourcePage]) -> ParsedClaimSet: ...
+```
+
+`SourcePage` is `(document_id, page_number, text)` - persisted page text, nothing
+else. `ParsedClaimSet` carries ordered `ParsedClaim`s (number, classification,
+spans, reconstructed text, resolved dependencies) plus `ParseWarning`s and the
+parser's identity. The parser returns plain dataclasses: no FastAPI, no
+SQLAlchemy, no session, no HTTP status. Orchestration lives in
+`services/claim_parsing.py`, HTTP translation in `api/v1/claims.py`.
+
+The one implementation is `KoreanRuleBasedClaimParser`
+(`korean-rule-based-claims`, version `0.1.0`).
+
+### Supported Korean patterns
+
+Headings, each matched at the start of a line:
+
+| Form | Example |
+| --- | --- |
+| Bracketed | `【청구항 1】`, `[청구항 1]`, `〔청구항 1〕` |
+| Bare | `청구항 1`, `청구항 1.` |
+| With 제/항 | `청구항 제1항` |
+| Full-width digits | `【청구항 １】` |
+| English fallback | `Claim 1` on a line of its own |
+
+A bare `청구항 N` followed by a dependency particle or a connector
+(`에 있어서`, `또는`, `및`, `내지`, …) is treated as a **reference, not a heading**.
+Without that rule, a dependent claim whose body happens to start a line would be
+mistaken for the heading of the claim it references.
+
+The claims region starts at `【청구범위】` / `특허청구범위` / `청구의 범위` when
+present, and ends at the first section that can only follow the claims
+(`요약서`, `요약`, `초록`, `도면`, `명세서`) so the last claim does not swallow the
+abstract.
+
+Dependency expressions - a run of references **plus a required particle**
+(`에 있어서`, `에 따른`, `에 따라`, `에 기재된`, `에 기재의`, `에 의한`):
+
+| Form | Resolves to |
+| --- | --- |
+| `제1항에 있어서` / `청구항 1에 있어서` | 1 |
+| `제1항에 따른` / `청구항 1에 따른` | 1 |
+| `제1항 또는 제2항에 있어서` | 1, 2 |
+| `제1항 및 제2항에 있어서` | 1, 2 |
+| `제1항, 제2항에 있어서` | 1, 2 |
+| `제1항 내지 제3항 중 어느 한 항에 있어서` | 1, 2, 3 |
+
+Requiring the particle is what keeps arbitrary technical numbers out of the
+graph: `온도 100도`, `도 2에 도시된`, and `3개의 부재` produce no edges, and neither
+does a bare `제1항` with no dependency particle after it.
+
+### Classification
+
+| Detected references | Resolved | Result |
+| --- | --- | --- |
+| none | - | `independent` |
+| some | none | `unknown` |
+| some | exactly one | `dependent` |
+| some | two or more (including an expanded range) | `multiple_dependent` |
+
+`unknown` is used rather than a guess whenever the parser can see that a claim
+points somewhere but cannot say where. Classification is syntactic; it is not a
+legal characterisation and implies nothing about scope or validity.
+
+### Dependencies as a graph
+
+Edges are stored individually: `제1항 및 제2항에 있어서` on claim 3 produces `3→1`
+and `3→2`, not one flattened parent. A tree cannot represent a
+multiple-dependent claim, so the database keeps the graph and the UI renders it
+as a list.
+
+Refused, with a warning rather than a fabricated edge: references to claims that
+are not in the document, self-references, and backwards ranges. Cycles are
+detected and reported; real claims cannot contain one, so it is a signal that
+something about the document is wrong. Gaps in claim numbering are legal and
+produce no warning.
+
+### Source spans and page boundaries
+
+A claim's source is one or more `claim_spans` rows, ordered by
+`sequence_number`, each a half-open `[start_char, end_char)` range on one page.
+A claim crossing a page break has one span per page:
+
+```
+Claim 3
+  seq 0 · page 1 · [100, 125)
+  seq 1 · page 2 · [0, 16)
+```
+
+There is **no flattened document offset anywhere**. The parser concatenates page
+text into a temporary buffer so a claim can be matched across a break, and every
+buffer offset is mapped back to page coordinates before leaving the module. The
+canonical coordinate stays the Phase 2A locator.
+
+Reconstructed claim text is *defined* as the ordered spans resolved against
+`document_pages.text` and joined with a single `"\n"` (`PAGE_SPAN_SEPARATOR`) -
+the same character page text already uses as its only line separator. `claims.text`
+stores that value; tests assert it equals the join of its spans.
+
+Span boundaries exclude the heading and any surrounding whitespace. That is a
+choice of *where the claim begins*, not an edit: offsets are moved, text is never
+trimmed, so every span still resolves to the exact stored characters. Interior
+whitespace is preserved.
+
+### Parser versioning and idempotency
+
+`claim_parse_results` is unique on `(document_id, parser_name, parser_version)`.
+
+| Situation | Behaviour |
+| --- | --- |
+| First parse | `201` with the new result |
+| Same parser version, already `completed` or `no_claims_found` | `200` with the existing result; nothing re-parsed |
+| Previous attempt `failed` or stranded in `processing` | Retried **in place**: the old graph is deleted and the same row is reused |
+| A future parser version | A new row beside the current one |
+
+Retrying in place is why attempts cannot accumulate without bound, and keeping a
+row per version is why an upgraded parser can be introduced without overwriting
+a result that existing citations may point at.
+
+### Transaction behaviour
+
+`processing` is committed before parsing begins, so a crash leaves a record that
+is distinguishable from a completed one. Then claims, spans, dependency edges,
+`claim_count`, and the terminal status are written in **one** transaction, with a
+flush in the middle so the composite foreign keys can see the claim rows. A
+reader therefore never sees a completed result with missing claims, claims
+without spans, edges pointing at absent claims, or a `claim_count` that disagrees
+with the rows.
+
+If that commit fails, everything rolls back and the status stays `processing`.
+
+### Schema (revision 0003)
+
+```
+claim_parse_results                     claims
+──────────────────────────────          ─────────────────────────────
+id                    uuid PK           id              uuid PK
+document_id  → documents.id CASCADE     parse_result_id → claim_parse_results.id
+status       varchar + CHECK                            CASCADE
+parser_name / parser_version            claim_number    integer ≥ 1
+claim_count / warning_count             claim_type      varchar + CHECK
+warnings              jsonb             text            text
+error_code / error_message              UNIQUE (parse_result_id, claim_number)
+started_at / completed_at               UNIQUE (id, parse_result_id)
+created_at / updated_at
+UNIQUE (document_id, parser_name, parser_version)
+
+claim_spans                             claim_dependencies
+─────────────────────────────           ────────────────────────────────────
+id              uuid PK                 id                  uuid PK
+claim_id → claims.id CASCADE            parse_result_id     uuid
+sequence_number integer ≥ 0             dependent_claim_id  uuid
+page_number     integer ≥ 1             referenced_claim_id uuid
+start_char      integer ≥ 0             UNIQUE (dependent, referenced)
+end_char        > start_char            CHECK dependent <> referenced
+UNIQUE (claim_id, sequence_number)      FK (dependent_claim_id, parse_result_id)
+                                           → claims (id, parse_result_id)
+                                        FK (referenced_claim_id, parse_result_id)
+                                           → claims (id, parse_result_id)
+```
+
+Deviations from the suggested design, and why:
+
+- **`warnings` is a JSONB column, not a fifth table.** Warnings are always read
+  with their result and never queried on their own; a table would add a join and
+  an index for no query benefit. `warning_count` is kept alongside it.
+- **`claims` has no `document_id`.** It is reachable through `parse_result`, and
+  duplicating it would let a claim disagree with its own parse result about which
+  document it came from.
+- **`claim_dependencies` carries `parse_result_id`** and uses two composite
+  foreign keys into `claims (id, parse_result_id)`. This is what makes
+  "same-parse-result integrity" a database guarantee instead of an application
+  convention: without it nothing would stop an edge from pointing at another
+  document's claim. It is also why `claims` carries the otherwise redundant
+  `UNIQUE (id, parse_result_id)`.
+- **`end_char > start_char`**, so an empty span cannot be stored: a zero-length
+  span cites nothing.
+
+### Quality safeguards
+
+Warnings (recorded, never silently repaired): duplicate claim number (the first
+occurrence is kept, and the duplicate heading still acts as a boundary so the
+previous claim does not absorb it), empty claim body, out-of-order headings,
+malformed claim number, unresolved reference, self-dependency, backwards or
+incomplete range, dependency cycle.
+
+Hard failures (the parse is marked `failed` rather than persisted): spans outside
+page bounds, and overlapping spans between different claims. Both are structural
+invariants of the extraction itself; persisting a violation would corrupt every
+citation built on it.
+
+### Known limitations
+
+Korean claim conventions with a minimal, line-anchored English fallback. Nothing
+else is attempted: no other language, no claim element decomposition, no
+inference of an implicit dependency from wording alone, no OCR. Parsing is
+synchronous, and a document with unusual formatting may produce
+`no_claims_found` rather than a partial guess - which is the intended behaviour.
+
+---
+
+## 9. Extension points for later phases
 
 Each item below names the seam, not the implementation. The intent is that adding a
 capability means adding a module behind an existing boundary, not reshaping the
 application.
 
-### Document parsing (Phase 2A - built, 2B - next)
+### Document and claim parsing (Phases 2A and 2B - built)
 
-- The `DocumentParser` protocol and the PyMuPDF implementation exist (section 7).
-  Format-specific parsers register against the protocol; no route branches on file
-  format.
-- **Phase 2B** adds *structural* parsing above this boundary: bibliographic header,
-  abstract, description sections, and the claim set with numbering and dependency
-  relationships. It consumes `ParsedDocument`/stored page text and writes new tables
-  through a new revision; the page tables stay as they are.
-- Structure is expressed as spans on pages, so a claim's location is a locator, not
-  a second coordinate system.
+- The `DocumentParser` protocol and the PyMuPDF implementation exist (section 7);
+  the `ClaimParser` protocol and the Korean rule-based implementation exist
+  (section 8). Implementations register against a protocol; no route branches on
+  file format or language.
+- A second language's claim conventions would be another `ClaimParser`, selected
+  in `deps.py`. Nothing above the boundary changes.
+- Bibliographic header, abstract, and description sections remain unparsed.
+  When they arrive they attach the same way claims did: new tables, new revision,
+  spans on pages, page tables untouched.
 - OCR would arrive as another `DocumentParser` implementation. It needs the
   asynchronous path that the `processing` state already anticipates.
 
@@ -501,16 +728,19 @@ application.
 
 ---
 
-## 9. Known architectural gaps
+## 10. Known architectural gaps
 
-Deliberate as of Phase 2A, listed so they are not mistaken for oversights:
+Deliberate as of Phase 2B, listed so they are not mistaken for oversights:
 
 - No authentication, authorisation, or multi-tenancy; no rate limiting.
 - No request-ID propagation or tracing.
 - No background worker. Ingestion is synchronous, which is fine until OCR.
 - No virus scanning of uploads.
-- No re-parse or delete endpoint. Rows can be removed in SQL (pages cascade), but
-  the stored original is not garbage-collected by the application.
+- No delete endpoint. Rows can be removed in SQL (pages, parse results, claims,
+  spans, and edges all cascade), but the stored original is not garbage-collected
+  by the application.
+- Claim parsing is Korean-only apart from a minimal English heading fallback.
+- Claim parsing is synchronous, like ingestion.
 - No production web image (the container runs `next dev`); no CI pipeline.
 - The whole upload is held in memory while hashing and parsing. Bounded by
   `UPLOAD_MAX_BYTES`, so it is a known ceiling rather than an open-ended one.
