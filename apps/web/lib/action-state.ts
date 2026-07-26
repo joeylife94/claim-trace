@@ -45,6 +45,38 @@ export type SearchClaimsState = {
   topK: number;
 };
 
+export type LLMGenerateState = {
+  status: "idle" | "generated" | "error";
+  message: string;
+  /** Present only on `status: "generated"`; null while idle or after an error. */
+  response: import("@/lib/llm").GenerateResponse | null;
+  /** Echoed back so the form keeps what the operator typed. */
+  prompt: string;
+  system: string;
+};
+
+export const INITIAL_LLM_GENERATE_STATE: LLMGenerateState = {
+  status: "idle",
+  message: "",
+  response: null,
+  prompt: "",
+  system: "",
+};
+
+export type LLMStructuredState = {
+  status: "idle" | "generated" | "error";
+  message: string;
+  response: import("@/lib/llm").StructuredResponse | null;
+  prompt: string;
+};
+
+export const INITIAL_LLM_STRUCTURED_STATE: LLMStructuredState = {
+  status: "idle",
+  message: "",
+  response: null,
+  prompt: "",
+};
+
 export const INITIAL_SEARCH_STATE: SearchClaimsState = {
   status: "idle",
   message: "",

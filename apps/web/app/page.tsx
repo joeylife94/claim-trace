@@ -41,6 +41,20 @@ export default async function Home() {
             <Link href="/search">Search claims →</Link>
           </div>
         </section>
+
+        <section className="panel" aria-labelledby="llm-heading">
+          <div className="panel-header">
+            <h2 id="llm-heading">Local LLM</h2>
+          </div>
+          <p className="meta">
+            Status, capabilities, and diagnostics for the configured local model
+            provider. Infrastructure only - the model is not yet connected to
+            claim retrieval.
+          </p>
+          <div className="actions">
+            <Link href="/llm">Provider diagnostics →</Link>
+          </div>
+        </section>
       </main>
       <footer>
         MVP portfolio project. ClaimTrace does not provide legal advice and does not

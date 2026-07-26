@@ -546,3 +546,42 @@ td.numeric {
 .claim-spans a:hover {
   border-color: var(--accent);
 }
+
+/* --- LLM diagnostics (Phase 4A-1) ---------------------------------------- */
+
+/* A diagnostic prompt is a few sentences, not a search query, so it gets a
+   textarea. Styled with the other controls rather than separately, so the two
+   forms on /llm look like the rest of the app. */
+.search-field textarea {
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 0.45rem 0.6rem;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.search-field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Provider reachability. Three tones rather than two: a reachable server whose
+   model was never pulled is neither healthy nor down, and it has its own fix. */
+.badge[data-tone="ok"] {
+  color: var(--ok);
+  border-color: currentColor;
+}
+
+.badge[data-tone="warn"] {
+  color: var(--pending);
+  border-color: currentColor;
+}
+
+.badge[data-tone="error"] {
+  color: var(--error);
+  border-color: currentColor;
+}
