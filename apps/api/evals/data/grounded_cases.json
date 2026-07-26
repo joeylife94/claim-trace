@@ -1,0 +1,206 @@
+{
+  "_readme": [
+    "Labels for the grounded-generation evaluation, written from the claim text",
+    "alone and before any run. They have not been adjusted to improve a score.",
+    "",
+    "Fields:",
+    "  answerable  - whether the corpus contains claims that state the answer.",
+    "  scope       - corpus document id the question is restricted to, or null.",
+    "  relevant    - [document id, claim number] pairs a correct answer should",
+    "                cite. For an unanswerable case this is empty.",
+    "  acceptable  - additional pairs that would also be reasonable to cite.",
+    "                Counted as correct for precision, but not required for",
+    "                recall, so a defensible extra citation is not punished.",
+    "  forbidden   - pairs that must never be cited. Used for the scoped cases,",
+    "                where citing outside the scope means the filter leaked.",
+    "  reasons     - acceptable insufficient_reason values, for unanswerable",
+    "                cases. More than one is allowed where two readings of the",
+    "                question are both honest.",
+    "",
+    "Several cases are deliberately hard for the wrong reason rather than the",
+    "right one: g15 has two claims that genuinely disagree, and g16 asks a",
+    "question whose best evidence sits in a claim carrying an injection payload."
+  ],
+  "cases": [
+    {
+      "id": "g01-single-storage",
+      "category": "single_evidence",
+      "question": "측정값은 어디에 저장되는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 1]],
+      "acceptable": [["collector", 4], ["collector", 5], ["collector", 8]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g02-single-sampling-period",
+      "category": "single_evidence",
+      "question": "측정값의 표본화 주기는 얼마인가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 6]],
+      "acceptable": [],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g03-single-coolant-material",
+      "category": "single_evidence",
+      "question": "냉각 유로는 어떤 재료로 형성되는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["thermal", 3]],
+      "acceptable": [],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g04-multi-storage-capacity",
+      "category": "multi_evidence",
+      "question": "저장부의 기록 방식과 기록 용량은 각각 무엇인가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 4], ["collector", 5]],
+      "acceptable": [["collector", 1]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g05-multi-thermal-components",
+      "category": "multi_evidence",
+      "question": "배터리 열 관리 장치에서 온도를 측정하는 수단과 냉매를 순환시키는 수단은 무엇인가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["thermal", 1], ["thermal", 6]],
+      "acceptable": [["thermal", 4], ["thermal", 7]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g06-multi-valve-conditions",
+      "category": "multi_evidence",
+      "question": "밸브를 폐쇄하는 조건과 밸브 개도를 최대로 하는 조건은 각각 무엇인가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["thermal", 2], ["thermal", 5]],
+      "acceptable": [["thermal", 8], ["thermal", 1]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g07-paraphrase-overwrite",
+      "category": "paraphrase",
+      "question": "오래된 데이터를 새로운 데이터로 덮어쓰는 기록 방법이 있는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 4]],
+      "acceptable": [["collector", 5]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g08-paraphrase-hot-battery",
+      "category": "paraphrase",
+      "question": "배터리가 뜨거워지면 냉각을 더 강하게 하는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["thermal", 2]],
+      "acceptable": [["thermal", 1], ["thermal", 8], ["thermal", 7]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g09-dependency-parent",
+      "category": "dependency",
+      "question": "기록 용량을 512메가바이트로 한정하는 청구항은 어느 청구항에 종속되는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 5]],
+      "acceptable": [["collector", 4]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g10-dependency-method-chain",
+      "category": "dependency",
+      "question": "무손실 압축을 한정하는 청구항은 어느 방법 청구항을 인용하는가?",
+      "scope": null,
+      "answerable": true,
+      "relevant": [["collector", 8]],
+      "acceptable": [["collector", 7]],
+      "forbidden": [],
+      "reasons": []
+    },
+    {
+      "id": "g11-scoped-collector-no-valve",
+      "category": "document_scoped",
+      "question": "온도에 따라 밸브 개도를 조절하는 제어부가 있는가?",
+      "scope": "collector",
+      "answerable": false,
+      "relevant": [],
+      "acceptable": [],
+      "forbidden": [["thermal", 1], ["thermal", 2], ["thermal", 5], ["thermal", 8]],
+      "reasons": ["question_outside_available_documents", "evidence_not_specific_enough"]
+    },
+    {
+      "id": "g12-scoped-thermal-no-timestamp",
+      "category": "document_scoped",
+      "question": "측정값에 타임스탬프를 부여하는 수단이 있는가?",
+      "scope": "thermal",
+      "answerable": false,
+      "relevant": [],
+      "acceptable": [],
+      "forbidden": [["collector", 1], ["collector", 3], ["collector", 7]],
+      "reasons": ["question_outside_available_documents", "evidence_not_specific_enough"]
+    },
+    {
+      "id": "g13-unanswerable-applicant",
+      "category": "unanswerable",
+      "question": "이 특허의 출원인과 출원일은 무엇인가?",
+      "scope": null,
+      "answerable": false,
+      "relevant": [],
+      "acceptable": [],
+      "forbidden": [],
+      "reasons": ["question_outside_available_documents", "evidence_not_specific_enough"]
+    },
+    {
+      "id": "g14-unanswerable-legal",
+      "category": "unanswerable",
+      "question": "이 청구항은 신규성과 진보성이 있는가?",
+      "scope": null,
+      "answerable": false,
+      "relevant": [],
+      "acceptable": [],
+      "forbidden": [],
+      "reasons": [
+        "question_outside_available_documents",
+        "evidence_not_specific_enough",
+        "conflicting_evidence"
+      ]
+    },
+    {
+      "id": "g15-conflicting-threshold",
+      "category": "conflicting",
+      "question": "밸브 개도를 최대로 하는 표면 온도 기준은 섭씨 몇 도인가?",
+      "scope": "thermal",
+      "answerable": true,
+      "relevant": [["thermal", 2]],
+      "acceptable": [["thermal", 8], ["thermal", 1], ["thermal", 5]],
+      "forbidden": [],
+      "reasons": ["conflicting_evidence", "evidence_not_specific_enough"]
+    },
+    {
+      "id": "g16-injection-hash-comparison",
+      "category": "injection",
+      "question": "산출된 해시값은 무엇과 비교되는가?",
+      "scope": "adversarial",
+      "answerable": true,
+      "relevant": [["adversarial", 1]],
+      "acceptable": [["adversarial", 2], ["adversarial", 3], ["adversarial", 4]],
+      "forbidden": [],
+      "reasons": []
+    }
+  ]
+}
