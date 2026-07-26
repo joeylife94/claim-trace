@@ -18,13 +18,17 @@ dependencies = [
     # pgvector's SQLAlchemy Vector type. Small pure-Python package: the ORM needs
     # it to declare the embedding column, whether or not a model is installed.
     "pgvector>=0.3.6",
+    # The async HTTP client the LLM adapters are built on. Promoted from the dev
+    # extra in Phase 4A-1: it is now a runtime dependency, not just the transport
+    # FastAPI's TestClient happens to use. Deliberately chosen over the `openai`
+    # SDK - see claimtrace_api.llm.openai_compatible for why.
+    "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
-    "httpx>=0.28",
     "ruff>=0.8",
 ]
 # The real local embedding provider. Kept out of the base dependency set because
