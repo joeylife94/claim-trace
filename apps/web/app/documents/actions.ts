@@ -1,15 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { UploadState } from "@/lib/action-state";
 import { uploadDocument } from "@/lib/documents";
-
-export type UploadState = {
-  status: "idle" | "success" | "duplicate" | "error";
-  message: string;
-  documentId?: string;
-};
-
-export const INITIAL_UPLOAD_STATE: UploadState = { status: "idle", message: "" };
 
 /**
  * Handle the upload form.
@@ -17,6 +10,10 @@ export const INITIAL_UPLOAD_STATE: UploadState = { status: "idle", message: "" }
  * Runs on the server, so the PDF goes browser -> Next.js -> API without the
  * backend being exposed to the browser. Validation errors from the API are
  * surfaced verbatim: they are written for end users and carry no internals.
+ *
+ * This module exports only async functions - a `"use server"` file may not
+ * export anything else, so the state type and its initial value live in
+ * `lib/action-state`.
  */
 export async function uploadDocumentAction(
   _previous: UploadState,

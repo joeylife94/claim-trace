@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.core.config import Settings
-from claimtrace_api.core.errors import ErrorCode, IngestionError
+from claimtrace_api.core.errors import AppError, ErrorCode
 from claimtrace_api.db.models import Document, DocumentStatus
 from claimtrace_api.parsing.pymupdf_parser import PyMuPDFDocumentParser
 from claimtrace_api.services.ingestion import (
@@ -61,7 +61,7 @@ async def test_read_upload_stops_before_buffering_an_oversized_body() -> None:
         reads += 1
         return b"x" * size
 
-    with pytest.raises(IngestionError) as excinfo:
+    with pytest.raises(AppError) as excinfo:
         await read_upload(read, max_bytes=10, chunk_size=4)
 
     assert excinfo.value.code is ErrorCode.FILE_TOO_LARGE

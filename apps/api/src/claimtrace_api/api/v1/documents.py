@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, Query, Response, UploadFile
 from sqlalchemy import func, select
 
 from claimtrace_api.api.deps import IngestionServiceDep, SessionDep, SettingsDep
-from claimtrace_api.core.errors import ErrorCode, IngestionError
+from claimtrace_api.core.errors import AppError, ErrorCode
 from claimtrace_api.db.models import Document, DocumentPage
 from claimtrace_api.schemas.documents import (
     DocumentListResponse,
@@ -168,5 +168,5 @@ def _page_response(page: DocumentPage) -> DocumentPageResponse:
 async def _require_document(document_id: uuid.UUID, session: SessionDep) -> Document:
     document = await session.get(Document, document_id)
     if document is None:
-        raise IngestionError(ErrorCode.DOCUMENT_NOT_FOUND, "Document not found.")
+        raise AppError(ErrorCode.DOCUMENT_NOT_FOUND, "Document not found.")
     return document

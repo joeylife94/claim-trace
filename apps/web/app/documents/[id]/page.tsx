@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageViewer } from "@/components/PageViewer";
+import { ClaimWorkspace } from "@/components/ClaimWorkspace";
+import { getClaims } from "@/lib/claims";
 import {
   formatBytes,
   formatTimestamp,
@@ -23,8 +24,13 @@ export default async function DocumentDetailPage({
   }
 
   // A failed document has no pages; asking for them anyway would be a wasted call.
-  const pages =
-    document.status === "completed" ? (await getDocumentPages(id)).items : [];
+  const completed = document.status === "completed";
+  const [pages, claimSet] = completed
+    ? await Promise.all([
+        getDocumentPages(id).then((response) => response.items),
+        getClaims(id).catch(() => null),
+      ])
+    : [[], null];
 
   return (
     <>
@@ -68,11 +74,17 @@ export default async function DocumentDetailPage({
           )}
         </section>
 
-        {pages.length > 0 && <PageViewer pages={pages} />}
+        <ClaimWorkspace
+          documentId={id}
+          documentCompleted={completed}
+          pages={pages}
+          claimSet={claimSet}
+        />
       </main>
       <footer>
-        MVP portfolio project. Extracted text is shown as stored, without
-        interpretation. ClaimTrace does not provide legal advice.
+        MVP portfolio project. Extracted text and claim structure are shown as
+        stored, without interpretation. ClaimTrace does not provide legal advice and
+        does not determine infringement, validity, or patentability.
       </footer>
     </>
   );

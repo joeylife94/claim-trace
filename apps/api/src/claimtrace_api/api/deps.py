@@ -16,6 +16,8 @@ from claimtrace_api.core.config import Settings
 from claimtrace_api.db.health import check_postgres
 from claimtrace_api.db.session import session_scope
 from claimtrace_api.parsing.base import DocumentParser
+from claimtrace_api.parsing.claims.base import ClaimParser
+from claimtrace_api.services.claim_parsing import ClaimParsingService
 from claimtrace_api.services.ingestion import DocumentIngestionService
 from claimtrace_api.storage.base import FileStorage
 
@@ -59,11 +61,17 @@ def get_parser(request: Request) -> DocumentParser:
     return request.app.state.parser
 
 
+def get_claim_parser(request: Request) -> ClaimParser:
+    """Return the configured claim structural parser."""
+    return request.app.state.claim_parser
+
+
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 PostgresReadyDep = Annotated[bool, Depends(get_postgres_ready)]
 StorageDep = Annotated[FileStorage, Depends(get_storage)]
 ParserDep = Annotated[DocumentParser, Depends(get_parser)]
+ClaimParserDep = Annotated[ClaimParser, Depends(get_claim_parser)]
 
 
 def get_ingestion_service(
@@ -79,3 +87,11 @@ def get_ingestion_service(
 
 
 IngestionServiceDep = Annotated[DocumentIngestionService, Depends(get_ingestion_service)]
+
+
+def get_claim_parsing_service(session: SessionDep, parser: ClaimParserDep) -> ClaimParsingService:
+    """Assemble the claim parsing use case for one request."""
+    return ClaimParsingService(session=session, parser=parser)
+
+
+ClaimParsingServiceDep = Annotated[ClaimParsingService, Depends(get_claim_parsing_service)]

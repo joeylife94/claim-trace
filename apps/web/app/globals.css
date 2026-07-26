@@ -354,3 +354,111 @@ td.numeric {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* --- Claim structure ------------------------------------------------------ */
+
+.span-highlight {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: inherit;
+  border-bottom: 2px solid var(--accent);
+  border-radius: 2px;
+  padding: 0.05em 0;
+}
+
+.notice[data-tone="warn"] {
+  border-left-color: var(--pending);
+}
+
+.badge[data-claim-status="completed"] {
+  color: var(--ok);
+  border-color: currentColor;
+}
+
+.badge[data-claim-status="failed"] {
+  color: var(--error);
+  border-color: currentColor;
+}
+
+.badge[data-claim-type="independent"] {
+  color: var(--accent);
+  border-color: currentColor;
+}
+
+.badge[data-claim-type="unknown"] {
+  color: var(--error);
+  border-color: currentColor;
+}
+
+.warnings {
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.warnings summary {
+  cursor: pointer;
+}
+
+.warnings ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.warnings li + li {
+  margin-top: 0.35rem;
+}
+
+.claim-list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.claim {
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.claim-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.claim-header h3 {
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+.claim-dependencies {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.claim-text {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claim-spans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.claim-spans button {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.claim-spans button[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
