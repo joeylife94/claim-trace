@@ -35,6 +35,20 @@ class ErrorCode(StrEnum):
     CLAIM_PARSE_NOT_FOUND = "claim_parse_not_found"
     CLAIM_NOT_FOUND = "claim_not_found"
 
+    # Claim indexing and retrieval (Phase 3A).
+    #: A claim parse result exists but did not complete, so there are no claims
+    #: to index. Distinct from CLAIM_PARSE_NOT_FOUND, which means none was run.
+    CLAIM_PARSE_NOT_COMPLETED = "claim_parse_not_completed"
+    #: Indexing ran and could not finish. Persisted on the failed index run.
+    CLAIM_INDEX_FAILED = "claim_index_failed"
+    CLAIM_INDEX_NOT_FOUND = "claim_index_not_found"
+    #: The embedding model could not be loaded - missing optional dependency,
+    #: absent from the cache with no network, or out of memory. Retryable.
+    EMBEDDING_MODEL_UNAVAILABLE = "embedding_model_unavailable"
+    #: The provider returned vectors the migrated column cannot store. A
+    #: configuration error, never something a caller can fix by retrying.
+    EMBEDDING_DIMENSION_MISMATCH = "embedding_dimension_mismatch"
+
     # Lookup and internal failures.
     DOCUMENT_NOT_FOUND = "document_not_found"
     STORAGE_FAILURE = "storage_failure"
@@ -54,6 +68,13 @@ ERROR_STATUS: dict[ErrorCode, HTTPStatus] = {
     ErrorCode.CLAIM_PARSE_FAILED: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.CLAIM_PARSE_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.CLAIM_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    ErrorCode.CLAIM_PARSE_NOT_COMPLETED: HTTPStatus.CONFLICT,
+    ErrorCode.CLAIM_INDEX_FAILED: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.CLAIM_INDEX_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    # 503, not 500: the model is a dependency that can come back, and the caller
+    # is being told to retry rather than that the request was wrong.
+    ErrorCode.EMBEDDING_MODEL_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
+    ErrorCode.EMBEDDING_DIMENSION_MISMATCH: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.DOCUMENT_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.STORAGE_FAILURE: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,

@@ -82,6 +82,46 @@ class Settings(BaseSettings):
     # recorded as failed rather than silently ingested as empty.
     min_extracted_characters: int = 32
 
+    # --- Claim indexing: embeddings ----------------------------------------
+    # "sentence-transformers" loads the real local model; "fake" is the
+    # deterministic hashing provider used by tests and by any environment that
+    # must not download weights. Both satisfy the same protocol.
+    embedding_provider: Literal["sentence-transformers", "fake"] = "sentence-transformers"
+
+    embedding_model: str = "intfloat/multilingual-e5-small"
+
+    # Where model weights are cached. A container volume by default, so weights
+    # are downloaded once and never enter the image or the Git tree.
+    embedding_cache_dir: Path = Path("/models")
+
+    # "cpu" is the only value this deployment is validated on. The setting exists
+    # so a GPU host does not need a code change.
+    embedding_device: str = "cpu"
+
+    embedding_batch_size: int = 16
+
+    # The dimension the database column was migrated with. The provider's own
+    # dimension is checked against this before anything is written, because a
+    # mismatch would otherwise surface as an opaque pgvector error mid-insert.
+    embedding_dimension: int = 384
+
+    # Bumped when the normalised search representation changes in a way that
+    # makes old records incomparable. Part of the index profile identity.
+    normalization_version: str = "nfkc-v1"
+
+    # --- Claim retrieval ----------------------------------------------------
+    dense_candidate_count: int = 30
+    lexical_candidate_count: int = 30
+
+    # Reciprocal Rank Fusion constant. 60 is the value from the original RRF
+    # paper and the common default; it flattens the contribution of deep ranks.
+    rrf_k: int = 60
+
+    search_top_k_default: int = 10
+    search_top_k_max: int = 50
+    search_candidate_count_max: int = 200
+    search_query_max_length: int = 512
+
     @field_validator(
         "cors_allow_origins",
         "upload_allowed_content_types",
