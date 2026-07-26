@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ParseClaimsState } from "@/lib/action-state";
+import type { IndexClaimsState, ParseClaimsState } from "@/lib/action-state";
 import { parseClaims } from "@/lib/claims";
+import { indexClaims } from "@/lib/search";
 
 /**
  * Run claim structural parsing for one document.
@@ -47,5 +48,42 @@ export async function parseClaimsAction(
     : {
         status: "parsed",
         message: `Found ${result.claim_count} claim(s).`,
+      };
+}
+
+/**
+ * Build the retrieval index for one document's claims.
+ *
+ * The API is synchronous and can take a while on the first call, because that is
+ * when the embedding model is loaded from the cache. Errors are surfaced
+ * verbatim: "the model could not be loaded" is something the operator has to
+ * see, not something to flatten into a generic failure.
+ */
+export async function indexClaimsAction(
+  _previous: IndexClaimsState,
+  formData: FormData,
+): Promise<IndexClaimsState> {
+  const documentId = formData.get("documentId");
+  if (typeof documentId !== "string" || documentId.length === 0) {
+    return { status: "error", message: "Missing document id." };
+  }
+
+  const outcome = await indexClaims(documentId);
+
+  if (!outcome.ok) {
+    return { status: "error", message: outcome.detail };
+  }
+
+  revalidatePath(`/documents/${documentId}`);
+
+  const { run } = outcome;
+  return outcome.alreadyIndexed
+    ? {
+        status: "already_indexed",
+        message: `Already indexed: ${run.indexed_claim_count} claim(s) with ${run.embedding_model}.`,
+      }
+    : {
+        status: "indexed",
+        message: `Indexed ${run.indexed_claim_count} claim(s) with ${run.embedding_model}.`,
       };
 }

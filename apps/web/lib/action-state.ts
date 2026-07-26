@@ -22,3 +22,35 @@ export type ParseClaimsState = {
 };
 
 export const INITIAL_PARSE_STATE: ParseClaimsState = { status: "idle", message: "" };
+
+export type IndexClaimsState = {
+  status: "idle" | "indexed" | "already_indexed" | "error";
+  message: string;
+};
+
+export const INITIAL_INDEX_STATE: IndexClaimsState = { status: "idle", message: "" };
+
+export type SearchClaimsState = {
+  status: "idle" | "results" | "error";
+  message: string;
+  /**
+   * Present only on `status: "results"`. Typed as the search response so the
+   * results component needs no cast; `null` while idle or after an error.
+   */
+  response: import("@/lib/search").ClaimSearchResponse | null;
+  /** Echoed back so the form keeps what the user typed after a submission. */
+  query: string;
+  mode: import("@/lib/search").RetrievalMode;
+  documentId: string;
+  topK: number;
+};
+
+export const INITIAL_SEARCH_STATE: SearchClaimsState = {
+  status: "idle",
+  message: "",
+  response: null,
+  query: "",
+  mode: "hybrid",
+  documentId: "",
+  topK: 10,
+};

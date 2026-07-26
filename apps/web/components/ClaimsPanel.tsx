@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { parseClaimsAction } from "@/app/documents/[id]/actions";
+import type { PageHighlight } from "@/components/PageViewer";
 import { INITIAL_PARSE_STATE, type ParseClaimsState } from "@/lib/action-state";
 import {
   claimTypeLabel,
@@ -39,7 +40,9 @@ export function ClaimsPanel({
   documentCompleted: boolean;
   claimSet: ClaimSet | null;
   onOpenSpan: (span: ClaimSpan) => void;
-  activeSpan: ClaimSpan | null;
+  // Compared by coordinates only, so a highlight seeded from a search-result
+  // deep link marks the matching span exactly as a clicked one does.
+  activeSpan: PageHighlight | null;
 }) {
   const [state, formAction] = useActionState<ParseClaimsState, FormData>(
     parseClaimsAction,
@@ -96,7 +99,9 @@ function ClaimSetBody({
 }: {
   claimSet: ClaimSet;
   onOpenSpan: (span: ClaimSpan) => void;
-  activeSpan: ClaimSpan | null;
+  // Compared by coordinates only, so a highlight seeded from a search-result
+  // deep link marks the matching span exactly as a clicked one does.
+  activeSpan: PageHighlight | null;
 }) {
   const { result, claims } = claimSet;
 
@@ -161,7 +166,9 @@ function ClaimItem({
 }: {
   claim: Claim;
   onOpenSpan: (span: ClaimSpan) => void;
-  activeSpan: ClaimSpan | null;
+  // Compared by coordinates only, so a highlight seeded from a search-result
+  // deep link marks the matching span exactly as a clicked one does.
+  activeSpan: PageHighlight | null;
 }) {
   const dependencies = dependencyLabel(claim.depends_on);
 

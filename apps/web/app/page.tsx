@@ -27,6 +27,20 @@ export default async function Home() {
             <Link href="/documents">Go to documents →</Link>
           </div>
         </section>
+
+        <section className="panel" aria-labelledby="search-heading">
+          <div className="panel-header">
+            <h2 id="search-heading">Claim search</h2>
+          </div>
+          <p className="meta">
+            Hybrid retrieval over indexed claims - vector similarity and Korean
+            lexical matching, fused by rank. Every result links back to the exact
+            page and character range it came from.
+          </p>
+          <div className="actions">
+            <Link href="/search">Search claims →</Link>
+          </div>
+        </section>
       </main>
       <footer>
         MVP portfolio project. ClaimTrace does not provide legal advice and does not
