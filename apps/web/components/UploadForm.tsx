@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  INITIAL_UPLOAD_STATE,
-  uploadDocumentAction,
-  type UploadState,
-} from "@/app/documents/actions";
+import { uploadDocumentAction } from "@/app/documents/actions";
+import { INITIAL_UPLOAD_STATE, type UploadState } from "@/lib/action-state";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
