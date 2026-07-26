@@ -69,6 +69,27 @@ services:
       RRF_K: ${RRF_K:-60}
       SEARCH_TOP_K_MAX: ${SEARCH_TOP_K_MAX:-50}
       SEARCH_QUERY_MAX_LENGTH: ${SEARCH_QUERY_MAX_LENGTH:-512}
+      # Local LLM provider. "fake" by default, so this stack starts and every
+      # endpoint works with no model server running and nothing downloaded.
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      LLM_OLLAMA_BASE_URL: ${LLM_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      LLM_OLLAMA_MODEL: ${LLM_OLLAMA_MODEL:-qwen2.5:1.5b}
+      LLM_OPENAI_COMPATIBLE_BASE_URL: ${LLM_OPENAI_COMPATIBLE_BASE_URL:-http://localhost:8000/v1}
+      LLM_OPENAI_COMPATIBLE_MODEL: ${LLM_OPENAI_COMPATIBLE_MODEL:-local-model}
+      LLM_OPENAI_COMPATIBLE_API_KEY: ${LLM_OPENAI_COMPATIBLE_API_KEY:-}
+      LLM_STRUCTURED_OUTPUT_MODE: ${LLM_STRUCTURED_OUTPUT_MODE:-native_json_schema}
+      LLM_CONNECT_TIMEOUT_SECONDS: ${LLM_CONNECT_TIMEOUT_SECONDS:-5}
+      LLM_READ_TIMEOUT_SECONDS: ${LLM_READ_TIMEOUT_SECONDS:-120}
+      LLM_MAX_TIMEOUT_SECONDS: ${LLM_MAX_TIMEOUT_SECONDS:-180}
+      LLM_RETRY_MAX_ATTEMPTS: ${LLM_RETRY_MAX_ATTEMPTS:-2}
+      LLM_MAX_PROMPT_CHARACTERS: ${LLM_MAX_PROMPT_CHARACTERS:-8000}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-1024}
+      LLM_DIAGNOSTICS_ENABLED: ${LLM_DIAGNOSTICS_ENABLED:-}
+    # Lets the API reach an Ollama running on the host at
+    # host.docker.internal. Docker Desktop provides the name already; this line
+    # is what makes the same configuration work on Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -119,7 +140,36 @@ services:
       api:
         condition: service_healthy
 
+  # Optional. Not started by `docker compose up`, because the rest of the stack
+  # does not depend on it and a model server is a large thing to require of
+  # someone who only wants to ingest a PDF.
+  #
+  #   docker compose --profile llm up -d ollama
+  #   docker compose exec ollama ollama pull qwen2.5:1.5b
+  #   # then set LLM_PROVIDER=ollama and LLM_OLLAMA_BASE_URL=http://ollama:11434
+  #
+  # The documented default instead points the API at an Ollama running on the
+  # *host* (host.docker.internal), which reuses models already pulled there
+  # rather than downloading a second copy into this volume.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      # Weights live in a named volume: they are never committed, never baked
+      # into an image, and survive `docker compose down`.
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
 volumes:
   postgres_data:
   document_storage:
   model_cache:
+  ollama_models:
