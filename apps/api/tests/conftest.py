@@ -232,7 +232,10 @@ def integration_settings(integration_database_url: str, storage_root: Path) -> S
         log_level="WARNING",
         database_url=integration_database_url,
         storage_root=storage_root,
-        upload_max_bytes=1024 * 1024,
+        # Larger than the unit-test limit: a PDF with an embedded CJK font is a
+        # few megabytes, and the Korean claim fixtures need one to round-trip.
+        # The size-limit rejection itself is covered in the database-free tier.
+        upload_max_bytes=8 * 1024 * 1024,
         min_extracted_characters=32,
     )
 
