@@ -11,7 +11,8 @@ WEB_DIR := apps/web
 .DEFAULT_GOAL := help
 .PHONY: help init up up-detached down logs ps build restart \
         migrate migration revision psql shell-api \
-        test lint format fmt-check web-install web-lint web-typecheck check clean
+        test test-docker test-unit lint format fmt-check \
+        web-install web-lint web-typecheck check clean
 
 ## --- Meta -------------------------------------------------------------------
 
@@ -65,8 +66,14 @@ shell-api: ## Open a shell in the api container
 
 ## --- Quality gates ----------------------------------------------------------
 
-test: ## Run the backend test suite on the host
+test: ## Run the backend test suite on the host (PostgreSQL tier skipped if unreachable)
 	cd $(API_DIR) && uv run pytest
+
+test-docker: ## Run the backend test suite in the api container, including the PostgreSQL tier
+	$(COMPOSE) run --rm api pytest
+
+test-unit: ## Run only the tests that need no database
+	cd $(API_DIR) && uv run pytest -m "not integration"
 
 lint: ## Lint the backend (ruff)
 	cd $(API_DIR) && uv run ruff check .
