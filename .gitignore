@@ -43,6 +43,18 @@ desktop.ini
 tmp/
 .scratch/
 
+# --- Model weights ---------------------------------------------------------
+# Embedding models are downloaded into a Docker volume (EMBEDDING_CACHE_DIR),
+# not into the repository. These rules catch a local run configured to cache
+# somewhere inside the tree: the weights are hundreds of megabytes of binary
+# that Git must never take.
+models/
+.cache/huggingface/
+*.safetensors
+*.onnx
+*.gguf
+*.bin
+
 # --- Uploaded documents ----------------------------------------------------
 # Uploaded originals must never be committed: they are user data, and in this
 # domain they are usually confidential. STORAGE_ROOT should point outside the

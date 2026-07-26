@@ -25,10 +25,11 @@ routinely confidential.
 
 ## Current implementation scope
 
-This repository is at **Phase 2B: deterministic claim structural parsing**. A
-text-based Korean patent PDF can be uploaded, stored, parsed into page text, then
-parsed again into a claim graph - claim numbers, types, dependencies, and exact
-page-anchored source spans for every claim.
+This repository is at **Phase 3A: claim indexing and hybrid retrieval**. A
+text-based Korean patent PDF can be uploaded, stored, parsed into page text,
+parsed again into a claim graph, indexed with a local multilingual embedding
+model, and then searched - by meaning, by wording, or both - with every result
+resolving back to the exact page and character range it came from.
 
 **Implemented**
 
@@ -50,10 +51,22 @@ page-anchored source spans for every claim.
 - A claim parsing lifecycle separate from ingestion, with `no_claims_found` as an
   explicit outcome and idempotency per parser version
 - Claim endpoints under `/api/v1/documents/{id}/claims`
-- PostgreSQL 17 + pgvector, Alembic revisions `0001` (baseline), `0002`
-  (ingestion) and `0003` (claim parsing)
+- `EmbeddingProvider` protocol with two implementations: a real local
+  sentence-transformers model and a deterministic hash provider that downloads
+  nothing and is what the whole test suite runs against
+- Claim-level indexing into pgvector, with its own lifecycle, a retrieval
+  profile recorded per run, and idempotency per profile
+- Dense retrieval (pgvector cosine, HNSW), Korean-aware lexical retrieval
+  (PostgreSQL `simple` full-text plus `pg_trgm`), and Reciprocal Rank Fusion
+- `POST /api/v1/search/claims` with `hybrid`, `dense`, and `lexical` modes,
+  document scoping, and per-channel ranking metadata on every result
+- PostgreSQL 17 + pgvector + pg_trgm, Alembic revisions `0001` (baseline),
+  `0002` (ingestion), `0003` (claim parsing), `0004` (retrieval)
 - Next.js UI: live system status, PDF upload, document list, per-page text viewer,
-  claim structure with source spans that highlight the exact range
+  claim structure with source spans that highlight the exact range, a retrieval
+  index panel, and a `/search` page whose results link back into that viewer
+- A reproducible retrieval evaluation over a synthetic Korean corpus, reporting
+  Recall@1/3/5 and MRR@10 separately for dense, lexical, and hybrid
 - `docker compose` development environment (api, web, postgres) with health checks
 - Test suite that needs no network or model provider; the PostgreSQL-backed tier
   skips itself when no database is reachable
@@ -61,9 +74,9 @@ page-anchored source spans for every claim.
 
 **Not implemented yet** - deliberately, see [docs/ROADMAP.md](docs/ROADMAP.md):
 OCR and scanned-document recovery, bibliographic/abstract/description section
-parsing, claim element decomposition, chunking, embeddings, vector search,
-keyword and hybrid retrieval, reranking, LLM integration, evidence comparison,
-evaluation, authentication, background queues, and any deployment tooling.
+parsing, claim element decomposition, description-level chunking, reranking, LLM
+integration, evidence comparison, authentication, background queues, and any
+deployment tooling.
 
 ## Architecture overview
 
@@ -126,6 +139,7 @@ docker compose run --rm api alembic upgrade head   # or: make migrate
 | --- | --- | --- |
 | Web | http://localhost:3000 | Landing page with live status panel |
 | Documents | http://localhost:3000/documents | Upload a PDF, browse extracted text |
+| Search | http://localhost:3000/search | Hybrid claim search with source links |
 | API | http://localhost:8000 | Operational, system, and document endpoints |
 | API docs | http://localhost:8000/docs | Disabled when `ENVIRONMENT=production` |
 | PostgreSQL | localhost:5432 | Credentials from `.env` |
@@ -147,7 +161,19 @@ curl http://localhost:8000/api/v1/documents/<id>/pages
 curl -X POST http://localhost:8000/api/v1/documents/<id>/claims/parse
 curl http://localhost:8000/api/v1/documents/<id>/claims
 curl http://localhost:8000/api/v1/documents/<id>/claims/1
+
+# Index its claims for retrieval, then search them
+curl -X POST http://localhost:8000/api/v1/documents/<id>/claims/index
+curl http://localhost:8000/api/v1/documents/<id>/claims/index
+curl -X POST http://localhost:8000/api/v1/search/claims \
+     -H 'Content-Type: application/json' \
+     -d '{"query":"센서 데이터를 수집하는 통신 장치","mode":"hybrid","top_k":5}'
 ```
+
+The **first** index request downloads the embedding model (about 940 MB into the
+`model_cache` volume) and takes roughly ten seconds longer than the rest. Later
+requests reuse the resident model. To run entirely offline, set
+`EMBEDDING_PROVIDER=fake` - deterministic, no download, and not semantic.
 
 Ports are configurable through `API_PORT`, `WEB_PORT`, and `POSTGRES_PORT` in
 `.env`.
@@ -188,6 +214,7 @@ npm run dev
 | `make lint` / `make format` / `make fmt-check` | ruff check / format / format check |
 | `make web-lint` / `make web-typecheck` | ESLint / `tsc --noEmit` |
 | `make check` | All quality gates |
+| `make eval` / `make eval-fake` | Retrieval evaluation, with the real model / the deterministic one |
 | `make clean` | Remove containers, volumes, and local build artifacts |
 
 Equivalent plain commands, if Make is unavailable:
@@ -227,6 +254,16 @@ example file contains local placeholders only.
 | `UPLOAD_ALLOWED_CONTENT_TYPES` | `application/pdf` | Comma-separated accepted MIME types |
 | `UPLOAD_ALLOWED_EXTENSIONS` | `.pdf` | Comma-separated accepted extensions |
 | `MIN_EXTRACTED_CHARACTERS` | `32` | Below this document-wide total, a PDF is treated as having no text layer |
+| `EMBEDDING_PROVIDER` | `sentence-transformers` | `sentence-transformers` (real local model) or `fake` (deterministic, no download) |
+| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Must produce `EMBEDDING_DIMENSION`-wide vectors |
+| `EMBEDDING_CACHE_DIR` | `/models` | Model weights. A Docker volume; never inside the repository |
+| `EMBEDDING_DEVICE` | `cpu` | Only `cpu` is validated |
+| `EMBEDDING_BATCH_SIZE` | `16` | Claims per encode call |
+| `EMBEDDING_DIMENSION` | `384` | Must match the migrated `vector(n)` column |
+| `DENSE_CANDIDATE_COUNT` / `LEXICAL_CANDIDATE_COUNT` | `30` / `30` | Candidates each channel contributes before fusion |
+| `RRF_K` | `60` | Reciprocal Rank Fusion constant |
+| `SEARCH_TOP_K_MAX` | `50` | Ceiling on `top_k` |
+| `SEARCH_QUERY_MAX_LENGTH` | `512` | Ceiling on query length |
 
 Only `NEXT_PUBLIC_*` variables reach the browser bundle. Never put a credential
 behind that prefix.
@@ -351,6 +388,106 @@ same version returns the existing result with **200** instead of **201**; a fail
 or stranded attempt is retried in place; a future parser version creates a new
 result beside the current one, so existing citations are never overwritten.
 
+## Claim indexing and hybrid retrieval
+
+Once a document's claims are parsed,
+`POST /api/v1/documents/{id}/claims/index` embeds them and writes their search
+records. `POST /api/v1/search/claims` then retrieves from two independent
+channels and fuses the rankings.
+
+Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §9.
+
+### The two channels, and why they are fused by rank
+
+**Dense** retrieval embeds the query with the same model that embedded the
+claims and asks pgvector for the nearest vectors by cosine distance, using an
+HNSW index. It finds paraphrases - a query about "배터리가 뜨거워지면 식혀 주는
+장치" reaches a claim reciting a cooling circuit that shares almost no words with
+it.
+
+**Lexical** retrieval uses PostgreSQL's `simple` full-text configuration plus
+`pg_trgm`. It finds exact wording - part numbers, units, `제1항` references - that
+an embedding will happily blur.
+
+They are combined with **Reciprocal Rank Fusion**, not by adding their scores:
+
+```
+fused_score(claim) = Σ over channels  1 / (60 + rank_in_that_channel)
+```
+
+A cosine similarity of 0.82 and a lexical score of 0.74 are numbers from
+unrelated procedures on unrelated scales. Adding them invents a relationship that
+does not exist. Ranks keep only the ordering each channel is actually entitled to
+assert. A claim found by both channels gets both contributions; a claim found by
+one is still returned, with the other channel's rank reported as `null` - which
+is information, not missing data.
+
+### Korean lexical search is limited, and the limit is real
+
+PostgreSQL has no Korean morphological analyser. `simple` splits on whitespace
+and punctuation, so the corpus's `데이터를` and a user's `데이터` are unrelated
+tokens to it. Trigram matching is what recovers those, and it is a heuristic:
+it cannot resolve a synonym and will occasionally match a coincidence. Proper
+Korean lexical search wants an analyser such as mecab-ko behind a custom
+text-search configuration - a database provisioning decision, not an application
+change.
+
+### The embedding model
+
+`intfloat/multilingual-e5-small`: 384 dimensions, unit-normalised, CPU, about
+940 MB cached, ~9.5 s to load and ~5 ms per claim to embed thereafter. It was
+chosen so this phase could validate the *architecture* on a CPU-only host, not
+because it is the best Korean embedding model - no Korean benchmark was run to
+choose it, and the evaluation corpus here is far too small to rank models.
+
+Swapping to another **384-dimensional** model is a settings change plus a
+re-index; the two indexes coexist and only the configured one is searched.
+Swapping to a model of a **different width** needs a migration, because the
+column is `vector(384)`. That is a deliberate MVP limitation, not an oversight.
+
+### Every result stays citable
+
+A search result carries the same `(document_id, page_number, start_char,
+end_char)` spans the claim endpoints return. Normalised search text is folded and
+space-collapsed, so its offsets address nothing in the source; it is never used
+as a coordinate. In the UI, clicking a result's span link opens that document's
+page viewer with the exact range highlighted.
+
+### Query privacy
+
+Search queries are never logged. A patent search query says what someone is
+working on, which is confidential before filing, and logs outlive requests. Logs
+carry the query's length and a 12-character digest prefix - enough to correlate a
+bug report with a log line, not enough to reconstruct the query.
+
+### Retrieval evaluation
+
+```bash
+make eval          # with the configured model
+make eval-fake     # deterministic provider, no download
+```
+
+Runs the real pipeline - upload, parse, index, search - over 26 newly authored
+synthetic Korean claims and 19 queries, and writes
+[apps/api/evals/results/REPORT.md](apps/api/evals/results/REPORT.md). Measured
+with `multilingual-e5-small`:
+
+| Mode | Recall@1 | Recall@3 | Recall@5 | MRR@10 |
+| --- | --- | --- | --- | --- |
+| dense | 0.770 | 0.926 | **0.971** | 0.961 |
+| lexical | 0.740 | 0.897 | 0.912 | 0.961 |
+| hybrid | **0.799** | **0.926** | 0.941 | **1.000** |
+
+Hybrid wins on Recall@1 and MRR@10 and **loses to dense on Recall@5** - fusion
+interleaves two lists, so a claim one channel ranked fourth can be pushed past
+the cutoff by the other channel's confident-but-wrong candidates. The report
+names the query where that happens. No relevance label was adjusted after seeing
+a result.
+
+This corpus is large enough to catch a broken retrieval channel and to compare
+two configurations. It is **not** evidence of production retrieval quality, and
+these numbers should not be quoted as if it were.
+
 ### Uploaded files are never committed
 
 `STORAGE_ROOT` points outside the repository (a Docker volume by default), and
@@ -359,9 +496,16 @@ is committed as a fixture; test PDFs are generated at runtime.
 
 ## Current limitations
 
-- Structure stops at the claim graph. No bibliographic/abstract/description
-  parsing, no claim element decomposition, no chunking, embeddings, retrieval, or
-  analysis - see [docs/ROADMAP.md](docs/ROADMAP.md).
+- Retrieval stops at claims. No bibliographic/abstract/description parsing, no
+  claim element decomposition, no description-level chunking, no reranking, and
+  no generated analysis - see [docs/ROADMAP.md](docs/ROADMAP.md).
+- Korean lexical retrieval has no morphological analysis; it is token and
+  trigram matching, described above.
+- One embedding width (384). A model of a different dimension needs a migration.
+- Claim indexing is synchronous, and the first request after a restart pays the
+  model load (~9.5 s) inside the request.
+- Retrieval evaluation runs on a 26-claim synthetic corpus. It detects breakage;
+  it does not measure production quality.
 - Claim parsing supports Korean conventions plus a minimal English heading
   fallback. Other languages are not attempted.
 - Claim parsing is deterministic and conservative: a document whose formatting it
@@ -393,9 +537,10 @@ Summarised from [docs/ROADMAP.md](docs/ROADMAP.md):
 | 1 | Foundation - **complete** |
 | 2A | Document ingestion boundary and page-level provenance - **complete** |
 | 2B | Deterministic claim structural parsing and dependency graph - **complete** |
+| 3A | Claim indexing, pgvector, hybrid retrieval, RRF - **complete** |
 | 2C | Claim element decomposition schema and deterministic review boundary |
-| 3 | Chunking, embeddings, pgvector indexing, hybrid retrieval, optional reranking |
-| 4 | Local LLM provider abstraction with a deterministic fake for tests |
+| 3B | Description-level chunking and optional cross-encoder reranking |
+| 4A | Local LLM provider abstraction (Ollama + OpenAI-compatible vLLM) with a deterministic fake for tests |
 | 5 | Claim decomposition and element-level evidence comparison, with grounding enforced |
 | 6 | Offline evaluation harness, regression gates, reproducible demonstration |
 

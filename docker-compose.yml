@@ -57,6 +57,18 @@ services:
       STORAGE_ROOT: ${STORAGE_ROOT:-/data/uploads}
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-20971520}
       MIN_EXTRACTED_CHARACTERS: ${MIN_EXTRACTED_CHARACTERS:-32}
+      # Claim indexing and retrieval
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-sentence-transformers}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      EMBEDDING_CACHE_DIR: ${EMBEDDING_CACHE_DIR:-/models}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-16}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-384}
+      DENSE_CANDIDATE_COUNT: ${DENSE_CANDIDATE_COUNT:-30}
+      LEXICAL_CANDIDATE_COUNT: ${LEXICAL_CANDIDATE_COUNT:-30}
+      RRF_K: ${RRF_K:-60}
+      SEARCH_TOP_K_MAX: ${SEARCH_TOP_K_MAX:-50}
+      SEARCH_QUERY_MAX_LENGTH: ${SEARCH_QUERY_MAX_LENGTH:-512}
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -64,8 +76,15 @@ services:
       - ./apps/api/src:/app/src:ro
       - ./apps/api/alembic:/app/alembic:ro
       - ./apps/api/tests:/app/tests:ro
+      # Writable, unlike the other source mounts: `python -m evals.run` writes
+      # results.json and REPORT.md back into the repository, which is where they
+      # are reviewed and committed from.
+      - ./apps/api/evals:/app/evals
       # Uploaded originals live in a volume, never in the source tree.
       - document_storage:/data/uploads
+      # Embedding model weights. A volume, so they are downloaded once and are
+      # never baked into the image or written into the Git tree.
+      - model_cache:/models
     command:
       - uvicorn
       - claimtrace_api.main:app
@@ -103,3 +122,4 @@ services:
 volumes:
   postgres_data:
   document_storage:
+  model_cache:

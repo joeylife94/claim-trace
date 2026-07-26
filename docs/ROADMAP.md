@@ -4,7 +4,13 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, and 2B complete; Phase 2C is next.**
+Current state: **Phases 1, 2A, 2B, and 3A complete; Phase 4A is next.**
+
+Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
+claim graph that 2B already produces, so it could be built and measured
+immediately; element decomposition (2C) is the harder domain-judgement problem
+and benefits from having a working retrieval and evaluation loop to test
+against.
 
 ---
 
@@ -127,33 +133,65 @@ stops at the deterministic boundary that later phases will build on.
 
 ## Phase 3 - Indexing and hybrid retrieval
 
-**Goal:** retrieve evidence passages with citations, and be able to say why a
-passage was retrieved.
+Split in two: claim-level retrieval is useful and measurable on its own, and it
+is what the rest of the product needs first.
 
-- Chunking strategy aware of patent structure (claims and description segments are
-  not chunked identically).
-- `EmbeddingProvider` protocol; local embedding model as the first implementation.
-- pgvector index for dense search plus PostgreSQL full-text search for lexical
-  recall of exact claim terminology.
-- Hybrid fusion behind a single `Retriever` protocol, with scores exposed for
-  debugging.
-- Optional `Reranker` seam; the pipeline must work with it absent.
-- Re-index path: embeddings are keyed by provider and dimension, so switching
-  models is a re-index rather than an in-place edit.
+### Phase 3A - Claim indexing and hybrid retrieval (complete)
 
-Exit criteria: a query returns ranked passages, each carrying a resolvable source
-locator; retrieval quality is measurable on a fixture corpus.
+**Goal:** retrieve claims with citations, and be able to say why each one was
+retrieved.
+
+Delivered:
+
+- `EmbeddingProvider` protocol with a real local sentence-transformers
+  implementation (`intfloat/multilingual-e5-small`, 384d, CPU) and a
+  deterministic hash provider that downloads nothing and backs the whole test
+  suite.
+- A claim indexing lifecycle separate from ingestion and parsing, with a
+  retrieval profile recorded per run and idempotency keyed on it.
+- Migration `0004`: `claim_index_runs`, `claim_search_records`, `pg_trgm`, an
+  HNSW cosine index, and GIN indexes for full-text and trigram matching.
+- Dense retrieval over pgvector; lexical retrieval over PostgreSQL `simple`
+  full-text plus trigram, tuned for Korean compounds and josa attachment.
+- Reciprocal Rank Fusion with configurable `k`, per-channel ranks and scores
+  preserved, and `hybrid` / `dense` / `lexical` modes.
+- `POST /api/v1/search/claims`, indexing endpoints, a `/search` UI, and a
+  retrieval index panel on the document page.
+- A reproducible evaluation over a synthetic Korean corpus reporting
+  Recall@1/3/5 and MRR@10 per mode, including where hybrid loses to a single
+  channel.
+
+Exit criteria met: a query returns ranked claims, each carrying spans that
+resolve exactly against stored page text; retrieval quality is measurable and
+measured.
+
+Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
+
+### Phase 3B - Description retrieval and reranking
+
+**Goal:** widen retrieval past claims, and improve precision at the top.
+
+- Chunking strategy aware of patent structure - description segments are not
+  chunked like claims.
+- Optional `Reranker` seam over the fused top-k; the pipeline must work with it
+  absent.
+- A retrieval regression gate wired into CI, using the Phase 3A evaluation.
+
+Exit criteria: description passages are retrievable alongside claims, and a
+reranker can be switched on without touching the retrieval or API layers.
 
 ---
 
-## Phase 4 - Local LLM provider abstraction
+## Phase 4A - Local LLM provider abstraction (next)
 
 **Goal:** make generation a deployment choice, not a code dependency.
 
 - `LLMProvider` protocol for completion and schema-constrained output, selected by
-  environment variables.
-- Self-hosted inference runtime as the first implementation, consistent with the
-  on-premise constraint; no data leaves the deployment.
+  environment variables - built the same way `EmbeddingProvider` was in 3A:
+  plain Python in and out, no framework types crossing the boundary.
+- Two self-hosted implementations, consistent with the on-premise constraint and
+  so the protocol is proven by more than one caller: Ollama, and an
+  OpenAI-compatible endpoint such as vLLM. No data leaves the deployment.
 - Timeouts, retries, and graceful degradation when the provider is unavailable -
   the API must fail clearly rather than hang.
 - Readiness reporting extended to include the configured provider.

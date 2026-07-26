@@ -1,8 +1,8 @@
 # ClaimTrace Architecture
 
-Status: **Phase 1 - foundation.** This document describes what exists today and the
-boundaries where later phases will attach. It intentionally does not specify the
-internals of parsing, embedding, retrieval, reranking, or generation.
+Status: **Phase 3A - claim indexing and hybrid retrieval.** This document
+describes what exists today and the boundaries where later phases will attach. It
+intentionally does not specify the internals of reranking or generation.
 
 ---
 
@@ -62,7 +62,22 @@ apps/api/src/claimtrace_api/
 │       ├── system.py    GET /api/v1/system/info
 │       └── documents.py document upload, listing, detail, page text
 ├── services/
-│   └── ingestion.py     the ingestion use case: validate → store → parse → persist
+│   ├── ingestion.py     the ingestion use case: validate → store → parse → persist
+│   ├── claim_parsing.py the claim structural parsing use case
+│   ├── claim_indexing.py the indexing use case: embed → persist search records
+│   └── claim_search.py  the search use case: profile → retrieve → fuse → hydrate
+├── indexing/
+│   ├── normalization.py the normalised search representation
+│   ├── profile.py       IndexProfile: what makes two index runs comparable
+│   └── embeddings/
+│       ├── base.py      EmbeddingProvider protocol
+│       ├── fake.py      deterministic hash provider (tests, offline)
+│       └── sentence_transformers.py  the real local model
+├── retrieval/
+│   ├── base.py          Candidate, FusedCandidate, RetrievalMode
+│   ├── dense.py         pgvector cosine retrieval
+│   ├── lexical.py       PostgreSQL full-text + trigram retrieval
+│   └── fusion.py        Reciprocal Rank Fusion
 ├── parsing/
 │   ├── base.py          DocumentParser protocol, ParsedDocument/ParsedPage
 │   └── pymupdf_parser.py PyMuPDF implementation for digital PDFs
@@ -72,7 +87,7 @@ apps/api/src/claimtrace_api/
 ├── db/
 │   ├── base.py          DeclarativeBase, Alembic's target metadata
 │   ├── session.py       async engine + session factory
-│   ├── models.py        ORM models (app_metadata, documents, document_pages)
+│   ├── models.py        ORM models (documents, pages, claims, index runs, search records)
 │   └── health.py        SELECT 1 probe
 └── schemas/             Pydantic request/response models, including locators.py
 ```
@@ -267,7 +282,9 @@ persisted on failed documents. Clients branch on the code, never on the message.
 - The baseline revision `0001` enables the `vector` extension and creates
   `app_metadata` (`key`, `value`, `created_at`, `updated_at`). It exists to prove
   the pipeline works; no domain table is defined yet.
-- Revision `0002` adds the two ingestion tables described in section 7.
+- Revision `0002` adds the two ingestion tables described in section 7,
+  revision `0003` the four claim-parsing tables in section 8, and revision
+  `0004` the two retrieval tables in section 9. `0004` also enables `pg_trgm`.
 - `infra/postgres/init/10-extensions.sql` also creates the extension at initdb
   time. That covers on-premise installations where the migration role is not a
   superuser; both paths are idempotent.
@@ -660,7 +677,423 @@ synchronous, and a document with unusual formatting may produce
 
 ---
 
-## 9. Extension points for later phases
+## 9. Claim indexing and hybrid retrieval (Phase 3A)
+
+Retrieval only. No generation, no summarisation, no reranking, and no legal
+reasoning: a search returns claims that already exist in the corpus, each
+carrying the page coordinates it came from.
+
+```
+completed claim parse result
+  → deterministic search representation   (indexing/normalization.py)
+  → dense embedding                       (indexing/embeddings/…)
+  → pgvector row + tsvector               (claim_search_records)
+  → dense candidates ┐
+  → lexical candidates ┘ → RRF → hydrate with claim_spans → result
+```
+
+### The three lifecycles stay separate
+
+```
+documents.status            uploaded → processing → completed | failed
+claim_parse_results.status  processing → completed | no_claims_found | failed
+claim_index_runs.status     processing → completed | failed
+```
+
+Indexing writes **neither** of the first two. It is the only one of the three
+that depends on an external model, so it is the only one that can fail for
+reasons that say nothing about the document or its claims. A document whose
+claims cannot be embedded is still a perfectly good document with a perfectly
+good claim graph, and it should not start looking broken because a model was
+missing.
+
+Only a `completed` claim parse result may be indexed. `no_claims_found` is
+rejected with `claim_parse_not_completed` rather than producing an empty index:
+reporting "indexed 0 claims" as a success would make an unindexable document
+look indexed.
+
+### The embedding provider boundary
+
+```python
+class EmbeddingProvider(Protocol):
+    name: str            # persisted on every index run
+    model: str
+    model_version: str   # includes the prompt-prefix scheme, not just weights
+    dimension: int
+    normalized: bool
+    def embed_query(self, text: str) -> tuple[float, ...]: ...
+    def embed_documents(self, texts: Sequence[str]) -> list[tuple[float, ...]]: ...
+```
+
+Plain Python in, plain Python out: no FastAPI object, no SQLAlchemy model, no
+session, no pgvector type. Queries and documents are embedded through *separate*
+methods because several current retrieval models - E5 among them - are trained
+with asymmetric prefixes and score measurably worse when a query is embedded as
+though it were a passage. A single `embed()` would make that mistake
+unrepresentable.
+
+Two implementations:
+
+| | `FakeEmbeddingProvider` | `SentenceTransformerEmbeddingProvider` |
+| --- | --- | --- |
+| Vectors from | SHA-256 of each token | a real local model |
+| Downloads | nothing | weights, once, into a cache volume |
+| Used by | the whole test suite, offline installs | development and the evaluation |
+| Semantic | **no** | yes |
+
+The fake provider is not a mock. It is a real implementation whose vectors are
+hash-derived, deterministic across processes, and *lexically* sensitive - texts
+sharing tokens land closer together - so retrieval tests can assert exact
+orderings. It cannot match a paraphrase, and no number produced with it says
+anything about retrieval quality.
+
+### The model this phase was validated with
+
+`intfloat/multilingual-e5-small`, 384 dimensions, unit-normalised, CPU.
+
+Chosen because this phase validates a retrieval *architecture* on a CPU-only
+host: it loads in seconds rather than minutes and indexes a claim set without a
+GPU. Measured in the API container on this machine:
+
+| | |
+| --- | --- |
+| Cold load + first query | 9.5 s |
+| Embedding a 26-claim batch | 139 ms (5.4 ms/claim) |
+| Query embedding | 8.7 ms |
+| Model cache on disk | 941 MiB (multiple serialisation formats) |
+| First index request, 12 claims | 12.3 s (includes cold load) |
+| Second index request, 14 claims | 0.1 s (model already resident) |
+
+**This is not a claim that it is the best Korean embedding model.** No Korean
+retrieval benchmark was run to choose it, and the synthetic evaluation in
+`evals/` is far too small to rank models. BAAI/bge-m3 is stronger on most
+multilingual benchmarks and is a reasonable future upgrade - it is also
+1024-dimensional, which under the fixed-width column below means a migration
+rather than a settings change.
+
+### Fixed vector dimension, and what that costs
+
+`claim_search_records.embedding` is `vector(384)`, migrated at that width, with
+an HNSW index built on it.
+
+- **A different model of the same width** is a settings change plus a re-index.
+  It gets a new index run beside the existing one, and both can coexist.
+- **A model of a different width** needs a new migration, and realistically a
+  storage-profile table so several widths can coexist during a transition.
+
+This is a deliberate MVP limitation rather than an oversight. A fully dynamic
+multi-dimension vector store is a meaningful amount of machinery to carry for a
+capability nothing currently needs, and the cost of adding it later is one
+migration - paid when a second width actually exists.
+
+### The retrieval profile
+
+Vectors from different models are not points in the same space, and neither are
+records normalised by different rules or tokenised by different lexical
+strategies. Mixing them produces a ranking that looks fine and means nothing, so
+compatibility is explicit:
+
+```
+profile_key = provider | model | model_version | dimension
+            | normalized | normalization_version
+            | lexical_strategy | lexical_strategy_version
+```
+
+That single string is stored on every index run, and it does two jobs:
+
+1. **Idempotency.** `UNIQUE (claim_parse_result_id, profile_key)` *is* the
+   identity rule. This is the one material deviation from a nine-column unique
+   constraint, which would be both unreadable and easy to get subtly wrong at
+   query time. The individual columns are still stored, because a run has to be
+   readable in `psql` without decoding a key.
+2. **Profile selection.** Search filters on one indexed equality instead of
+   matching nine columns.
+
+Search selects **one index run per document**: the newest completed run whose
+profile matches the configured one, via `DISTINCT ON (document_id)`. A document
+with several parse results - one per claim parser version - therefore
+contributes each claim once, and an upgraded parser's index supersedes its
+predecessor without the old rows having to be deleted. Nothing outside the
+active profile is searched, so a deployment that switches models sees an empty
+result set with `searched_index_run_count = 0` until it re-indexes, rather than
+silently ranking against stale vectors.
+
+### The search representation
+
+What gets indexed is derived from persisted claim data only:
+
+```
+청구항 3 다중종속항 인용 제1항 제2항
+<the claim body, normalised>
+```
+
+The header carries facts that are already deterministic and that people actually
+search for. It exists mostly for lexical search: a dependent claim's body does
+not always name its parents in a form full-text search can tokenise.
+
+Normalisation, applied identically to indexed text and to incoming queries -
+because a query folded differently from the corpus simply will not match:
+
+1. **NFKC**, which also maps full-width digits to ASCII, so `１００도` and `100도`
+   are the same string.
+2. **Line-ending normalisation** before whitespace collapsing, so a claim
+   reconstructed on one platform matches the same claim from another.
+3. **Whitespace collapsing**, including U+3000, which NFKC leaves alone.
+4. **Case folding** - a no-op for Hangul, but it makes the Latin fragments in a
+   Korean patent (units, symbols, an English fallback claim) match.
+
+Punctuation is deliberately left alone: stripping it would merge `제1항` with
+`제1 항` but would also destroy decimal points and hyphenated part numbers,
+which are exactly the tokens a patent search needs to keep.
+
+**Normalised text is not a coordinate system.** Folding changes string lengths,
+so an offset into it addresses nothing in the source document. `claims.text` is
+never modified, and `claim_search_records` deliberately stores no offsets of its
+own - provenance resolves through `claim_spans` and nowhere else.
+
+### Lexical retrieval, and its Korean limits
+
+PostgreSQL has no Korean morphological analyser. The `simple` configuration
+splits on whitespace and punctuation and lowercases; that is all. For an
+agglutinative language that has one dominating consequence: the corpus contains
+`센서에서` and `데이터를` while a user types `센서` and `데이터`, and full-text
+search sees those as unrelated tokens.
+
+So the lexical channel retrieves through three indexed branches at once:
+
+| Branch | Index | What it recovers |
+| --- | --- | --- |
+| `search_vector @@ tsq` | GIN on tsvector | whole-token matches: numbers, units, Latin terms, `제1항` forms |
+| `normalized_text LIKE '%q%'` | GIN trigram | verbatim substrings |
+| `q <% normalized_text` | GIN trigram | approximate substrings - Korean compounds and josa-suffixed forms |
+
+The tsquery is an **OR** of one `plainto_tsquery` call per normalised term. AND
+semantics would mean a single unmatched word suppresses the whole result, which
+is fatal here because particle attachment guarantees some words will not match
+exactly. `plainto_tsquery` rather than `to_tsquery` because it treats its
+argument as plain text: a term containing `&`, `|`, `!` or a bracket is data,
+not syntax, and cannot raise a parse error mid-request.
+
+The trigram threshold is **0.25**, set from measurement rather than taste:
+`환경감시모듈` scores 0.286 against a claim reciting `환경 감시 모듈`, because
+inserting a space changes the trigrams on both sides of every word boundary.
+pg_trgm's default of 0.6 would reject exactly the match this channel exists for.
+It is set with `set_config(..., is_local => true)` per transaction, so the
+ranking cannot depend on what a pooled connection was last used for.
+
+Scoring is a fixed weighted sum of three components, each in `[0, 1]`:
+
+```
+0.45 × ts_rank_cd(…, normalisation flag 32)   whole-token evidence
+0.30 × word_similarity(query, text)           trigram heuristic
+0.25 × exact containment (0 or 1)             the query, verbatim, in the claim
+```
+
+Ordered by score, then claim number, then claim id - so the same corpus and
+query always produce the same list.
+
+**Do not overstate this.** It is substring and token matching, not morphology.
+It cannot resolve a synonym, and it will occasionally match a coincidental
+substring. Real Korean lexical search wants an analyser such as mecab-ko behind
+a custom text-search configuration, which is a database provisioning decision
+rather than an application change.
+
+### Dense retrieval
+
+Cosine similarity through pgvector's `<=>` operator, reported as `1 - distance`
+so that larger is better, matching how the lexical and fused scores already read.
+Cosine is exact here because the provider normalises at encode time.
+
+The ANN index is **HNSW** (`vector_cosine_ops`) rather than IVFFlat: it needs no
+training pass over an existing corpus and no list-count tuning, which matters
+when an index starts at a handful of claims and grows. An IVFFlat index built on
+a small corpus stays badly tuned until it is rebuilt.
+
+One structural detail worth knowing before editing that query: pgvector can only
+serve an `ORDER BY` that is *exactly* the distance expression. Adding tie-break
+columns there silently turns the whole thing into a sequential scan. So the
+candidate set is taken in an inner query ordered by distance alone, and the outer
+query re-sorts that small set by `(distance, claim_number, claim_id)` for
+determinism.
+
+No vector is ever pulled into Python to be compared - the embedding column is not
+even selected.
+
+On the 26-claim validation corpus the planner chooses a bitmap scan plus sort
+over the HNSW index, which is correct: traversing a graph to order 12 rows is
+slower than sorting them. The index is present, valid, and verifiably used once
+the planner is asked to use it; it earns its keep at a corpus size this project
+has not yet reached.
+
+### Reciprocal Rank Fusion
+
+```
+fused_score(claim) = Σ over channels  1 / (k + rank_in_that_channel)
+```
+
+RRF is used instead of a weighted sum of the raw scores because the raw scores
+are not comparable. A cosine similarity of 0.82 and a lexical score of 0.74 are
+numbers produced by unrelated procedures on unrelated scales; adding them - or
+even min-max normalising them per query - invents a relationship that does not
+exist and makes the blend depend on how tightly the day's result set happens to
+be clustered. Ranks discard the magnitudes and keep only the ordering each
+channel is actually entitled to assert.
+
+`k` defaults to **60**, the value from the original formulation. It sets how
+sharply rank 1 outweighs rank 10: a large `k` flattens the curve so that
+agreement between channels matters more than either channel's top position.
+
+- A claim retrieved by both channels appears once and receives both
+  contributions.
+- A claim retrieved by only one channel remains eligible, and the other
+  channel's rank and score are reported as **null** - which is information, not
+  missing data. `dense_rank: null` means the dense channel did not retrieve this
+  claim, and a client must render that rather than coerce it to zero.
+- Ties break by claim number, then claim id. Both are properties of the data
+  rather than of the query, which is what makes a retrieval regression test
+  meaningful.
+
+`dense` and `lexical` modes go through fusion too, with one channel. Since
+`1/(k + rank)` is strictly decreasing in rank, the fused order is exactly that
+channel's own order, and the response shape stays identical across all three
+modes instead of having a fused score that sometimes exists.
+
+### Index lifecycle, idempotency, and retry
+
+```
+1. refuse anything but a completed document with a completed parse result
+2. return an existing completed run for the same profile, untouched
+3. commit 'processing'  ← before the model runs
+4. embed
+5. write every search record + 'completed' in ONE transaction
+```
+
+Step 3 exists because model loading is the slowest and least reliable step in the
+system; a crash there must leave a record distinguishable from both "never
+started" and "finished". Step 5 is one commit because a partially embedded claim
+set must never be visible as a completed index - search would return a subset of
+a document's claims as though it were all of them.
+
+| Situation | Behaviour |
+| --- | --- |
+| First index for a profile | `201` with the new run |
+| Same profile, already `completed` | `200` with the existing run; nothing re-embedded |
+| Previous attempt `failed` or stranded in `processing` | Retried **in place**: records deleted, same row reused |
+| A different profile | A new run beside the current one |
+
+Retrying in place is why attempts cannot accumulate: the unique constraint means
+one row per `(parse result, profile)`. The row is locked `FOR UPDATE` while it is
+being retried, so two concurrent index requests for the same document serialise
+instead of racing to write the same records.
+
+### Schema (revision 0004)
+
+```
+claim_index_runs                          claim_search_records
+────────────────────────────────────      ──────────────────────────────────────
+id                       uuid PK          id               uuid PK
+claim_parse_result_id →  CASCADE          index_run_id  → claim_index_runs CASCADE
+status         varchar + CHECK            claim_id      → claims            CASCADE
+profile_key    varchar(512)               document_id   → documents         CASCADE
+embedding_provider / _model / _version    claim_number     integer
+embedding_dimension      integer > 0      normalized_text  text
+vectors_normalized       boolean          search_vector    tsvector
+normalization_version    varchar(32)      embedding        vector(384)
+lexical_strategy / _version               created_at / updated_at
+indexed_claim_count      integer ≥ 0      UNIQUE (index_run_id, claim_id)
+error_code / error_message
+started_at / completed_at                 GIN   (search_vector)
+created_at / updated_at                   GIN   (normalized_text gin_trgm_ops)
+UNIQUE (claim_parse_result_id,            HNSW  (embedding vector_cosine_ops)
+        profile_key)
+```
+
+Decisions worth stating:
+
+- **`profile_key` instead of a nine-column unique constraint.** Explained above.
+- **`document_id` is denormalised onto the search record.** It is reachable
+  through `claim_id → claims → claim_parse_results`, but document scoping is on
+  the hot search path and would otherwise cost two joins. The indexing service is
+  the only writer, so it cannot drift.
+- **Everything CASCADEs from `documents`.** A search record must never outlive
+  the claim it projects, or a query could return text an operator believes they
+  deleted. Deleting a parse result likewise removes the index built from it.
+- **`search_vector` is maintained by the application**, not a trigger, so the
+  exact text that was embedded is also the text that was tokenised. The two
+  channels can never disagree about what a record contains.
+- **Search records are derived artifacts.** They are not the source of truth for
+  claim content, and they hold no source offsets. `claims` and `claim_spans`
+  remain the only citation coordinate.
+- **pg_trgm is enabled by this migration**, alongside the `vector` extension
+  from 0001.
+
+### Retrieval API
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `POST /documents/{id}/claims/index` | Synchronous. `201` for a new completed run, `200` for an equivalent existing one |
+| `GET /documents/{id}/claims/index` | The most recent run, whatever profile it used |
+| `POST /search/claims` | `query`, `mode`, `document_ids`, `top_k`, candidate counts |
+
+Search is a POST rather than a GET with query parameters. The request has
+structure that does not flatten into a query string cleanly, and - the deciding
+reason - a patent search query is confidential: a GET would put it in the URL,
+where it lands in access logs, proxy logs, and browser history by default.
+
+New error codes:
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `claim_parse_not_completed` | 409 | A parse result exists but did not complete |
+| `claim_index_failed` | 422 | Indexing ran and could not finish |
+| `claim_index_not_found` | 404 | Nothing indexed for this document yet |
+| `embedding_model_unavailable` | 503 | Model missing, uncached, or out of memory - retryable |
+| `embedding_dimension_mismatch` | 500 | Provider width ≠ migrated column; a configuration error |
+
+`503` rather than `500` for a missing model is deliberate: the caller is being
+told to retry, not that their request was wrong.
+
+Every result carries `source_spans` in the canonical
+`(document_id, page_number, start_char, end_char)` form - the same coordinates
+the claim endpoints return, resolvable against `document_pages.text`. Retrieval
+changes how a claim is *found*; it never changes where the claim *is*.
+
+### Query privacy
+
+A patent search query is a statement of what someone is working on, which in this
+domain is confidential before anything is filed - and logs outlive requests and
+get shipped elsewhere. So the query itself is never logged.
+
+| Logged | Never logged |
+| --- | --- |
+| query length, 12-char digest prefix | the query |
+| retrieval mode, profile, index run id | claim text, page text |
+| candidate counts, result count | embedding values |
+| duration, error code | full document digests, cache paths |
+
+The digest prefix is enough to correlate a report ("my search returned nothing")
+with a log line, and not enough to reconstruct what was searched for. Model-load
+failures log the exception *type* only, because the exception text can contain a
+cache path or a URL with a token.
+
+### Known limitations of this phase
+
+- Korean lexical matching is token and trigram based, with no morphological
+  analysis. See above; this is the largest quality gap.
+- One vector width. A wider model needs a migration.
+- Indexing is synchronous and holds a request open. Acceptable at claim scale -
+  26 claims embed in 139 ms once the model is resident - but the first request
+  after a restart pays the ~9.5 s model load.
+- No reranking. A cross-encoder over the fused top-k is the obvious next
+  retrieval-quality lever and is deliberately out of scope here.
+- The evaluation corpus is 26 synthetic claims. It can detect a broken channel
+  and compare two configurations; it cannot establish retrieval quality.
+- No incremental indexing: re-indexing a document rewrites all of its records.
+- Search has no pagination beyond `top_k`.
+
+---
+
+## 10. Extension points for later phases
 
 Each item below names the seam, not the implementation. The intent is that adding a
 capability means adding a module behind an existing boundary, not reshaping the
@@ -680,25 +1113,20 @@ application.
 - OCR would arrive as another `DocumentParser` implementation. It needs the
   asynchronous path that the `processing` state already anticipates.
 
-### Embedding providers (Phase 3)
+### Embedding providers and retrieval (Phase 3A - built)
 
-- Seam: an `EmbeddingProvider` protocol - `list[str] → list[vector]` plus a
-  declared dimension and model identifier.
-- The dimension belongs to the stored index, so the provider identity and
-  dimension are recorded alongside every embedding; changing provider is a
-  migration plus a re-index, never an in-place mutation.
-- pgvector is already enabled, so no extension-level migration is needed later.
+- The `EmbeddingProvider` protocol and both implementations exist (section 9), as
+  do the dense, lexical, and fusion retrievers. Swapping the model is a settings
+  change plus a re-index; swapping the *width* is a migration.
+- Provider identity, model version, dimension, and normalisation policy are
+  recorded on every index run and combined into a `profile_key`, so incompatible
+  indexes can coexist without ever being ranked against each other.
+- Description-level and element-level retrieval would attach the same way claims
+  did: new tables, new revision, spans on pages, existing tables untouched.
+  Nothing in the retrieval layer assumes a claim is the only indexable unit
+  beyond the table it reads from.
 
-### Retrieval (Phase 3)
-
-- Seam: a `Retriever` protocol - `query + filters → ranked candidates with source
-  locations`.
-- Lexical, vector, and hybrid retrievers implement the same protocol; the
-  composition strategy is configuration, not control flow inside route handlers.
-- Every candidate must carry enough locator data (document, section, offsets) to
-  support citation, since evidence grounding is the product's premise.
-
-### Reranking (Phase 3-5)
+### Reranking (Phase 3B-5)
 
 - Seam: an optional `Reranker` - `query + candidates → reordered candidates`.
 - Absence of a reranker is a valid configuration; the pipeline must produce results
@@ -728,19 +1156,23 @@ application.
 
 ---
 
-## 10. Known architectural gaps
+## 11. Known architectural gaps
 
-Deliberate as of Phase 2B, listed so they are not mistaken for oversights:
+Deliberate as of Phase 3A, listed so they are not mistaken for oversights:
 
 - No authentication, authorisation, or multi-tenancy; no rate limiting.
 - No request-ID propagation or tracing.
-- No background worker. Ingestion is synchronous, which is fine until OCR.
+- No background worker. Ingestion, claim parsing, and claim indexing are all
+  synchronous, which is fine until OCR - and already means the first index
+  request after a restart holds a connection open for the model load.
 - No virus scanning of uploads.
 - No delete endpoint. Rows can be removed in SQL (pages, parse results, claims,
-  spans, and edges all cascade), but the stored original is not garbage-collected
-  by the application.
-- Claim parsing is Korean-only apart from a minimal English heading fallback.
-- Claim parsing is synchronous, like ingestion.
+  spans, edges, index runs, and search records all cascade), but the stored
+  original is not garbage-collected by the application.
+- Claim parsing is Korean-only apart from a minimal English heading fallback,
+  and lexical retrieval has no Korean morphological analysis (section 9).
+- One embedding width. A model of a different dimension needs a migration.
+- No reranking, and no evaluation gate in CI.
 - No production web image (the container runs `next dev`); no CI pipeline.
 - The whole upload is held in memory while hashing and parsing. Bounded by
   `UPLOAD_MAX_BYTES`, so it is a known ceiling rather than an open-ended one.
