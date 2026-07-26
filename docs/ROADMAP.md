@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, 2B, 3A, and 4A-1 complete; Phase 4A-2 is next.**
+Current state: **Phases 1, 2A, 2B, 3A, 4A-1, and 4A-2 complete; Phase 5A is next.**
 
 Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
 claim graph that 2B already produces, so it could be built and measured
@@ -215,22 +215,68 @@ runs with no model present. vLLM is contract-tested against a mocked transport;
 no real vLLM server was run. See
 [docs/ARCHITECTURE.md](ARCHITECTURE.md) section 10.
 
-### Phase 4A-2 - Evidence-grounded generation (next)
+### Phase 4A-2 - Evidence-grounded generation (complete)
 
 **Goal:** answers that can be checked, not answers that sound right.
 
-- Compose the existing `ClaimSearchService` with the existing
-  `LLMGenerationService`. Neither changes: 4A-1 deliberately left the generation
-  service with no session and no retrieval collaborator so this is an addition.
-- Retrieved claims become model context; the answer comes back as *structured
-  output* so citations are fields rather than prose to be parsed.
-- Every citation must resolve to a canonical stored source locator
-  `(document_id, page_number, start_char, end_char)`. No second citation
-  coordinate system is introduced.
-- A citation that does not resolve to a stored span is a failure to surface, not
-  a result to render. Ungrounded output is a bug, not a degraded mode.
-- Still no legal conclusion: this phase answers *about* retrieved text, and does
-  not determine infringement, validity, novelty, or patentability.
+Delivered:
+
+- `GroundedGenerationService` composes the existing `ClaimSearchService` and
+  `LLMGenerationService`. Neither changed - 4A-1 left the generation service with
+  no session and no retrieval collaborator precisely so this would be an addition.
+- A request-local **evidence catalog** issues opaque identifiers (`EV-001`, …).
+  The model is shown claim text and may answer only with those identifiers; it
+  never sees and never produces a document id, a page number, or an offset.
+  Fabricating a citation is not unlikely, it is unrepresentable - the output
+  schema has nowhere to put a locator, and an unissued identifier resolves to
+  nothing.
+- Structured output against a strict schema with **no free-form answer field**.
+  The answer text is composed by the server from statements that passed citation
+  validation.
+- Every citation resolves to a canonical `(document_id, page_number, start_char,
+  end_char)` span, and each quote is read out of `document_pages.text` at those
+  offsets by the server rather than reproduced by the model. **No second citation
+  coordinate system was introduced.**
+- Context budget admits whole claims only. A claim that will not fit is dropped
+  and counted, never truncated - a half-included claim would still be citable.
+- One bounded repair attempt for a grounding-rule violation, reusing the same
+  evidence and adding only server-owned corrective text.
+- `insufficient_evidence` is a normal 200 outcome, with a fixed server-owned
+  limitation sentence. Zero retrieved candidates bypass the provider entirely.
+- `POST /api/v1/grounded/answers` and a `/grounded` workspace. Not a chat: no
+  history, no memory, no prompt or model controls.
+- **No migration.** The output is request-scoped; the schema is unchanged at
+  revision 0004.
+
+Verified: 876 backend tests; a deterministic evaluation tier (16 cases, 23 newly
+authored synthetic Korean claims across 3 documents) with citation resolution
+1.00 and 6/6 hostile payloads refused; and a real `qwen2.5:1.5b` tier with
+structured-output success 1.00, citation resolution 1.00, and zero scope leaks -
+alongside honest weaknesses in that small model's judgement. See
+[docs/ARCHITECTURE.md](ARCHITECTURE.md) section 11 and
+`apps/api/evals/results/grounded/`.
+
+Standing constraint held: this phase answers *about* retrieved text and
+determines nothing about infringement, validity, novelty, inventive step, or
+patentability.
+
+---
+
+## Phase 5A - Claim comparison workspace (next)
+
+**Goal:** two documents, claim to claim, with the same grounding guarantee.
+
+- Select two indexed documents and map claims between them: for a chosen claim,
+  the claims in the other document that the retrieved text corresponds to.
+- Reuse the Phase 4A-2 evidence catalog and citation validator unchanged. A
+  mapping is a pair of resolvable citations plus a described textual
+  correspondence.
+- Explicit "no corresponding claim found" state, on the same footing as
+  `insufficient_evidence`.
+- Still no legal conclusion. There is deliberately no output field that could
+  hold "anticipated", "equivalent", or "infringes": the moment such a field
+  exists, the system is making a determination it is not qualified to make, and
+  the absence of the field is the safeguard.
 
 ---
 
