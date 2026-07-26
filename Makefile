@@ -12,7 +12,8 @@ WEB_DIR := apps/web
 .PHONY: help init up up-detached down logs ps build restart \
         migrate migration revision psql shell-api \
         test test-docker test-unit lint format fmt-check \
-        web-install web-lint web-typecheck check clean
+        web-install web-lint web-typecheck check clean \
+        eval eval-fake
 
 ## --- Meta -------------------------------------------------------------------
 
@@ -94,6 +95,14 @@ web-typecheck: ## Type-check the web app (tsc)
 	cd $(WEB_DIR) && npm run typecheck
 
 check: lint fmt-check test web-lint web-typecheck ## Run every quality gate
+
+## --- Retrieval evaluation ---------------------------------------------------
+
+eval: ## Run the retrieval evaluation with the configured embedding model
+	$(COMPOSE) run --rm api python -m evals.run
+
+eval-fake: ## Same, with the deterministic provider (no model download)
+	$(COMPOSE) run --rm api python -m evals.run --provider fake
 
 ## --- Housekeeping -----------------------------------------------------------
 

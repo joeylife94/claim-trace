@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ClaimsPanel } from "@/components/ClaimsPanel";
-import { PageViewer } from "@/components/PageViewer";
+import { PageViewer, type PageHighlight } from "@/components/PageViewer";
 import type { ClaimSet, ClaimSpan } from "@/lib/claims";
 import type { DocumentPage } from "@/lib/documents";
 
@@ -16,14 +16,24 @@ export function ClaimWorkspace({
   documentCompleted,
   pages,
   claimSet,
+  initialHighlight = null,
 }: {
   documentId: string;
   documentCompleted: boolean;
   pages: DocumentPage[];
   claimSet: ClaimSet | null;
+  /**
+   * A span arriving from outside the page - a search result's source link. It
+   * seeds the viewer so the deep link lands on the right page with the right
+   * range already highlighted, and is then owned by the same state as a span
+   * clicked in the claim list.
+   */
+  initialHighlight?: PageHighlight | null;
 }) {
-  const [activeSpan, setActiveSpan] = useState<ClaimSpan | null>(null);
-  const [selectedPage, setSelectedPage] = useState(pages[0]?.page_number ?? 1);
+  const [activeSpan, setActiveSpan] = useState<PageHighlight | null>(initialHighlight);
+  const [selectedPage, setSelectedPage] = useState(
+    initialHighlight?.page_number ?? pages[0]?.page_number ?? 1,
+  );
 
   const openSpan = (span: ClaimSpan) => {
     setActiveSpan(span);

@@ -1,0 +1,946 @@
+{
+  "generated_at": "2026-07-26T09:20:27.006594+00:00",
+  "corpus": {
+    "documents": 2,
+    "claims": 26,
+    "queries": 19
+  },
+  "profile": {
+    "embedding_provider": "sentence-transformers",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "embedding_model_version": "st1-e5",
+    "embedding_dimension": 384,
+    "vectors_normalized": true,
+    "normalization_version": "nfkc-v1",
+    "lexical_strategy": "postgres-simple-fts-trgm",
+    "lexical_strategy_version": "v1"
+  },
+  "settings": {
+    "rrf_k": 60,
+    "dense_candidate_count": 30,
+    "lexical_candidate_count": 30,
+    "top_k": 10
+  },
+  "timing": {
+    "total_index_seconds": 10.28,
+    "mean_query_ms": {
+      "dense": 17.59,
+      "lexical": 6.3,
+      "hybrid": 17.88
+    }
+  },
+  "metrics": {
+    "dense": {
+      "mode": "dense",
+      "query_count": 19,
+      "scored_query_count": 17,
+      "recall_at_1": 0.7696,
+      "recall_at_3": 0.9265,
+      "recall_at_5": 0.9706,
+      "mrr_at_10": 0.9608,
+      "empty_query_hit_rate": 1.0
+    },
+    "lexical": {
+      "mode": "lexical",
+      "query_count": 19,
+      "scored_query_count": 17,
+      "recall_at_1": 0.7402,
+      "recall_at_3": 0.8971,
+      "recall_at_5": 0.9118,
+      "mrr_at_10": 0.9608,
+      "empty_query_hit_rate": 0.5
+    },
+    "hybrid": {
+      "mode": "hybrid",
+      "query_count": 19,
+      "scored_query_count": 17,
+      "recall_at_1": 0.799,
+      "recall_at_3": 0.9265,
+      "recall_at_5": 0.9412,
+      "mrr_at_10": 1.0,
+      "empty_query_hit_rate": 1.0
+    }
+  },
+  "per_query": [
+    {
+      "id": "q01-exact-circular-buffer",
+      "category": "exact_terminology",
+      "mode": "dense",
+      "relevant": [
+        "sensor#4"
+      ],
+      "retrieved": [
+        "sensor#4",
+        "battery#1",
+        "sensor#3",
+        "sensor#7",
+        "sensor#14"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q02-exact-lossless-compression",
+      "category": "exact_terminology",
+      "mode": "dense",
+      "relevant": [
+        "sensor#11"
+      ],
+      "retrieved": [
+        "sensor#11",
+        "sensor#10",
+        "sensor#3",
+        "sensor#14",
+        "sensor#12"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q03-compound-environment-module",
+      "category": "korean_compound",
+      "mode": "dense",
+      "relevant": [
+        "sensor#7",
+        "sensor#8",
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#7",
+        "sensor#9",
+        "sensor#8",
+        "sensor#14",
+        "battery#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q04-compound-cooling-channel",
+      "category": "korean_compound",
+      "mode": "dense",
+      "relevant": [
+        "battery#1",
+        "battery#3"
+      ],
+      "retrieved": [
+        "battery#3",
+        "battery#2",
+        "battery#1",
+        "battery#12",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q05-paraphrase-battery-cooling",
+      "category": "paraphrase",
+      "mode": "dense",
+      "relevant": [
+        "battery#1",
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2",
+        "battery#10",
+        "battery#7",
+        "battery#3",
+        "battery#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q06-paraphrase-send-to-server",
+      "category": "paraphrase",
+      "mode": "dense",
+      "relevant": [
+        "sensor#1",
+        "sensor#14"
+      ],
+      "retrieved": [
+        "sensor#1",
+        "sensor#5",
+        "sensor#14",
+        "sensor#3",
+        "sensor#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q07-paraphrase-retry-on-failure",
+      "category": "paraphrase",
+      "mode": "dense",
+      "relevant": [
+        "sensor#12"
+      ],
+      "retrieved": [
+        "sensor#12",
+        "sensor#14",
+        "sensor#13",
+        "sensor#11",
+        "sensor#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q08-paraphrase-heat-barrier",
+      "category": "paraphrase",
+      "mode": "dense",
+      "relevant": [
+        "battery#5",
+        "battery#6"
+      ],
+      "retrieved": [
+        "battery#1",
+        "battery#4",
+        "battery#5",
+        "battery#7",
+        "battery#10"
+      ],
+      "reciprocal_rank": 0.3333
+    },
+    {
+      "id": "q09-dependency-multiple",
+      "category": "dependency",
+      "mode": "dense",
+      "relevant": [
+        "battery#12",
+        "battery#4",
+        "sensor#13",
+        "sensor#4"
+      ],
+      "retrieved": [
+        "sensor#4",
+        "sensor#13",
+        "battery#4",
+        "battery#12",
+        "sensor#3"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q10-dependency-balancing",
+      "category": "dependency",
+      "mode": "dense",
+      "relevant": [
+        "battery#8"
+      ],
+      "retrieved": [
+        "battery#8",
+        "battery#7",
+        "battery#9",
+        "sensor#9",
+        "sensor#8"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q11-dependency-independent-method",
+      "category": "dependency",
+      "mode": "dense",
+      "relevant": [
+        "sensor#10"
+      ],
+      "retrieved": [
+        "sensor#10",
+        "sensor#1",
+        "sensor#4",
+        "sensor#14",
+        "battery#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q12-number-celsius",
+      "category": "technical_number",
+      "mode": "dense",
+      "relevant": [
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2",
+        "sensor#6",
+        "sensor#7",
+        "sensor#14",
+        "sensor#3"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q13-number-millivolt",
+      "category": "technical_number",
+      "mode": "dense",
+      "relevant": [
+        "battery#7"
+      ],
+      "retrieved": [
+        "battery#7",
+        "sensor#3",
+        "battery#12",
+        "sensor#8",
+        "battery#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q14-number-sampling-period",
+      "category": "technical_number",
+      "mode": "dense",
+      "relevant": [
+        "sensor#3"
+      ],
+      "retrieved": [
+        "sensor#3",
+        "sensor#13",
+        "sensor#12",
+        "sensor#10",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q15-number-decibel",
+      "category": "technical_number",
+      "mode": "dense",
+      "relevant": [
+        "battery#12"
+      ],
+      "retrieved": [
+        "battery#12",
+        "sensor#8",
+        "sensor#9",
+        "sensor#3",
+        "battery#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q16-exact-ip67",
+      "category": "exact_terminology",
+      "mode": "dense",
+      "relevant": [
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#9",
+        "sensor#8",
+        "sensor#6",
+        "battery#6",
+        "sensor#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q17-exact-moving-average",
+      "category": "exact_terminology",
+      "mode": "dense",
+      "relevant": [
+        "sensor#6"
+      ],
+      "retrieved": [
+        "sensor#6",
+        "sensor#12",
+        "sensor#3",
+        "sensor#13",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q18-irrelevant-coffee",
+      "category": "irrelevant",
+      "mode": "dense",
+      "relevant": [],
+      "retrieved": [
+        "battery#2",
+        "battery#1",
+        "sensor#7",
+        "battery#3",
+        "battery#10"
+      ],
+      "reciprocal_rank": 0.0
+    },
+    {
+      "id": "q19-irrelevant-equities",
+      "category": "irrelevant",
+      "mode": "dense",
+      "relevant": [],
+      "retrieved": [
+        "sensor#11",
+        "sensor#3",
+        "sensor#13",
+        "sensor#12",
+        "sensor#10"
+      ],
+      "reciprocal_rank": 0.0
+    },
+    {
+      "id": "q01-exact-circular-buffer",
+      "category": "exact_terminology",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#4"
+      ],
+      "retrieved": [
+        "sensor#4",
+        "battery#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q02-exact-lossless-compression",
+      "category": "exact_terminology",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#11"
+      ],
+      "retrieved": [
+        "sensor#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q03-compound-environment-module",
+      "category": "korean_compound",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#7",
+        "sensor#8",
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#7",
+        "sensor#8",
+        "sensor#9"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q04-compound-cooling-channel",
+      "category": "korean_compound",
+      "mode": "lexical",
+      "relevant": [
+        "battery#1",
+        "battery#3"
+      ],
+      "retrieved": [
+        "battery#1",
+        "battery#2",
+        "battery#3",
+        "battery#10",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q05-paraphrase-battery-cooling",
+      "category": "paraphrase",
+      "mode": "lexical",
+      "relevant": [
+        "battery#1",
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2",
+        "battery#3",
+        "battery#4",
+        "battery#5",
+        "battery#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q06-paraphrase-send-to-server",
+      "category": "paraphrase",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#1",
+        "sensor#14"
+      ],
+      "retrieved": [
+        "sensor#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q07-paraphrase-retry-on-failure",
+      "category": "paraphrase",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#12"
+      ],
+      "retrieved": [
+        "sensor#12",
+        "battery#12",
+        "sensor#11",
+        "battery#11",
+        "sensor#14"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q08-paraphrase-heat-barrier",
+      "category": "paraphrase",
+      "mode": "lexical",
+      "relevant": [
+        "battery#5",
+        "battery#6"
+      ],
+      "retrieved": [
+        "battery#5",
+        "battery#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q09-dependency-multiple",
+      "category": "dependency",
+      "mode": "lexical",
+      "relevant": [
+        "battery#12",
+        "battery#4",
+        "sensor#13",
+        "sensor#4"
+      ],
+      "retrieved": [
+        "battery#4",
+        "sensor#4",
+        "battery#12",
+        "sensor#13",
+        "sensor#2"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q10-dependency-balancing",
+      "category": "dependency",
+      "mode": "lexical",
+      "relevant": [
+        "battery#8"
+      ],
+      "retrieved": [
+        "battery#8",
+        "battery#7",
+        "sensor#8",
+        "sensor#9",
+        "battery#9"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q11-dependency-independent-method",
+      "category": "dependency",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#10"
+      ],
+      "retrieved": [
+        "sensor#11",
+        "sensor#12",
+        "sensor#10",
+        "sensor#13",
+        "sensor#2"
+      ],
+      "reciprocal_rank": 0.3333
+    },
+    {
+      "id": "q12-number-celsius",
+      "category": "technical_number",
+      "mode": "lexical",
+      "relevant": [
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q13-number-millivolt",
+      "category": "technical_number",
+      "mode": "lexical",
+      "relevant": [
+        "battery#7"
+      ],
+      "retrieved": [
+        "battery#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q14-number-sampling-period",
+      "category": "technical_number",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#3"
+      ],
+      "retrieved": [
+        "sensor#3",
+        "battery#12",
+        "sensor#13"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q15-number-decibel",
+      "category": "technical_number",
+      "mode": "lexical",
+      "relevant": [
+        "battery#12"
+      ],
+      "retrieved": [
+        "battery#12"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q16-exact-ip67",
+      "category": "exact_terminology",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#9"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q17-exact-moving-average",
+      "category": "exact_terminology",
+      "mode": "lexical",
+      "relevant": [
+        "sensor#6"
+      ],
+      "retrieved": [
+        "sensor#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q18-irrelevant-coffee",
+      "category": "irrelevant",
+      "mode": "lexical",
+      "relevant": [],
+      "retrieved": [
+        "battery#1",
+        "sensor#7"
+      ],
+      "reciprocal_rank": 0.0
+    },
+    {
+      "id": "q19-irrelevant-equities",
+      "category": "irrelevant",
+      "mode": "lexical",
+      "relevant": [],
+      "retrieved": [],
+      "reciprocal_rank": 0.0
+    },
+    {
+      "id": "q01-exact-circular-buffer",
+      "category": "exact_terminology",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#4"
+      ],
+      "retrieved": [
+        "sensor#4",
+        "battery#1",
+        "sensor#3",
+        "sensor#7",
+        "sensor#14"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q02-exact-lossless-compression",
+      "category": "exact_terminology",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#11"
+      ],
+      "retrieved": [
+        "sensor#11",
+        "sensor#10",
+        "sensor#3",
+        "sensor#14",
+        "sensor#12"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q03-compound-environment-module",
+      "category": "korean_compound",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#7",
+        "sensor#8",
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#7",
+        "sensor#8",
+        "sensor#9",
+        "sensor#14",
+        "battery#1"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q04-compound-cooling-channel",
+      "category": "korean_compound",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#1",
+        "battery#3"
+      ],
+      "retrieved": [
+        "battery#1",
+        "battery#3",
+        "battery#2",
+        "battery#10",
+        "battery#12"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q05-paraphrase-battery-cooling",
+      "category": "paraphrase",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#1",
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2",
+        "battery#3",
+        "battery#5",
+        "battery#4",
+        "battery#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q06-paraphrase-send-to-server",
+      "category": "paraphrase",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#1",
+        "sensor#14"
+      ],
+      "retrieved": [
+        "sensor#1",
+        "sensor#5",
+        "sensor#14",
+        "sensor#3",
+        "sensor#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q07-paraphrase-retry-on-failure",
+      "category": "paraphrase",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#12"
+      ],
+      "retrieved": [
+        "sensor#12",
+        "sensor#14",
+        "sensor#11",
+        "battery#12",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q08-paraphrase-heat-barrier",
+      "category": "paraphrase",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#5",
+        "battery#6"
+      ],
+      "retrieved": [
+        "battery#5",
+        "battery#7",
+        "battery#1",
+        "battery#4",
+        "battery#10"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q09-dependency-multiple",
+      "category": "dependency",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#12",
+        "battery#4",
+        "sensor#13",
+        "sensor#4"
+      ],
+      "retrieved": [
+        "sensor#4",
+        "battery#4",
+        "sensor#13",
+        "battery#12",
+        "sensor#2"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q10-dependency-balancing",
+      "category": "dependency",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#8"
+      ],
+      "retrieved": [
+        "battery#8",
+        "battery#7",
+        "sensor#8",
+        "battery#9",
+        "sensor#9"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q11-dependency-independent-method",
+      "category": "dependency",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#10"
+      ],
+      "retrieved": [
+        "sensor#10",
+        "sensor#11",
+        "sensor#4",
+        "sensor#13",
+        "sensor#12"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q12-number-celsius",
+      "category": "technical_number",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#2"
+      ],
+      "retrieved": [
+        "battery#2",
+        "sensor#6",
+        "sensor#7",
+        "sensor#14",
+        "sensor#3"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q13-number-millivolt",
+      "category": "technical_number",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#7"
+      ],
+      "retrieved": [
+        "battery#7",
+        "sensor#3",
+        "battery#12",
+        "sensor#8",
+        "battery#6"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q14-number-sampling-period",
+      "category": "technical_number",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#3"
+      ],
+      "retrieved": [
+        "sensor#3",
+        "sensor#13",
+        "battery#12",
+        "sensor#12",
+        "sensor#10"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q15-number-decibel",
+      "category": "technical_number",
+      "mode": "hybrid",
+      "relevant": [
+        "battery#12"
+      ],
+      "retrieved": [
+        "battery#12",
+        "sensor#8",
+        "sensor#9",
+        "sensor#3",
+        "battery#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q16-exact-ip67",
+      "category": "exact_terminology",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#9"
+      ],
+      "retrieved": [
+        "sensor#9",
+        "sensor#8",
+        "sensor#6",
+        "battery#6",
+        "sensor#7"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q17-exact-moving-average",
+      "category": "exact_terminology",
+      "mode": "hybrid",
+      "relevant": [
+        "sensor#6"
+      ],
+      "retrieved": [
+        "sensor#6",
+        "sensor#12",
+        "sensor#3",
+        "sensor#13",
+        "battery#11"
+      ],
+      "reciprocal_rank": 1.0
+    },
+    {
+      "id": "q18-irrelevant-coffee",
+      "category": "irrelevant",
+      "mode": "hybrid",
+      "relevant": [],
+      "retrieved": [
+        "battery#1",
+        "sensor#7",
+        "battery#2",
+        "battery#3",
+        "battery#10"
+      ],
+      "reciprocal_rank": 0.0
+    },
+    {
+      "id": "q19-irrelevant-equities",
+      "category": "irrelevant",
+      "mode": "hybrid",
+      "relevant": [],
+      "retrieved": [
+        "sensor#11",
+        "sensor#3",
+        "sensor#13",
+        "sensor#12",
+        "sensor#10"
+      ],
+      "reciprocal_rank": 0.0
+    }
+  ]
+}

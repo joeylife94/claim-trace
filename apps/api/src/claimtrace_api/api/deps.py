@@ -15,10 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from claimtrace_api.core.config import Settings
 from claimtrace_api.db.health import check_postgres
 from claimtrace_api.db.session import session_scope
+from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
+from claimtrace_api.llm.base import LLMProvider
 from claimtrace_api.parsing.base import DocumentParser
 from claimtrace_api.parsing.claims.base import ClaimParser
+from claimtrace_api.services.claim_indexing import ClaimIndexingService
 from claimtrace_api.services.claim_parsing import ClaimParsingService
+from claimtrace_api.services.claim_search import ClaimSearchService
 from claimtrace_api.services.ingestion import DocumentIngestionService
+from claimtrace_api.services.llm_generation import LLMGenerationService
 from claimtrace_api.storage.base import FileStorage
 
 
@@ -66,12 +71,38 @@ def get_claim_parser(request: Request) -> ClaimParser:
     return request.app.state.claim_parser
 
 
+def get_embedding_provider(request: Request) -> EmbeddingProvider:
+    """Return the configured embedding provider.
+
+    Built once at startup and shared: the real implementation caches a loaded
+    model on the instance, and a per-request provider would reload half a
+    gigabyte of weights on every call.
+    """
+    return request.app.state.embedding_provider
+
+
+def get_llm_provider(request: Request) -> LLMProvider:
+    """Return the configured LLM provider.
+
+    Built once at startup and shared, because the HTTP-backed providers own a
+    connection pool: a per-request provider would open and discard a pool on
+    every call. Construction contacts nothing, so this is safe even when the
+    model server is down.
+
+    Overriding this dependency is how a test injects a fake provider without
+    touching configuration.
+    """
+    return request.app.state.llm_provider
+
+
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 PostgresReadyDep = Annotated[bool, Depends(get_postgres_ready)]
 StorageDep = Annotated[FileStorage, Depends(get_storage)]
 ParserDep = Annotated[DocumentParser, Depends(get_parser)]
 ClaimParserDep = Annotated[ClaimParser, Depends(get_claim_parser)]
+EmbeddingProviderDep = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
+LLMProviderDep = Annotated[LLMProvider, Depends(get_llm_provider)]
 
 
 def get_ingestion_service(
@@ -95,3 +126,36 @@ def get_claim_parsing_service(session: SessionDep, parser: ClaimParserDep) -> Cl
 
 
 ClaimParsingServiceDep = Annotated[ClaimParsingService, Depends(get_claim_parsing_service)]
+
+
+def get_claim_indexing_service(
+    session: SessionDep, provider: EmbeddingProviderDep
+) -> ClaimIndexingService:
+    """Assemble the claim indexing use case for one request."""
+    return ClaimIndexingService(session=session, provider=provider)
+
+
+ClaimIndexingServiceDep = Annotated[ClaimIndexingService, Depends(get_claim_indexing_service)]
+
+
+def get_claim_search_service(
+    session: SessionDep, provider: EmbeddingProviderDep, settings: SettingsDep
+) -> ClaimSearchService:
+    """Assemble the claim search use case for one request."""
+    return ClaimSearchService(session=session, provider=provider, settings=settings)
+
+
+ClaimSearchServiceDep = Annotated[ClaimSearchService, Depends(get_claim_search_service)]
+
+
+def get_llm_service(provider: LLMProviderDep, settings: SettingsDep) -> LLMGenerationService:
+    """Assemble the generation use case for one request.
+
+    Note what is absent: no session, and no retrieval service. Generation does
+    not touch the database at this phase, and wiring one in "for later" would
+    make that boundary a matter of discipline rather than of construction.
+    """
+    return LLMGenerationService(provider=provider, settings=settings)
+
+
+LLMServiceDep = Annotated[LLMGenerationService, Depends(get_llm_service)]

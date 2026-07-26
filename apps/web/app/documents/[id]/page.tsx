@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ClaimIndexPanel } from "@/components/ClaimIndexPanel";
 import { ClaimWorkspace } from "@/components/ClaimWorkspace";
+import type { PageHighlight } from "@/components/PageViewer";
 import { getClaims } from "@/lib/claims";
 import {
   formatBytes,
@@ -8,13 +10,17 @@ import {
   getDocument,
   getDocumentPages,
 } from "@/lib/documents";
+import { getClaimIndex } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 
 export default async function DocumentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  /** `?page=&start=&end=` — a source span opened from a search result. */
+  searchParams: Promise<{ page?: string; start?: string; end?: string }>;
 }) {
   const { id } = await params;
   const document = await getDocument(id);
@@ -25,12 +31,15 @@ export default async function DocumentDetailPage({
 
   // A failed document has no pages; asking for them anyway would be a wasted call.
   const completed = document.status === "completed";
-  const [pages, claimSet] = completed
+  const [pages, claimSet, indexRun] = completed
     ? await Promise.all([
         getDocumentPages(id).then((response) => response.items),
         getClaims(id).catch(() => null),
+        getClaimIndex(id).catch(() => null),
       ])
-    : [[], null];
+    : [[], null, null];
+
+  const highlight = parseHighlight(await searchParams);
 
   return (
     <>
@@ -74,11 +83,18 @@ export default async function DocumentDetailPage({
           )}
         </section>
 
+        <ClaimIndexPanel
+          documentId={id}
+          canIndex={claimSet?.result.status === "completed"}
+          indexRun={indexRun}
+        />
+
         <ClaimWorkspace
           documentId={id}
           documentCompleted={completed}
           pages={pages}
           claimSet={claimSet}
+          initialHighlight={highlight}
         />
       </main>
       <footer>
@@ -88,6 +104,34 @@ export default async function DocumentDetailPage({
       </footer>
     </>
   );
+}
+
+/**
+ * Read a source span out of the query string.
+ *
+ * Every field must be a valid number and the range must be non-empty, matching
+ * the half-open `[start_char, end_char)` semantics the API uses. A malformed
+ * link renders the page with no highlight rather than an approximate one: a
+ * highlight over the wrong characters would be a false citation.
+ */
+function parseHighlight(query: {
+  page?: string;
+  start?: string;
+  end?: string;
+}): PageHighlight | null {
+  const page = Number(query.page);
+  const start = Number(query.start);
+  const end = Number(query.end);
+
+  const valid =
+    Number.isInteger(page) &&
+    page >= 1 &&
+    Number.isInteger(start) &&
+    start >= 0 &&
+    Number.isInteger(end) &&
+    end > start;
+
+  return valid ? { page_number: page, start_char: start, end_char: end } : null;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

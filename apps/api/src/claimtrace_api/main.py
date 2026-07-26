@@ -18,6 +18,9 @@ from claimtrace_api.core.config import Settings, get_settings
 from claimtrace_api.core.errors import AppError
 from claimtrace_api.core.logging import configure_logging
 from claimtrace_api.db.session import create_engine, create_session_factory
+from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
+from claimtrace_api.indexing.embeddings.fake import FakeEmbeddingProvider
+from claimtrace_api.llm.registry import build_llm_provider
 from claimtrace_api.parsing.claims.korean_rules import KoreanRuleBasedClaimParser
 from claimtrace_api.parsing.pymupdf_parser import PyMuPDFDocumentParser
 from claimtrace_api.schemas.documents import DocumentResponse, IngestionErrorResponse
@@ -43,15 +46,56 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.storage = LocalFileStorage(settings.storage_root)
     app.state.parser = PyMuPDFDocumentParser()
     app.state.claim_parser = KoreanRuleBasedClaimParser()
+    # Constructed, not loaded: the real provider reads its weights on first use,
+    # so an application with nothing to index never pays for the model and
+    # startup never blocks on half a gigabyte of disk.
+    app.state.embedding_provider = build_embedding_provider(settings)
+    # Also constructed rather than connected: an unreachable model server must
+    # not stop the application from starting, because nothing outside the LLM
+    # diagnostics endpoints depends on it. Reachability is reported by
+    # GET /api/v1/llm/status instead.
+    app.state.llm_provider = build_llm_provider(settings)
     logger.info(
         "application started",
-        extra={"environment": settings.environment, "version": settings.app_version},
+        extra={
+            "environment": settings.environment,
+            "version": settings.app_version,
+            "llm_provider": settings.llm_provider,
+        },
     )
     try:
         yield
     finally:
+        # Before the engine: releases the provider's HTTP connection pool while
+        # the loop is still running, which avoids an "unclosed client" warning
+        # on shutdown.
+        await app.state.llm_provider.aclose()
         await app.state.engine.dispose()
         logger.info("application stopped")
+
+
+def build_embedding_provider(settings: Settings) -> EmbeddingProvider:
+    """Select the embedding provider named by configuration.
+
+    The import of the sentence-transformers implementation is deferred into the
+    branch that needs it: it pulls torch through an optional extra, and an
+    installation running with ``EMBEDDING_PROVIDER=fake`` must not need it
+    present at all.
+    """
+    if settings.embedding_provider == "fake":
+        return FakeEmbeddingProvider(dimension=settings.embedding_dimension)
+
+    from claimtrace_api.indexing.embeddings.sentence_transformers import (
+        SentenceTransformerEmbeddingProvider,
+    )
+
+    return SentenceTransformerEmbeddingProvider(
+        model=settings.embedding_model,
+        dimension=settings.embedding_dimension,
+        cache_dir=settings.embedding_cache_dir,
+        device=settings.embedding_device,
+        batch_size=settings.embedding_batch_size,
+    )
 
 
 async def app_error_handler(request: Request, exc: Exception) -> JSONResponse:

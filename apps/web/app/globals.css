@@ -462,3 +462,126 @@ td.numeric {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* --- Retrieval index and claim search ------------------------------------ */
+
+.badge[data-index-status="completed"] {
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
+  color: var(--ok);
+}
+
+.badge[data-index-status="failed"] {
+  border-color: color-mix(in srgb, var(--error) 40%, var(--border));
+  color: var(--error);
+}
+
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 10rem;
+}
+
+.search-field > span {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.search-field input,
+.search-field select {
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 0.45rem 0.6rem;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.search-field input:focus-visible,
+.search-field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Per-channel ranking. Laid out as a row of small facts rather than a table so
+   an absent channel reads as one missing value, not a broken column. */
+.rank-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0.6rem 0 0;
+}
+
+.rank-facts .fact dd {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+.claim-spans a {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.claim-spans a:hover {
+  border-color: var(--accent);
+}
+
+/* --- LLM diagnostics (Phase 4A-1) ---------------------------------------- */
+
+/* A diagnostic prompt is a few sentences, not a search query, so it gets a
+   textarea. Styled with the other controls rather than separately, so the two
+   forms on /llm look like the rest of the app. */
+.search-field textarea {
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 0.45rem 0.6rem;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.search-field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Provider reachability. Three tones rather than two: a reachable server whose
+   model was never pulled is neither healthy nor down, and it has its own fix. */
+.badge[data-tone="ok"] {
+  color: var(--ok);
+  border-color: currentColor;
+}
+
+.badge[data-tone="warn"] {
+  color: var(--pending);
+  border-color: currentColor;
+}
+
+.badge[data-tone="error"] {
+  color: var(--error);
+  border-color: currentColor;
+}

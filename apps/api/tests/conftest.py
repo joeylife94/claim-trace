@@ -60,6 +60,9 @@ def settings(storage_root: Path) -> Settings:
         storage_root=storage_root,
         upload_max_bytes=1024 * 1024,
         min_extracted_characters=32,
+        # No test may download a model. The deterministic provider satisfies the
+        # same protocol, so every path above it is exercised for real.
+        embedding_provider="fake",
     )
 
 
@@ -237,12 +240,18 @@ def integration_settings(integration_database_url: str, storage_root: Path) -> S
         # The size-limit rejection itself is covered in the database-free tier.
         upload_max_bytes=8 * 1024 * 1024,
         min_extracted_characters=32,
+        embedding_provider="fake",
     )
 
 
 @pytest.fixture
 def clean_database(integration_database_url: str) -> Iterator[None]:
-    """Empty the ingestion tables before each integration test."""
+    """Empty the ingestion tables before each integration test.
+
+    ``CASCADE`` reaches the claim and retrieval tables too: every one of them
+    descends from ``documents`` by foreign key, which is exactly the property
+    the schema is designed to have.
+    """
     engine = sa.create_engine(integration_database_url)
     with engine.begin() as connection:
         connection.execute(sa.text("TRUNCATE TABLE document_pages, documents CASCADE"))
@@ -255,6 +264,19 @@ def integration_client(
     integration_settings: Settings, clean_database: None
 ) -> Iterator[TestClient]:
     """Client backed by the migrated test database and a temporary storage root."""
+    application = create_app(integration_settings)
+    with TestClient(application) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def indexing_client(integration_settings: Settings, clean_database: None) -> Iterator[TestClient]:
+    """Integration client whose embedding provider can be swapped mid-test.
+
+    ``app.state.embedding_provider`` is the seam the failure-path tests use to
+    inject a provider that raises, so those paths run through the real service,
+    the real transaction handling, and the real HTTP mapping.
+    """
     application = create_app(integration_settings)
     with TestClient(application) as test_client:
         yield test_client

@@ -16,21 +16,39 @@ COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Dependency layer: only invalidated when the manifest or lockfile changes.
+#
+# The "embeddings" extra brings sentence-transformers and a CPU-only torch (the
+# wheel index is pinned in pyproject.toml). It is installed here so the image can
+# run the real local embedding model with no network access at runtime beyond the
+# one-time model download. Model *weights* are never baked in: they live in the
+# cache volume mounted at EMBEDDING_CACHE_DIR.
+#
+# The uv cache is a build cache mount rather than an image layer: torch's wheels
+# alone are over a gigabyte, and copying them into the image would double their
+# cost for no runtime benefit.
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --frozen --extra dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra dev --extra embeddings --no-install-project
 
 # Application layer.
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY src ./src
 COPY tests ./tests
-RUN uv sync --frozen --extra dev
+COPY evals ./evals
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra dev --extra embeddings
 
-# Run as an unprivileged user. The storage root is created here so the mounted
-# volume is owned by the runtime user rather than root.
+# Keep every Hugging Face cache under one writable path, so a read-only or
+# root-owned $HOME cannot send downloads somewhere the runtime user cannot write.
+ENV HF_HOME=/models
+
+# Run as an unprivileged user. Only the two writable paths are chowned: the
+# runtime user reads /app and /opt/venv but never writes to them, and a recursive
+# chown over the virtualenv would copy every torch file into a second layer.
 RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /data/uploads \
-    && chown -R appuser:appuser /app /opt/venv /data
+    && mkdir -p /data/uploads /models \
+    && chown -R appuser:appuser /data /models
 USER appuser
 
 EXPOSE 8000
