@@ -22,6 +22,7 @@ from claimtrace_api.parsing.claims.base import ClaimParser
 from claimtrace_api.services.claim_indexing import ClaimIndexingService
 from claimtrace_api.services.claim_parsing import ClaimParsingService
 from claimtrace_api.services.claim_search import ClaimSearchService
+from claimtrace_api.services.grounded_generation import GroundedGenerationService
 from claimtrace_api.services.ingestion import DocumentIngestionService
 from claimtrace_api.services.llm_generation import LLMGenerationService
 from claimtrace_api.storage.base import FileStorage
@@ -151,11 +152,33 @@ ClaimSearchServiceDep = Annotated[ClaimSearchService, Depends(get_claim_search_s
 def get_llm_service(provider: LLMProviderDep, settings: SettingsDep) -> LLMGenerationService:
     """Assemble the generation use case for one request.
 
-    Note what is absent: no session, and no retrieval service. Generation does
-    not touch the database at this phase, and wiring one in "for later" would
-    make that boundary a matter of discipline rather than of construction.
+    Note what is still absent: no session, and no retrieval service. Provider-
+    neutral generation does not touch the database, and Phase 4A-2 kept it that
+    way - grounding is a separate service that *composes* this one, so the
+    boundary remains a matter of construction rather than of discipline.
     """
     return LLMGenerationService(provider=provider, settings=settings)
 
 
 LLMServiceDep = Annotated[LLMGenerationService, Depends(get_llm_service)]
+
+
+def get_grounded_generation_service(
+    search: ClaimSearchServiceDep,
+    llm: LLMServiceDep,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> GroundedGenerationService:
+    """Assemble the evidence-grounded answering use case for one request.
+
+    Composed from the two existing services rather than reaching past them: the
+    same ``ClaimSearchService`` the search endpoint uses, and the same
+    ``LLMGenerationService`` the diagnostics endpoint uses. The session is here
+    for one job only - resolving validated citations against stored page text.
+    """
+    return GroundedGenerationService(search=search, llm=llm, session=session, settings=settings)
+
+
+GroundedGenerationServiceDep = Annotated[
+    GroundedGenerationService, Depends(get_grounded_generation_service)
+]
