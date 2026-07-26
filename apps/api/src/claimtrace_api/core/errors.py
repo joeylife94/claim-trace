@@ -1,8 +1,9 @@
-"""Ingestion error taxonomy.
+"""Application error taxonomy.
 
 Error codes are part of the API contract: clients (and the web UI) branch on
 ``error_code``, never on the human-readable message. Codes are also persisted on
-failed documents, so a stored value must keep its meaning across releases.
+failed documents and failed parse results, so a stored value must keep its
+meaning across releases.
 """
 
 from __future__ import annotations
@@ -24,6 +25,16 @@ class ErrorCode(StrEnum):
     ENCRYPTED_PDF = "encrypted_pdf"
     NO_EXTRACTABLE_TEXT = "no_extractable_text"
 
+    # Claim structural parsing.
+    #: The document exists but its ingestion has not completed, so there is no
+    #: page text to parse.
+    DOCUMENT_NOT_COMPLETED = "document_not_completed"
+    #: Parsing ran and could not produce a usable claim structure. Persisted on
+    #: the failed parse result.
+    CLAIM_PARSE_FAILED = "claim_parse_failed"
+    CLAIM_PARSE_NOT_FOUND = "claim_parse_not_found"
+    CLAIM_NOT_FOUND = "claim_not_found"
+
     # Lookup and internal failures.
     DOCUMENT_NOT_FOUND = "document_not_found"
     STORAGE_FAILURE = "storage_failure"
@@ -39,17 +50,21 @@ ERROR_STATUS: dict[ErrorCode, HTTPStatus] = {
     ErrorCode.MALFORMED_PDF: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.ENCRYPTED_PDF: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.NO_EXTRACTABLE_TEXT: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.DOCUMENT_NOT_COMPLETED: HTTPStatus.CONFLICT,
+    ErrorCode.CLAIM_PARSE_FAILED: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.CLAIM_PARSE_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    ErrorCode.CLAIM_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.DOCUMENT_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.STORAGE_FAILURE: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,
 }
 
 
-class IngestionError(Exception):
-    """An upload that cannot be ingested, carrying a client-safe explanation.
+class AppError(Exception):
+    """A request that cannot be satisfied, carrying a client-safe explanation.
 
     ``message`` is shown to the user, so it must never contain a filesystem path,
-    a connection string, or the document's own text.
+    a connection string, or document or claim text.
     """
 
     def __init__(self, code: ErrorCode, message: str) -> None:
@@ -62,4 +77,4 @@ class IngestionError(Exception):
         return ERROR_STATUS[self.code]
 
     def __repr__(self) -> str:
-        return f"IngestionError(code={self.code.value!r})"
+        return f"{type(self).__name__}(code={self.code.value!r})"

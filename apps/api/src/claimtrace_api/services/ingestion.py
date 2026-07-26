@@ -31,7 +31,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.core.config import Settings
-from claimtrace_api.core.errors import ErrorCode, IngestionError
+from claimtrace_api.core.errors import AppError, ErrorCode
 from claimtrace_api.db.models import Document, DocumentPage, DocumentStatus
 from claimtrace_api.parsing.base import DocumentParser, ParsedDocument, ParserError
 from claimtrace_api.storage.base import FileStorage, StorageError
@@ -48,7 +48,7 @@ PDF_MAGIC = b"%PDF-"
 SHA_LOG_PREFIX = 12
 
 
-class DocumentIngestionError(IngestionError):
+class DocumentIngestionError(AppError):
     """An ingestion failure that left a traceable document record behind."""
 
     def __init__(self, code: ErrorCode, message: str, document: Document) -> None:
@@ -91,7 +91,7 @@ async def read_upload(
     web framework's upload type.
 
     Raises:
-        IngestionError: the stream exceeds the configured limit.
+        AppError: the stream exceeds the configured limit.
     """
     chunks: list[bytes] = []
     total = 0
@@ -101,7 +101,7 @@ async def read_upload(
             break
         total += len(chunk)
         if total > max_bytes:
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.FILE_TOO_LARGE,
                 f"The file exceeds the maximum upload size of {max_bytes} bytes.",
             )
@@ -131,7 +131,7 @@ class DocumentIngestionService:
         """Ingest one uploaded file.
 
         Raises:
-            IngestionError: the upload was rejected before storage.
+            AppError: the upload was rejected before storage.
             DocumentIngestionError: the file was stored but could not be parsed;
                 carries the persisted, failed document record.
         """
@@ -177,11 +177,11 @@ class DocumentIngestionService:
         """Reject anything that is clearly not an acceptable PDF upload."""
         filename = payload.filename.strip()
         if not filename:
-            raise IngestionError(ErrorCode.UNSUPPORTED_FILE_TYPE, "A filename is required.")
+            raise AppError(ErrorCode.UNSUPPORTED_FILE_TYPE, "A filename is required.")
 
         allowed_extensions = self._settings.upload_allowed_extensions
         if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.UNSUPPORTED_FILE_TYPE,
                 f"Only {', '.join(allowed_extensions)} files are accepted.",
             )
@@ -189,29 +189,29 @@ class DocumentIngestionService:
         # Strip any parameters such as "; charset=..." before comparing.
         declared_type = payload.content_type.split(";")[0].strip().lower()
         if declared_type not in self._settings.upload_allowed_content_types:
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.UNSUPPORTED_FILE_TYPE,
                 f"Unsupported content type '{declared_type}'. Upload a PDF file.",
             )
 
         if payload.size_bytes == 0:
-            raise IngestionError(ErrorCode.EMPTY_FILE, "The uploaded file is empty.")
+            raise AppError(ErrorCode.EMPTY_FILE, "The uploaded file is empty.")
 
         if payload.size_bytes > self._settings.upload_max_bytes:
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.FILE_TOO_LARGE,
                 f"The file exceeds the maximum upload size of "
                 f"{self._settings.upload_max_bytes} bytes.",
             )
 
         if not payload.data.startswith(PDF_MAGIC):
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.UNSUPPORTED_FILE_TYPE,
                 "The file is not a PDF. Its contents do not begin with a PDF signature.",
             )
 
         if not self._parser.supports(content_type=declared_type, filename=filename):
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.UNSUPPORTED_FILE_TYPE,
                 "No parser is available for this file type.",
             )
@@ -229,7 +229,7 @@ class DocumentIngestionService:
             self._storage.write(storage_key, payload.data)
         except StorageError as exc:
             logger.error("upload storage failed", extra={"sha256_prefix": sha256[:SHA_LOG_PREFIX]})
-            raise IngestionError(
+            raise AppError(
                 ErrorCode.STORAGE_FAILURE,
                 "The file could not be stored. Try again.",
             ) from exc
