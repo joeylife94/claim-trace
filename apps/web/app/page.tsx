@@ -42,14 +42,27 @@ export default async function Home() {
           </div>
         </section>
 
+        <section className="panel" aria-labelledby="grounded-heading">
+          <div className="panel-header">
+            <h2 id="grounded-heading">Grounded answers</h2>
+          </div>
+          <p className="meta">
+            Ask a question and get an answer built only from retrieved claim
+            text. Every statement cites evidence the server issued, and every
+            citation resolves to the exact page and character range it came from.
+          </p>
+          <div className="actions">
+            <Link href="/grounded">Ask a question →</Link>
+          </div>
+        </section>
+
         <section className="panel" aria-labelledby="llm-heading">
           <div className="panel-header">
             <h2 id="llm-heading">Local LLM</h2>
           </div>
           <p className="meta">
             Status, capabilities, and diagnostics for the configured local model
-            provider. Infrastructure only - the model is not yet connected to
-            claim retrieval.
+            provider - the boundary grounded answering generates through.
           </p>
           <div className="actions">
             <Link href="/llm">Provider diagnostics →</Link>
