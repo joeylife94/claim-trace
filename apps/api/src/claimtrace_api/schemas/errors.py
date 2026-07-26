@@ -13,3 +13,14 @@ class ErrorResponse(BaseModel):
     """
 
     detail: str
+
+
+class ApiErrorResponse(BaseModel):
+    """Error payload carrying a stable code.
+
+    Clients branch on ``error_code``; ``detail`` is for the reader and may be
+    reworded at any time.
+    """
+
+    detail: str
+    error_code: str
