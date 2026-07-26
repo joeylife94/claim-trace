@@ -13,6 +13,8 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.14",
     "psycopg[binary,pool]>=3.2",
+    "pymupdf>=1.24",
+    "python-multipart>=0.0.20",
 ]
 
 [project.optional-dependencies]
@@ -35,9 +37,13 @@ default-groups = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." lets test modules share helpers via `from tests.pdf_factory import ...`.
+pythonpath = ["src", "."]
 asyncio_mode = "auto"
 addopts = "-q"
+markers = [
+    "integration: requires a reachable PostgreSQL instance (skipped when absent)",
+]
 
 [tool.ruff]
 line-length = 100
@@ -59,6 +65,9 @@ select = [
 ignore = [
     "ANN401", # allow typing.Any where it is genuinely needed
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = ["claimtrace_api", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*" = ["ANN"]
