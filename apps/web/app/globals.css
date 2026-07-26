@@ -186,3 +186,171 @@ footer {
   font-size: 0.8125rem;
   color: var(--muted);
 }
+
+/* --- Document ingestion --------------------------------------------------- */
+
+a {
+  color: var(--accent);
+}
+
+.panel + .panel {
+  margin-top: 1.5rem;
+}
+
+.document-title {
+  font-size: 1.75rem;
+  overflow-wrap: anywhere;
+}
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.upload-form input[type="file"] {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--muted);
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.notice {
+  margin: 1rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.notice[data-tone="success"] {
+  border-left-color: var(--ok);
+}
+
+.notice[data-tone="duplicate"] {
+  border-left-color: var(--accent);
+}
+
+.notice[data-tone="error"] {
+  border-left-color: var(--error);
+}
+
+/* Wide content scrolls inside its own container; the page never scrolls sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+th {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+td.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.row-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: normal;
+  max-width: 22rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.badge[data-status="completed"] {
+  color: var(--ok);
+  border-color: currentColor;
+}
+
+.badge[data-status="failed"] {
+  color: var(--error);
+  border-color: currentColor;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.9rem 1.5rem;
+  margin: 0;
+}
+
+.fact dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+
+.page-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.page-tabs button {
+  min-width: 2.25rem;
+  padding: 0.2rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-tabs button[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.page-text {
+  margin: 0;
+  padding: 1rem;
+  max-height: 28rem;
+  overflow: auto;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

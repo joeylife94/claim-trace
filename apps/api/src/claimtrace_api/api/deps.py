@@ -15,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from claimtrace_api.core.config import Settings
 from claimtrace_api.db.health import check_postgres
 from claimtrace_api.db.session import session_scope
+from claimtrace_api.parsing.base import DocumentParser
+from claimtrace_api.services.ingestion import DocumentIngestionService
+from claimtrace_api.storage.base import FileStorage
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -42,6 +45,37 @@ async def get_postgres_ready(engine: Annotated[AsyncEngine, Depends(get_engine)]
     return await check_postgres(engine)
 
 
+def get_storage(request: Request) -> FileStorage:
+    """Return the storage backend created during application startup."""
+    return request.app.state.storage
+
+
+def get_parser(request: Request) -> DocumentParser:
+    """Return the configured document parser.
+
+    A single implementation today; when a second one exists this becomes the
+    selection point, and no route handler changes.
+    """
+    return request.app.state.parser
+
+
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 PostgresReadyDep = Annotated[bool, Depends(get_postgres_ready)]
+StorageDep = Annotated[FileStorage, Depends(get_storage)]
+ParserDep = Annotated[DocumentParser, Depends(get_parser)]
+
+
+def get_ingestion_service(
+    session: SessionDep,
+    storage: StorageDep,
+    parser: ParserDep,
+    settings: SettingsDep,
+) -> DocumentIngestionService:
+    """Assemble the ingestion use case for one request."""
+    return DocumentIngestionService(
+        session=session, storage=storage, parser=parser, settings=settings
+    )
+
+
+IngestionServiceDep = Annotated[DocumentIngestionService, Depends(get_ingestion_service)]

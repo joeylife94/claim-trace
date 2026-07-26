@@ -53,6 +53,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Document ingestion
+      STORAGE_ROOT: ${STORAGE_ROOT:-/data/uploads}
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-20971520}
+      MIN_EXTRACTED_CHARACTERS: ${MIN_EXTRACTED_CHARACTERS:-32}
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -60,6 +64,8 @@ services:
       - ./apps/api/src:/app/src:ro
       - ./apps/api/alembic:/app/alembic:ro
       - ./apps/api/tests:/app/tests:ro
+      # Uploaded originals live in a volume, never in the source tree.
+      - document_storage:/data/uploads
     command:
       - uvicorn
       - claimtrace_api.main:app
@@ -96,3 +102,4 @@ services:
 
 volumes:
   postgres_data:
+  document_storage:

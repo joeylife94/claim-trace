@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from claimtrace_api.api.v1 import system
+from claimtrace_api.api.v1 import documents, system
 
 api_router = APIRouter()
 api_router.include_router(system.router)
+api_router.include_router(documents.router)

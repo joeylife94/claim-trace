@@ -26,8 +26,11 @@ COPY src ./src
 COPY tests ./tests
 RUN uv sync --frozen --extra dev
 
-# Run as an unprivileged user.
-RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app /opt/venv
+# Run as an unprivileged user. The storage root is created here so the mounted
+# volume is owned by the runtime user rather than root.
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /data/uploads \
+    && chown -R appuser:appuser /app /opt/venv /data
 USER appuser
 
 EXPOSE 8000
