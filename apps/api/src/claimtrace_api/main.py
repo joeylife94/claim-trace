@@ -20,6 +20,7 @@ from claimtrace_api.core.logging import configure_logging
 from claimtrace_api.db.session import create_engine, create_session_factory
 from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
 from claimtrace_api.indexing.embeddings.fake import FakeEmbeddingProvider
+from claimtrace_api.llm.registry import build_llm_provider
 from claimtrace_api.parsing.claims.korean_rules import KoreanRuleBasedClaimParser
 from claimtrace_api.parsing.pymupdf_parser import PyMuPDFDocumentParser
 from claimtrace_api.schemas.documents import DocumentResponse, IngestionErrorResponse
@@ -49,13 +50,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # so an application with nothing to index never pays for the model and
     # startup never blocks on half a gigabyte of disk.
     app.state.embedding_provider = build_embedding_provider(settings)
+    # Also constructed rather than connected: an unreachable model server must
+    # not stop the application from starting, because nothing outside the LLM
+    # diagnostics endpoints depends on it. Reachability is reported by
+    # GET /api/v1/llm/status instead.
+    app.state.llm_provider = build_llm_provider(settings)
     logger.info(
         "application started",
-        extra={"environment": settings.environment, "version": settings.app_version},
+        extra={
+            "environment": settings.environment,
+            "version": settings.app_version,
+            "llm_provider": settings.llm_provider,
+        },
     )
     try:
         yield
     finally:
+        # Before the engine: releases the provider's HTTP connection pool while
+        # the loop is still running, which avoids an "unclosed client" warning
+        # on shutdown.
+        await app.state.llm_provider.aclose()
         await app.state.engine.dispose()
         logger.info("application stopped")
 
