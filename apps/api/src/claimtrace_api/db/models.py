@@ -1,7 +1,8 @@
 """ORM models.
 
-Phase 2A adds the ingestion tables; Phase 2B adds claim structural parsing.
-Sections, chunks, and embeddings are still out of scope; see ``docs/ROADMAP.md``.
+Phase 2A adds the ingestion tables, Phase 2B claim structural parsing, and
+Phase 3A the claim retrieval index. Description sections and claim elements are
+still out of scope; see ``docs/ROADMAP.md``.
 """
 
 from __future__ import annotations
@@ -11,8 +12,10 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     Enum,
@@ -30,10 +33,15 @@ from sqlalchemy import (
 # Aliased: "text" is also a column name on Claim and DocumentPage, and a bare
 # import would be shadowed inside those class bodies.
 from sqlalchemy import text as sql_text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from claimtrace_api.db.base import Base
+
+#: The one embedding width this phase stores. The pgvector column and its HNSW
+#: index are migrated at this size, so a model of a different width needs a new
+#: migration rather than a configuration change - see docs/ARCHITECTURE.md §9.
+EMBEDDING_DIMENSION = 384
 
 
 class AppMetadata(Base):
@@ -466,3 +474,177 @@ class ClaimDependency(Base):
 
     def __repr__(self) -> str:
         return f"ClaimDependency({self.dependent_claim_id!r} -> {self.referenced_claim_id!r})"
+
+
+class ClaimIndexStatus(StrEnum):
+    """Claim indexing lifecycle.
+
+    A third lifecycle, deliberately separate from both :class:`DocumentStatus`
+    and :class:`ClaimParseStatus`. Indexing is the only one of the three that
+    depends on an external model, so it is the only one that can fail for
+    reasons that say nothing about the document.
+    """
+
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+_claim_index_status = Enum(
+    ClaimIndexStatus,
+    name="claim_index_status",
+    native_enum=False,
+    values_callable=lambda enum_cls: [member.value for member in enum_cls],
+    length=32,
+)
+
+
+class ClaimIndexRun(Base):
+    """One indexing pass over one claim parse result with one retrieval profile.
+
+    ``profile_key`` is the deviation worth reading. The idempotency identity is
+    the whole retrieval profile - provider, model, model version, dimension,
+    normalisation policy and version, lexical strategy and version - and a
+    nine-column unique constraint would be both unreadable and easy to get
+    subtly wrong at query time. The key is the canonical join of exactly those
+    fields, so ``UNIQUE (claim_parse_result_id, profile_key)`` *is* the identity,
+    and search selects a profile with one indexed equality instead of nine. The
+    individual columns are kept because a stored index run has to be readable in
+    ``psql`` without decoding a key.
+    """
+
+    __tablename__ = "claim_index_runs"
+    __table_args__ = (
+        UniqueConstraint(
+            "claim_parse_result_id", "profile_key", name="uq_claim_index_runs_result_profile"
+        ),
+        CheckConstraint("embedding_dimension > 0", name="ck_claim_index_runs_dimension_positive"),
+        CheckConstraint("indexed_claim_count >= 0", name="ck_claim_index_runs_claim_count"),
+        Index("ix_claim_index_runs_created_at", "created_at"),
+        # Covers the search-side lookup: completed runs for one profile.
+        Index("ix_claim_index_runs_profile_status", "profile_key", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+    # An index run is derived from a parse result and is meaningless without it.
+    claim_parse_result_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("claim_parse_results.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    status: Mapped[ClaimIndexStatus] = mapped_column(
+        _claim_index_status, nullable=False, default=ClaimIndexStatus.PROCESSING, index=True
+    )
+
+    #: Canonical join of every profile field below. See the class docstring.
+    profile_key: Mapped[str] = mapped_column(String(512), nullable=False)
+
+    embedding_provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(255), nullable=False)
+    embedding_model_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
+    vectors_normalized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    normalization_version: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    lexical_strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    lexical_strategy_version: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    indexed_claim_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        server_onupdate=sql_text("now()"),
+        onupdate=func.now(),
+    )
+
+    parse_result: Mapped[ClaimParseResult] = relationship()
+    records: Mapped[list[ClaimSearchRecord]] = relationship(
+        back_populates="index_run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    def __repr__(self) -> str:
+        return f"ClaimIndexRun(id={self.id!r}, status={self.status.value!r})"
+
+
+class ClaimSearchRecord(Base):
+    """The searchable projection of one claim within one index run.
+
+    A derived artifact, never a source of truth. ``normalized_text`` exists to be
+    matched against, not to be quoted: it has been NFKC-folded and had its
+    whitespace collapsed, so its offsets do not address the original document.
+    Every result resolves its provenance through ``claim_spans`` instead, which
+    is why this table stores no offsets of its own.
+    """
+
+    __tablename__ = "claim_search_records"
+    __table_args__ = (
+        # One row per claim per run. Re-indexing replaces rows rather than
+        # accumulating a second copy that could be returned twice.
+        UniqueConstraint("index_run_id", "claim_id", name="uq_claim_search_records_run_claim"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+    index_run_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("claim_index_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # CASCADE, like every other claim-derived row: a deleted claim must not
+    # leave a searchable record that would surface text the operator removed.
+    claim_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("claims.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    #: Denormalised from claims -> claim_parse_results so document scoping does
+    #: not need two joins on the hot search path. Kept consistent by the indexing
+    #: service, which is the only writer.
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    #: Claim number, copied so lexical ordering can break ties without a join.
+    claim_number: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    normalized_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    #: to_tsvector('simple', normalized_text), maintained by the application so
+    #: the exact text that was embedded is also the text that was tokenised.
+    search_vector: Mapped[Any] = mapped_column(TSVECTOR, nullable=False)
+
+    embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIMENSION), nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        server_onupdate=sql_text("now()"),
+        onupdate=func.now(),
+    )
+
+    index_run: Mapped[ClaimIndexRun] = relationship(back_populates="records")
+    claim: Mapped[Claim] = relationship()
+
+    def __repr__(self) -> str:
+        return f"ClaimSearchRecord(run={self.index_run_id!r}, claim={self.claim_id!r})"
