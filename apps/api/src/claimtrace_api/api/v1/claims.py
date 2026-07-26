@@ -7,7 +7,7 @@ from http import HTTPStatus
 
 from fastapi import APIRouter, Response
 
-from claimtrace_api.api.deps import ClaimParsingServiceDep, SessionDep
+from claimtrace_api.api.deps import ClaimIndexingServiceDep, ClaimParsingServiceDep, SessionDep
 from claimtrace_api.core.errors import AppError, ErrorCode
 from claimtrace_api.db.models import Claim, ClaimParseResult, Document
 from claimtrace_api.schemas.claims import (
@@ -20,6 +20,7 @@ from claimtrace_api.schemas.claims import (
 )
 from claimtrace_api.schemas.errors import ApiErrorResponse
 from claimtrace_api.schemas.locators import SourceLocator
+from claimtrace_api.schemas.retrieval import ClaimIndexRunResponse
 from claimtrace_api.services.claim_parsing import ClaimSetSnapshot
 
 router = APIRouter(prefix="/documents/{document_id}/claims", tags=["claims"])
@@ -84,6 +85,70 @@ async def get_claims(
             "This document has not been parsed for claims yet.",
         )
     return _claim_set(snapshot)
+
+
+#: Declared before "/{claim_number}": FastAPI matches in declaration order, and
+#: the reverse would send a request for /index into the int path parameter.
+@router.post(
+    "/index",
+    response_model=ClaimIndexRunResponse,
+    status_code=HTTPStatus.CREATED,
+    summary="Index claims for retrieval",
+    description=(
+        "Embeds this document's parsed claims and writes their search records.\n\n"
+        "Returns 201 for a newly completed run and 200 when a completed run for the "
+        "same retrieval profile already exists - the profile being the embedding "
+        "provider, model, model version, dimension, normalisation policy, and "
+        "lexical strategy. A failed or stranded run for the same profile is retried "
+        "in place. Neither document ingestion status nor claim parsing status is "
+        "modified by this endpoint."
+    ),
+    responses={
+        HTTPStatus.OK: {"model": ClaimIndexRunResponse},
+        HTTPStatus.SERVICE_UNAVAILABLE: {"model": ApiErrorResponse},
+        **_ERROR_RESPONSES,
+    },
+)
+async def index_claims(
+    document_id: uuid.UUID,
+    response: Response,
+    session: SessionDep,
+    service: ClaimIndexingServiceDep,
+) -> ClaimIndexRunResponse:
+    document = await _require_document(document_id, session)
+
+    outcome = await service.index(document)
+    if not outcome.created:
+        response.status_code = HTTPStatus.OK
+
+    return ClaimIndexRunResponse.model_validate(outcome.run)
+
+
+@router.get(
+    "/index",
+    response_model=ClaimIndexRunResponse,
+    summary="Get claim index status",
+    description=(
+        "The most recent index run for this document, whatever retrieval profile "
+        "it was built with. A run built by a model the deployment has since moved "
+        "away from is still reported, rather than the document appearing unindexed."
+    ),
+    responses=_ERROR_RESPONSES,
+)
+async def get_claim_index(
+    document_id: uuid.UUID,
+    session: SessionDep,
+    service: ClaimIndexingServiceDep,
+) -> ClaimIndexRunResponse:
+    await _require_document(document_id, session)
+
+    run = await service.current_run(document_id)
+    if run is None:
+        raise AppError(
+            ErrorCode.CLAIM_INDEX_NOT_FOUND,
+            "This document's claims have not been indexed yet.",
+        )
+    return ClaimIndexRunResponse.model_validate(run)
 
 
 @router.get(
