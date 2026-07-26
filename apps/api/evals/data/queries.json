@@ -1,0 +1,129 @@
+{
+  "_readme": [
+    "Relevance labels were written from the claim text alone, before any retrieval",
+    "run, and have not been adjusted to improve any channel's score. Several are",
+    "deliberately hostile to one channel or the other: the paraphrase queries share",
+    "almost no surface tokens with their targets, and the exact-unit queries are",
+    "trivial for lexical search and hard for a small embedding model. Two queries",
+    "have no relevant claim at all, so a channel that always returns something is",
+    "measurably wrong rather than silently rewarded.",
+    "",
+    "'relevant' entries are [document id, claim number] pairs."
+  ],
+  "queries": [
+    {
+      "id": "q01-exact-circular-buffer",
+      "category": "exact_terminology",
+      "query": "순환 버퍼",
+      "relevant": [["sensor", 4]]
+    },
+    {
+      "id": "q02-exact-lossless-compression",
+      "category": "exact_terminology",
+      "query": "무손실 압축 알고리즘",
+      "relevant": [["sensor", 11]]
+    },
+    {
+      "id": "q03-compound-environment-module",
+      "category": "korean_compound",
+      "query": "환경감시모듈",
+      "relevant": [["sensor", 7], ["sensor", 8], ["sensor", 9]]
+    },
+    {
+      "id": "q04-compound-cooling-channel",
+      "category": "korean_compound",
+      "query": "냉각유로",
+      "relevant": [["battery", 1], ["battery", 3]]
+    },
+    {
+      "id": "q05-paraphrase-battery-cooling",
+      "category": "paraphrase",
+      "query": "배터리가 뜨거워지면 식혀 주는 장치",
+      "relevant": [["battery", 1], ["battery", 2]]
+    },
+    {
+      "id": "q06-paraphrase-send-to-server",
+      "category": "paraphrase",
+      "query": "측정한 값을 서버로 보내는 기기",
+      "relevant": [["sensor", 1], ["sensor", 14]]
+    },
+    {
+      "id": "q07-paraphrase-retry-on-failure",
+      "category": "paraphrase",
+      "query": "전송이 실패했을 때 다시 시도하는 방법",
+      "relevant": [["sensor", 12]]
+    },
+    {
+      "id": "q08-paraphrase-heat-barrier",
+      "category": "paraphrase",
+      "query": "셀 사이에서 열을 막아 주는 재료",
+      "relevant": [["battery", 5], ["battery", 6]]
+    },
+    {
+      "id": "q09-dependency-multiple",
+      "category": "dependency",
+      "query": "다중종속항",
+      "relevant": [["sensor", 4], ["sensor", 13], ["battery", 4], ["battery", 12]]
+    },
+    {
+      "id": "q10-dependency-balancing",
+      "category": "dependency",
+      "query": "제7항을 인용하는 밸런싱 회로 청구항",
+      "relevant": [["battery", 8]]
+    },
+    {
+      "id": "q11-dependency-independent-method",
+      "category": "dependency",
+      "query": "독립항 센서 데이터 처리 방법",
+      "relevant": [["sensor", 10]]
+    },
+    {
+      "id": "q12-number-celsius",
+      "category": "technical_number",
+      "query": "섭씨 45도",
+      "relevant": [["battery", 2]]
+    },
+    {
+      "id": "q13-number-millivolt",
+      "category": "technical_number",
+      "query": "50밀리볼트",
+      "relevant": [["battery", 7]]
+    },
+    {
+      "id": "q14-number-sampling-period",
+      "category": "technical_number",
+      "query": "10밀리초 내지 100밀리초 샘플링 주기",
+      "relevant": [["sensor", 3]]
+    },
+    {
+      "id": "q15-number-decibel",
+      "category": "technical_number",
+      "query": "40데시벨 이하 소음",
+      "relevant": [["battery", 12]]
+    },
+    {
+      "id": "q16-exact-ip67",
+      "category": "exact_terminology",
+      "query": "방수 등급 IP67",
+      "relevant": [["sensor", 9]]
+    },
+    {
+      "id": "q17-exact-moving-average",
+      "category": "exact_terminology",
+      "query": "이동 평균과 표준편차",
+      "relevant": [["sensor", 6]]
+    },
+    {
+      "id": "q18-irrelevant-coffee",
+      "category": "irrelevant",
+      "query": "커피 원두 로스팅 온도 프로파일 관리",
+      "relevant": []
+    },
+    {
+      "id": "q19-irrelevant-equities",
+      "category": "irrelevant",
+      "query": "주식 시장 변동성 분석 알고리즘",
+      "relevant": []
+    }
+  ]
+}
