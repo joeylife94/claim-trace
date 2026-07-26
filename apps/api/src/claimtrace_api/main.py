@@ -8,15 +8,21 @@ from contextlib import asynccontextmanager
 from http import HTTPStatus
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from claimtrace_api.api.health import router as health_router
 from claimtrace_api.api.v1.router import api_router
 from claimtrace_api.core.config import Settings, get_settings
+from claimtrace_api.core.errors import IngestionError
 from claimtrace_api.core.logging import configure_logging
 from claimtrace_api.db.session import create_engine, create_session_factory
+from claimtrace_api.parsing.pymupdf_parser import PyMuPDFDocumentParser
+from claimtrace_api.schemas.documents import DocumentResponse, IngestionErrorResponse
 from claimtrace_api.schemas.errors import ErrorResponse
+from claimtrace_api.services.ingestion import DocumentIngestionError
+from claimtrace_api.storage.local import LocalFileStorage
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
     app.state.engine = create_engine(settings)
     app.state.session_factory = create_session_factory(app.state.engine)
+    # Created once: both are stateless and cheap to share across requests.
+    settings.storage_root.mkdir(parents=True, exist_ok=True)
+    app.state.storage = LocalFileStorage(settings.storage_root)
+    app.state.parser = PyMuPDFDocumentParser()
     logger.info(
         "application started",
         extra={"environment": settings.environment, "version": settings.app_version},
@@ -40,6 +50,31 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         await app.state.engine.dispose()
         logger.info("application stopped")
+
+
+async def ingestion_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Translate an ingestion failure into its documented status and error code.
+
+    The message is written for the end user and carries no path, query, or
+    document text. When the failure happened after the file was stored, the
+    traceable document record travels with the error.
+    """
+    assert isinstance(exc, IngestionError)  # noqa: S101 - handler is registered for this type
+    document = (
+        DocumentResponse.model_validate(exc.document)
+        if isinstance(exc, DocumentIngestionError)
+        else None
+    )
+    logger.info(
+        "ingestion request rejected",
+        extra={"path": request.url.path, "error_code": exc.code.value},
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=jsonable_encoder(
+            IngestionErrorResponse(detail=exc.message, error_code=exc.code.value, document=document)
+        ),
+    )
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -78,6 +113,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.add_exception_handler(IngestionError, ingestion_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
     app.include_router(health_router)
