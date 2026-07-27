@@ -64,3 +64,14 @@ data/
 uploads/
 *.pdf
 !apps/api/tests/**/*.py
+
+# The synthetic evaluation corpora are source, not user data: newly authored
+# JSON with nothing confidential in it. The broad `data/` rule above was
+# swallowing them, which left `evals/data/*.json` untracked even though
+# `evals/dataset.py`, `evals/grounded_dataset.py`, and the retrieval and
+# grounded integration tests all read them - so a fresh clone had a failing
+# suite for a reason that was invisible in the diff. The directory has to be
+# re-included before the files, because git will not descend into an excluded
+# directory to find a negated pattern.
+!apps/api/evals/data/
+!apps/api/evals/data/*.json

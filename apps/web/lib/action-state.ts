@@ -77,6 +77,28 @@ export const INITIAL_LLM_STRUCTURED_STATE: LLMStructuredState = {
   prompt: "",
 };
 
+export type GroundedAnswerState = {
+  status: "idle" | "answered" | "error";
+  message: string;
+  /** Present only on `status: "answered"`; null while idle or after an error. */
+  answer: import("@/lib/grounded").GroundedAnswer | null;
+  /** Echoed back so the form keeps what the user asked after a submission. */
+  question: string;
+  mode: import("@/lib/search").RetrievalMode;
+  documentId: string;
+  topK: number;
+};
+
+export const INITIAL_GROUNDED_STATE: GroundedAnswerState = {
+  status: "idle",
+  message: "",
+  answer: null,
+  question: "",
+  mode: "hybrid",
+  documentId: "",
+  topK: 6,
+};
+
 export const INITIAL_SEARCH_STATE: SearchClaimsState = {
   status: "idle",
   message: "",

@@ -28,17 +28,22 @@ routinely confidential.
 
 ## Current implementation scope
 
-This repository is at **Phase 4A-1: local LLM provider boundary**. A text-based
+This repository is at **Phase 4A-2: evidence-grounded generation**. A text-based
 Korean patent PDF can be uploaded, stored, parsed into page text, parsed again
-into a claim graph, indexed with a local multilingual embedding model, and then
-searched - by meaning, by wording, or both - with every result resolving back to
-the exact page and character range it came from.
+into a claim graph, indexed with a local multilingual embedding model, searched -
+by meaning, by wording, or both - and now *asked questions about*, with every
+statement in the answer carrying a citation that resolves back to the exact page
+and character range it came from.
 
-Phase 4A-1 adds the ability to *generate* with a local model, and deliberately
-nothing that uses it. There is no evidence-grounded answering, no claim analysis,
-and no citation yet - that is Phase 4A-2. What exists is a provider boundary, an
-Ollama adapter, an OpenAI-compatible (vLLM) adapter, a deterministic fake, and a
-narrow diagnostics surface to prove it works.
+Phase 4A-2 connects the Phase 4A-1 model boundary to Phase 3A retrieval. The
+mechanism is one inversion: **the model may not name a source, only select from
+sources the server named for it.** It is shown a numbered list of retrieved claim
+texts and answers with the numbers; the server resolves those numbers back to the
+claim spans it already held. A model cannot fabricate a page number here because
+the output schema has nowhere to put one, and cannot fabricate a citation because
+an identifier the server never issued resolves to nothing.
+
+Still no legal conclusion: this phase answers *about* retrieved claim text.
 
 **Implemented**
 
@@ -82,6 +87,15 @@ narrow diagnostics surface to prove it works.
   policy, timeout control, and schema-constrained JSON output
 - LLM diagnostics: `GET /api/v1/llm/status`, two development-only generation
   endpoints, and a `/llm` page showing provider, capabilities, and limits
+- `POST /api/v1/grounded/answers`: evidence-grounded answering over Phase 3A
+  retrieval, where the model selects only server-issued evidence identifiers and
+  every returned citation resolves to a stored `(document_id, page_number,
+  start_char, end_char)` span with its quote read from the stored page text
+- A `/grounded` workspace rendering answers as cited statements, with evidence
+  badges and locator links into the existing page viewer
+- A two-tier grounded-generation evaluation (deterministic pipeline oracle, and
+  a real local model) over a newly authored synthetic Korean corpus, including an
+  adversarial document and a hostile-payload guardrail suite
 - `docker compose` development environment (api, web, postgres) with health checks,
   plus an optional `llm` profile for a bundled Ollama
 - Test suite that needs no network or model provider; the PostgreSQL-backed tier
@@ -91,9 +105,8 @@ narrow diagnostics surface to prove it works.
 **Not implemented yet** - deliberately, see [docs/ROADMAP.md](docs/ROADMAP.md):
 OCR and scanned-document recovery, bibliographic/abstract/description section
 parsing, claim element decomposition, description-level chunking, reranking,
-evidence-grounded generation and citation, evidence comparison, chat and
-conversation history, streaming, tool calling, authentication, background queues,
-and any deployment tooling.
+claim-to-claim comparison, chat and conversation history, streaming, tool
+calling, authentication, background queues, and any deployment tooling.
 
 ## Architecture overview
 
@@ -189,6 +202,10 @@ curl -X POST http://localhost:8000/api/v1/search/claims \
 
 # Local LLM provider status (works with the default fake provider)
 curl http://localhost:8000/api/v1/llm/status
+
+# Ask a grounded question. Every statement comes back with citations that
+# resolve to stored page text. Works with the default fake provider too.
+curl -X POST http://localhost:8000/api/v1/grounded/answers      -H 'Content-Type: application/json'      -d '{"query":"통신부는 어떤 모듈을 포함하는가?","top_k":6}'
 ```
 
 The **first** index request downloads the embedding model (about 940 MB into the
@@ -300,6 +317,17 @@ example file contains local placeholders only.
 | `LLM_MAX_OUTPUT_TOKENS` | `1024` | Ceiling on requested output; a larger request is clamped |
 | `LLM_DIAGNOSTICS_ENABLED` | unset | Unset follows `ENVIRONMENT` (on in development, off elsewhere); `true`/`false` override |
 | `OLLAMA_PORT` | `11434` | Host port published by the optional `llm` Compose profile |
+| `GROUNDED_GENERATION_ENABLED` | `true` | Product surface, so on everywhere. Off serves retrieval without generation |
+| `GROUNDED_MAX_EVIDENCE_CANDIDATES` | `6` | Retrieved claims that may enter the prompt |
+| `GROUNDED_MAX_EVIDENCE_CHARACTERS` | `5000` | Total rendered evidence. A claim that will not fit is dropped whole, never truncated |
+| `GROUNDED_MAX_QUESTION_CHARACTERS` | `512` | Oversized questions are rejected, not truncated |
+| `GROUNDED_MAX_STATEMENTS` | `8` | Re-checked after generation: constrained decoding enforces structure, not values |
+| `GROUNDED_MAX_STATEMENT_CHARACTERS` | `600` | Per-statement ceiling, also re-checked after generation |
+| `GROUNDED_MAX_EVIDENCE_IDS_PER_STATEMENT` | `4` | Citations one statement may carry |
+| `GROUNDED_TEMPERATURE` | `0.0` | Greedy: an extraction task with a fixed shape needs no sampling diversity |
+| `GROUNDED_MAX_OUTPUT_TOKENS` | `1024` | Ceiling on the generated answer |
+| `GROUNDED_TIMEOUT_SECONDS` | `150` | Still bounded by `LLM_MAX_TIMEOUT_SECONDS`, which nothing may raise |
+| `GROUNDED_REPAIR_MAX_ATTEMPTS` | `1` | Bounded corrective attempts for a grounding-rule violation. `0` disables repair |
 
 Only `NEXT_PUBLIC_*` variables reach the browser bundle. Never put a credential
 behind that prefix. `LLM_OPENAI_COMPATIBLE_API_KEY` is a `SecretStr`: it is
@@ -660,14 +688,196 @@ Provider diagnostics are runtime infrastructure, not domain data, and persisting
 prompts and completions would create a store of confidential patent text that no
 feature depends on. The schema stays at revision `0004`.
 
+## Evidence-grounded answers
+
+`POST /api/v1/grounded/answers`, and the `/grounded` page. Ask a question; get
+back statements that each cite claims retrieved from your own indexed documents,
+with every citation resolving to the exact page and character range it came from.
+
+### The model never names a source
+
+The obvious design - ask for an answer with citations, then check them - does not
+work. A model asked for a page number will produce one, and a plausible-but-wrong
+locator is indistinguishable from a right one until somebody opens the document.
+Checking afterwards gives you a filter, not a guarantee.
+
+So the model is never given a field to put a locator in, and never given the raw
+material for one:
+
+1. The question goes through the **same Phase 3A retrieval** the search endpoint
+   uses. There is no second retriever and no private query path.
+2. The retrieved claims become a request-local **evidence catalog**: `EV-001`,
+   `EV-002`, and so on, assigned by position and by nothing else.
+3. The prompt contains those claims' text, document names, claim numbers, types,
+   and dependencies - and **no page number, no offset, no document id, no claim
+   id, and no retrieval score**.
+4. The model answers with a fixed JSON schema whose only citation field is a list
+   of evidence identifiers.
+5. Every identifier is checked against the catalog, exactly, with no trimming and
+   no fuzzy matching. Anything unissued is rejected.
+6. Surviving identifiers resolve to the `claim_spans` the server already held,
+   and each quote is read out of `document_pages.text` at those offsets.
+
+`EV-999` is not a fabricated citation; it is a name for nothing, and the answer
+is refused. The canonical coordinate is unchanged: `(document_id, page_number,
+start_char, end_char)`, half-open. **No second citation system was introduced.**
+
+### The answer is assembled by the server
+
+The output schema has **no free-form answer field**. Every sentence arrives
+attached to at least one evidence identifier, and the server concatenates the
+ones that validated.
+
+That omission is load-bearing. An uncited summary field would be the field that
+got rendered - it reads best, it always has content, and no citation check blocks
+it - and the grounding guarantee would quietly become decorative.
+
+### "I cannot answer this" is a successful response
+
+`insufficient_evidence: true` comes back as **200**, with a fixed server-owned
+sentence explaining which of four reasons applies. It is the correct answer to a
+great many questions, and it is returned in preference to a plausible answer that
+nothing supports.
+
+Retrieval returning nothing does not reach the model at all - asking a model to
+answer from an empty evidence list is asking it to answer from memory.
+
+Invalid model output is a different thing and is *not* insufficient evidence: a
+fabricated identifier is a `502`, because the provider produced something
+unusable.
+
+### Whole claims, or none
+
+Evidence is bounded by `GROUNDED_MAX_EVIDENCE_CHARACTERS`. A claim that will not
+fit is dropped, and the omission is counted and reported - it is never truncated.
+
+Truncating would be worse than it looks. A half-included claim still carries an
+identifier, so the model can cite it, and the server would resolve that citation
+to the *whole* stored span - a perfect-looking source link to text that was never
+in evidence.
+
+### One repair attempt, with no echo
+
+An answer that parses but breaks a grounding rule (unknown identifier, missing
+citation, contradictory flags) gets one bounded corrective attempt, reusing the
+same evidence. The feedback names the rule and lists the identifiers that exist;
+it never quotes the rejected output. Retrieval is not re-run. Provider timeouts
+and unreachable servers are never "repaired".
+
+### Untrusted document text
+
+Patent text is untrusted input, and here that is plainly true - a claim can come
+from a document an opponent filed. Evidence blocks are escaped and clearly
+delimited, the system prompt is fixed and unreachable from any request, and no
+request field can set a provider, model, schema, or prompt.
+
+**This does not make the system immune to prompt injection, and it is not claimed
+to.** A persuasive payload can make a small model answer wrongly. What it cannot
+do is make the server *cite* something: `EV-999` is not in the catalog no matter
+what any document says. The evaluation corpus includes a document whose every
+claim carries an injection payload, and it is retrieved, cited, and resolved like
+any other.
+
+### What a citation proves, and what it does not
+
+A resolved citation establishes that the statement points at retrieved source
+text, that the text is stored here, and that you can open the exact range it came
+from.
+
+It does **not** establish that the cited claim entails the statement. No amount
+of identifier checking can prove a sentence is a faithful reading of the text it
+cites. **A grounded answer is a checkable answer, not a verified one.** This
+caveat is attached to every response as a warning rather than left in the docs.
+
+### Nothing is persisted, and no migration was added
+
+The question, prompt, catalog, draft, statements, citations, and token usage are
+all request-scoped and dropped. Persisting them would create a store of
+confidential questions and unvalidated model output that no feature needs. The
+schema stays at revision `0004`, and a test asserts that no grounded table exists.
+
+Logs carry counts and codes only - question *length* and a short irreversible
+hash prefix, evidence counts, provider, model, duration, repair attempts,
+statement and citation counts. Never the question, the claims, the prompt, the
+statements, or the quotes.
+
+### It works with no model server
+
+`LLM_PROVIDER=fake` satisfies the grounded schema, so the endpoint and the
+`/grounded` page are fully exercisable offline. The answer is deterministic
+plumbing rather than analysis - which is the point of having it.
+
+### Evaluation
+
+Two tiers over 23 newly authored synthetic Korean claims across 3 documents and
+16 labelled questions. Results are committed under
+`apps/api/evals/results/grounded/`.
+
+```bash
+docker compose up -d postgres
+docker compose run --rm api python -m evals.grounded_run                # deterministic
+docker compose run --rm api python -m evals.grounded_run --tier ollama  # real model
+```
+
+The **deterministic tier** replaces the model with an in-process oracle that
+reads the evidence it was actually given. It measures the *pipeline*, not a
+model, and must not be quoted as a model result:
+
+| Metric | Value |
+| --- | --- |
+| Structured-output success | 1.000 |
+| Answerability accuracy | 1.000 |
+| Insufficient-evidence precision / recall | 1.000 / 1.000 |
+| **Citation resolution** | **1.000** |
+| Evidence selection precision / recall | 1.000 / 0.917 |
+| End-to-end success | 0.938 (15/16) |
+| Hostile payloads refused | **6/6** |
+
+The **real `qwen2.5:1.5b` tier**, 16 cases, mean 7.7 s per question on CPU:
+
+| Metric | Value |
+| --- | --- |
+| Structured-output success | 1.000 |
+| **Citation resolution** | **1.000** |
+| Evidence-ID validity | 0.938 |
+| Statement citation coverage | 1.000 |
+| Forbidden (out-of-scope) citations | **0** |
+| Answerability accuracy | 0.625 |
+| Evidence selection precision / recall | 0.530 / 0.792 |
+| End-to-end success | 0.563 |
+
+Read that pair the right way round. **Every guarantee this phase makes held on
+every case**: no citation failed to resolve, no scoped question cited outside its
+document, and the one answer that fabricated an identifier was refused with a 502
+rather than served. What the small model is bad at is *judgement* - it answered
+two scoped questions the corpus does not answer, and hedged on three that it
+does. Those are model-quality failures, and they are exactly the failures a
+grounding mechanism is not supposed to hide.
+
+A 23-claim synthetic corpus establishes that the pipeline is wired correctly and
+catches gross regressions. It does **not** establish production-grade
+groundedness, and none of these numbers should be quoted as if it did.
+
 ## Current limitations
 
 - Retrieval stops at claims. No bibliographic/abstract/description parsing, no
   claim element decomposition, no description-level chunking, and no reranking -
   see [docs/ROADMAP.md](docs/ROADMAP.md).
-- Generation exists but nothing uses it. The LLM is not connected to retrieval:
-  no grounded answering, no citations, no analysis. Phase 4A-2.
-- No streaming, tool calling, chat history, or conversation memory.
+- A resolved citation proves a statement points at retrieved source text. It does
+  **not** prove the cited text entails the statement - that is a semantic
+  judgement this pipeline does not make. Read answers against their sources.
+- Grounded answers cite whole claims, because claim element decomposition is
+  Phase 2C. An answer about one limitation still points at the entire claim.
+- No reranking, so a claim ranked just outside the evidence budget is simply
+  absent from the answer. The evaluation contains a real instance of this.
+- Prompt injection is bounded, not prevented. A payload inside claim text can
+  make a small model answer wrongly; it cannot make the server cite anything the
+  server did not issue. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.
+- The small validated model (`qwen2.5:1.5b`) is weak at judging whether evidence
+  actually answers a question - it over-answers scoped questions and hedges on
+  others. The grounding guarantees held on every case; its judgement did not.
+- No streaming, tool calling, chat history, or conversation memory. `/grounded`
+  is not a chat: one question, one answer, no follow-up.
 - The OpenAI-compatible adapter is contract-tested only; no real vLLM server has
   been run.
 - Generation is synchronous and in-request, bounded by `LLM_MAX_TIMEOUT_SECONDS`.
@@ -711,7 +921,8 @@ Summarised from [docs/ROADMAP.md](docs/ROADMAP.md):
 | 2B | Deterministic claim structural parsing and dependency graph - **complete** |
 | 3A | Claim indexing, pgvector, hybrid retrieval, RRF - **complete** |
 | 4A-1 | Local LLM provider boundary (Ollama + OpenAI-compatible vLLM + deterministic fake) - **complete** |
-| 4A-2 | Evidence-grounded generation over Phase 3A retrieval, with structured citations resolving only to stored source locators |
+| 4A-2 | Evidence-grounded generation over Phase 3A retrieval, with citations resolving only to stored source locators - **complete** |
+| 5A | Claim comparison workspace: two documents, claim-to-claim evidence-grounded mapping, no legal conclusion |
 | 2C | Claim element decomposition schema and deterministic review boundary |
 | 3B | Description-level chunking and optional cross-encoder reranking |
 | 5 | Claim decomposition and element-level evidence comparison, with grounding enforced |

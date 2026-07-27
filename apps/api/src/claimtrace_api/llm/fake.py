@@ -67,6 +67,10 @@ class FakeLLMProvider:
         structured_text: raw text returned by structured calls, *before*
             parsing. Set it to malformed JSON or to a valid-JSON-wrong-shape
             payload to drive those failure paths through the real pipeline.
+            A sequence is consumed one entry per call and its last entry
+            repeats, exactly like ``text`` - which is how a test scripts a
+            rejected answer followed by a corrected one, and therefore how the
+            grounded repair path is exercised with no model and no network.
             When ``None``, a payload satisfying the requested schema is
             synthesised, which is what makes the fake usable end to end.
         fail_with: error raised instead of answering.
@@ -79,7 +83,7 @@ class FakeLLMProvider:
     """
 
     text: str | Sequence[str] = DEFAULT_TEXT
-    structured_text: str | None = None
+    structured_text: str | Sequence[str] | None = None
     model: str = "fake-model"
     model_version: str = "1"
     fail_with: LLMError | None = None
@@ -170,11 +174,7 @@ class FakeLLMProvider:
         await self._pause()
         self._maybe_fail(attempt)
 
-        raw = (
-            self.structured_text
-            if self.structured_text is not None
-            else _synthesize_json(json_schema_for(output_model))
-        )
+        raw = self._next_structured_text(attempt, output_model)
 
         # Deliberately the same parser the real adapters use. A test that feeds
         # this provider malformed JSON is testing the production pipeline, not a
@@ -210,9 +210,22 @@ class FakeLLMProvider:
             return self.text
         if not self.text:
             return ""
+        return self._scripted(self.text, attempt)
+
+    def _next_structured_text(self, attempt: int, output_model: type[BaseModel]) -> str:
+        if self.structured_text is None:
+            return _synthesize_json(json_schema_for(output_model))
+        if isinstance(self.structured_text, str):
+            return self.structured_text
+        if not self.structured_text:
+            return ""
+        return self._scripted(self.structured_text, attempt)
+
+    @staticmethod
+    def _scripted(entries: Sequence[str], attempt: int) -> str:
         # Clamps rather than wraps: a scripted sequence that runs out should keep
         # answering with its final entry, not silently restart from the top.
-        return self.text[min(attempt - 1, len(self.text) - 1)]
+        return entries[min(attempt - 1, len(entries) - 1)]
 
     def _response(
         self,
@@ -257,6 +270,16 @@ def _synthesize_value(schema: dict[str, Any], root: dict[str, Any]) -> Any:
 
     if "enum" in schema and schema["enum"]:
         return schema["enum"][0]
+
+    # A declared example is by construction a legal value, which is more than
+    # can be derived from a `pattern`: synthesising a string that satisfies an
+    # arbitrary regex is not something this function should attempt, and getting
+    # it subtly wrong would make the fake provider fail schemas the real ones
+    # satisfy. Schemas that constrain a string's shape declare an example for
+    # exactly this reason - see the evidence id field in grounding/draft.py.
+    examples = schema.get("examples")
+    if isinstance(examples, list) and examples:
+        return examples[0]
 
     # anyOf/oneOf appear for optional fields; the first non-null branch is the
     # one that exercises the schema rather than sidestepping it.

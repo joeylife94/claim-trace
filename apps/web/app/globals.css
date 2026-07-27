@@ -585,3 +585,78 @@ td.numeric {
   color: var(--error);
   border-color: currentColor;
 }
+
+/* --- Evidence-grounded answers (Phase 4A-2) ------------------------------ */
+
+/* An answer is a list of statements, not a paragraph. The numbering is the
+   point: each item is a separate assertion that had to earn its own citation,
+   and running them together as prose would hide which claim supports which
+   sentence - the one thing a reader is here to check. */
+.grounded-statements {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.grounded-statement-text {
+  margin: 0 0 0.35rem;
+  line-height: 1.6;
+}
+
+/* The server's own limitation sentence, shown above a refused or partial
+   answer. Toned like a warning rather than an error: "the evidence does not
+   answer this" is a correct result, not a failure. */
+.grounded-limitation {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--pending);
+  background: color-mix(in srgb, var(--pending) 8%, transparent);
+  line-height: 1.6;
+}
+
+.evidence-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.evidence-badge {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--foreground);
+}
+
+.evidence-badge:hover {
+  border-color: var(--accent);
+}
+
+/* Stored page text at the locator beside it, read by the server rather than
+   reproduced by the model. Rendered with `pre-wrap` so the extracted spacing a
+   citation is measured in is what the reader sees. */
+.evidence-quote {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.grounded-warnings {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.grounded-run-summary {
+  margin-top: 0.75rem;
+}

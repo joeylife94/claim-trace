@@ -70,6 +70,31 @@ class ErrorCode(StrEnum):
     #: The diagnostics endpoints are turned off for this deployment.
     LLM_DIAGNOSTICS_DISABLED = "llm_diagnostics_disabled"
 
+    # Evidence-grounded generation (Phase 4A-2).
+    #
+    # Note what is *not* here: insufficient evidence. A question the retrieved
+    # claims do not answer is a correct, useful, 200 result - giving it an error
+    # code would train a client to render the system's most honest answer as a
+    # failure.
+    #: The question, or the highest-ranked claim on its own, exceeds the
+    #: configured context budget. Dropping lower-ranked evidence cannot help.
+    GROUNDED_CONTEXT_TOO_LARGE = "grounded_context_too_large"
+    #: The model returned a structurally valid answer that broke a grounding
+    #: rule, and repair was not available.
+    GROUNDED_OUTPUT_INVALID = "grounded_output_invalid"
+    #: The model cited an identifier this request never issued. Kept distinct
+    #: from the general invalid-output code because it is the single failure
+    #: this phase exists to make impossible to serve, and an operator watching
+    #: for it should not have to grep a message.
+    GROUNDED_UNKNOWN_EVIDENCE_ID = "grounded_unknown_evidence_id"
+    #: A validated citation could not be resolved against stored page text.
+    #: A data-integrity failure, never something the caller did.
+    GROUNDED_CITATION_RESOLUTION_FAILED = "grounded_citation_resolution_failed"
+    #: Grounded answering is configured off, or its provider cannot serve it.
+    GROUNDED_GENERATION_UNAVAILABLE = "grounded_generation_unavailable"
+    #: The corrective attempt was spent and the answer still broke a rule.
+    GROUNDED_REPAIR_FAILED = "grounded_repair_failed"
+
     # Lookup and internal failures.
     DOCUMENT_NOT_FOUND = "document_not_found"
     STORAGE_FAILURE = "storage_failure"
@@ -120,6 +145,15 @@ ERROR_STATUS: dict[ErrorCode, HTTPStatus] = {
     ErrorCode.LLM_UNSUPPORTED_CAPABILITY: HTTPStatus.NOT_IMPLEMENTED,
     ErrorCode.LLM_INTERNAL_PROVIDER_ERROR: HTTPStatus.BAD_GATEWAY,
     ErrorCode.LLM_DIAGNOSTICS_DISABLED: HTTPStatus.NOT_FOUND,
+    # Grounded generation. The split mirrors the LLM one: 422 for a request
+    # that cannot be served as asked, 502 for a provider that answered with
+    # something unusable, 500 for our own data disagreeing with itself.
+    ErrorCode.GROUNDED_CONTEXT_TOO_LARGE: HTTPStatus.UNPROCESSABLE_ENTITY,
+    ErrorCode.GROUNDED_OUTPUT_INVALID: HTTPStatus.BAD_GATEWAY,
+    ErrorCode.GROUNDED_UNKNOWN_EVIDENCE_ID: HTTPStatus.BAD_GATEWAY,
+    ErrorCode.GROUNDED_CITATION_RESOLUTION_FAILED: HTTPStatus.INTERNAL_SERVER_ERROR,
+    ErrorCode.GROUNDED_GENERATION_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
+    ErrorCode.GROUNDED_REPAIR_FAILED: HTTPStatus.BAD_GATEWAY,
     ErrorCode.DOCUMENT_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.STORAGE_FAILURE: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,

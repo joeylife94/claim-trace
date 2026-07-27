@@ -183,6 +183,52 @@ class Settings(BaseSettings):
     # an explicit true or false overrides that.
     llm_diagnostics_enabled: bool | None = None
 
+    # --- Evidence-grounded generation (Phase 4A-2) --------------------------
+    # How many retrieved claims may enter the prompt. Small on purpose: a local
+    # 1.5B model asked to pick citations from twenty claims picks worse than one
+    # asked to pick from six, and every extra claim is context spent on evidence
+    # that retrieval already ranked below the ones above it.
+    grounded_max_evidence_candidates: int = 6
+
+    # Total rendered evidence characters. Sized to leave room for the system
+    # instructions, the question, and a repair instruction inside
+    # LLM_MAX_PROMPT_CHARACTERS - the generation service rejects an over-long
+    # prompt outright, so these two settings have to be moved together.
+    grounded_max_evidence_characters: int = 5000
+
+    grounded_max_question_characters: int = 512
+
+    # Post-generation ceilings. They duplicate the draft schema's bounds because
+    # schema-constrained decoding enforces structure, not values: the schema
+    # asks for at most eight statements, and this is what checks.
+    grounded_max_statements: int = 8
+    grounded_max_statement_characters: int = 600
+    grounded_max_evidence_ids_per_statement: int = 4
+
+    # Greedy decoding. An extraction task with a fixed output shape has no use
+    # for sampling diversity, and a deterministic temperature makes a weak answer
+    # reproducible instead of intermittent.
+    grounded_temperature: float = 0.0
+    grounded_max_output_tokens: int = 1024
+
+    # Longer than a diagnostics call: a grounded prompt carries several claims,
+    # and a small model on CPU reads them at a few hundred tokens a second.
+    # Still bounded by LLM_MAX_TIMEOUT_SECONDS, which nothing may raise.
+    grounded_timeout_seconds: float = 150.0
+
+    # One bounded corrective attempt for an answer that broke a grounding rule.
+    # Zero disables repair entirely. Anything above one buys very little: a model
+    # that ignores an explicit list of the only legal ids twice is not going to
+    # be talked round on the third pass, and the caller is waiting.
+    grounded_repair_max_attempts: int = 1
+
+    # Grounded answering is product surface rather than diagnostics, so it is on
+    # by default in every environment. The switch exists for a deployment that
+    # wants retrieval without generation - and for turning it off when the
+    # provider is known to be down, rather than letting every request discover
+    # that for itself.
+    grounded_generation_enabled: bool = True
+
     @field_validator(
         "cors_allow_origins",
         "upload_allowed_content_types",
