@@ -76,7 +76,7 @@ test-docker: ## Run the backend test suite in the api container, including the P
 test-unit: ## Run only the tests that need no database
 	cd $(API_DIR) && uv run pytest -m "not integration"
 
-verify-v1-02: ## Run the exact Claim Comparison Backend closure gates in Docker
+verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Docker
 	$(COMPOSE) run --rm api pytest \
 		tests/test_claim_comparison_service.py \
 		tests/test_claim_comparison_edge_cases.py \
