@@ -9,6 +9,7 @@ correspondence and provenance only; there is no field for a legal conclusion.
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -72,5 +73,6 @@ class ClaimComparisonResponse(BaseModel):
     profile: RetrievalProfileResponse
     searched_index_run_count: int
     no_correspondence_found: bool
+    no_correspondence_reason: Literal["reference_not_indexed", "no_matches"] | None = None
     match_count: int
     matches: list[ComparisonMatchResponse] = Field(default_factory=list)
