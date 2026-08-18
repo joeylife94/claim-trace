@@ -116,11 +116,13 @@ class ClaimComparisonService:
         # Search already scopes by index run. Keep a second service-level invariant
         # because returning one claim from a different document would turn a
         # comparison into a provenance leak rather than merely a ranking defect.
-        leaked = [result for result in outcome.results if result.document_id != reference_document_id]
-        if leaked:
+        if any(result.document_id != reference_document_id for result in outcome.results):
             raise AppError(
                 ErrorCode.INTERNAL_ERROR,
-                "Claim comparison retrieval returned evidence outside the requested reference document.",
+                (
+                    "Claim comparison retrieval returned evidence outside the requested "
+                    "reference document."
+                ),
             )
 
         if outcome.results:
