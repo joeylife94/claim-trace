@@ -293,16 +293,18 @@ Known uncertainty or follow-up work.
 - target/reference results preserve canonical source spans;
 - explicit `reference_not_indexed` vs `no_matches` state exists;
 - database-free service and API contract tests cover scope, request validation, and source-locator response shape;
-- **added `apps/api/tests/test_claim_comparison_integration.py`** using the committed two-document synthetic corpus;
-- integration coverage now specifies both-direction reference scoping and exact target/reference span resolution against persisted page text.
+- added `apps/api/tests/test_claim_comparison_integration.py` using the committed two-document synthetic corpus;
+- integration coverage specifies both-direction reference scoping and exact target/reference span resolution against persisted page text;
+- refined the new integration test file to conform to the repository Ruff `line-length = 100` convention before runtime execution.
 
 ### What was actually executed
 
 - read this master before changes;
-- re-inspected `ClaimComparisonService`, comparison schema/API, and `ClaimSearchService` document-scoping implementation;
-- inspected existing PostgreSQL retrieval integration fixtures and provenance assertions before adding comparison integration coverage;
-- wrote `test_claim_comparison_integration.py` to GitHub `main` at commit `357352a9f0eb79c0a9f78b8edd0e36ea5ed527c9`;
-- attempted a clean public `git clone` again; execution environment still failed before clone with `Could not resolve host: github.com`.
+- re-inspected `ClaimComparisonService`, comparison schema/API, `ClaimSearchService`, retrieval integration fixtures, and `apps/api/pyproject.toml` Ruff configuration;
+- wrote PostgreSQL-backed comparison integration coverage to GitHub `main` at `357352a9f0eb79c0a9f78b8edd0e36ea5ed527c9`;
+- statically inspected the created test file and corrected formatting-risk lines at `c75aeaeb32f608cda19c80a4c314f3f4898420f6`;
+- attempted a clean public `git clone` again; execution environment still failed before clone with `Could not resolve host: github.com`;
+- checked GitHub combined status for `c75aeaeb32f608cda19c80a4c314f3f4898420f6`: no status checks were present.
 
 ### What was not verified
 
@@ -315,8 +317,8 @@ Known uncertainty or follow-up work.
 
 ### Remaining risks
 
-- comparison code and the new integration tests remain runtime-unverified because the execution environment cannot fetch the repository;
-- integration tests may still expose import/style/runtime defects when first executed;
+- comparison code and integration tests remain runtime-unverified because the execution environment cannot fetch the repository;
+- integration tests may still expose import/runtime defects when first executed;
 - the core remaining V1-02 gate is executed verification, not additional feature scope;
 - `searched_index_run_count == 0` must later render clearly as unindexed/incompatible profile rather than ordinary no-match;
 - comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
@@ -336,7 +338,7 @@ Known uncertainty or follow-up work.
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT RUNTIME-VERIFIED | V1-02 |
 | Comparison database-free tests | WRITTEN, NOT EXECUTED | V1-02 |
-| Comparison PostgreSQL integration coverage | WRITTEN, NOT EXECUTED | strict scope + exact provenance |
+| Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
 | Current CI green | NOT PRESENT | V1-06 |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
