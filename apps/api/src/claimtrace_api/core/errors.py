@@ -95,6 +95,12 @@ class ErrorCode(StrEnum):
     #: The corrective attempt was spent and the answer still broke a rule.
     GROUNDED_REPAIR_FAILED = "grounded_repair_failed"
 
+    # Claim comparison (v1.0 hardening).
+    #: The requested comparison itself is contradictory, for example comparing
+    #: a document to itself when the product contract requires a target and a
+    #: distinct reference document.
+    COMPARISON_INVALID_REQUEST = "comparison_invalid_request"
+
     # Lookup and internal failures.
     DOCUMENT_NOT_FOUND = "document_not_found"
     STORAGE_FAILURE = "storage_failure"
@@ -154,6 +160,7 @@ ERROR_STATUS: dict[ErrorCode, HTTPStatus] = {
     ErrorCode.GROUNDED_CITATION_RESOLUTION_FAILED: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.GROUNDED_GENERATION_UNAVAILABLE: HTTPStatus.SERVICE_UNAVAILABLE,
     ErrorCode.GROUNDED_REPAIR_FAILED: HTTPStatus.BAD_GATEWAY,
+    ErrorCode.COMPARISON_INVALID_REQUEST: HTTPStatus.BAD_REQUEST,
     ErrorCode.DOCUMENT_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.STORAGE_FAILURE: HTTPStatus.INTERNAL_SERVER_ERROR,
     ErrorCode.INTERNAL_ERROR: HTTPStatus.INTERNAL_SERVER_ERROR,
