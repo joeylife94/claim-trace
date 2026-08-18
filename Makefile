@@ -78,6 +78,14 @@ test-unit: ## Run only the tests that need no database
 
 verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Docker
 	$(COMPOSE) build api
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) exec -T postgres sh -ec '\
+		for attempt in 1 2 3 4 5 6 7 8 9 10; do \
+			if pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" >/dev/null 2>&1; then exit 0; fi; \
+			sleep 1; \
+		done; \
+		echo "postgres did not become ready" >&2; \
+		exit 1'
 	$(COMPOSE) run --rm api pytest \
 		tests/test_claim_comparison_service.py \
 		tests/test_claim_comparison_edge_cases.py \
