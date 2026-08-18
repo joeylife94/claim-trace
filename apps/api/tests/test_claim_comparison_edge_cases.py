@@ -2,8 +2,8 @@
 
 These tests pin the remaining response distinctions needed by V1-02 without
 introducing another retrieval path: an indexed reference with zero candidates is
-``no_matches``, while missing or incomplete target parse/claim state remains an
-explicit error.
+``no_matches``, while missing documents or target parse/claim state remain explicit
+errors.
 """
 
 from __future__ import annotations
@@ -123,6 +123,21 @@ def _service(
     )
 
 
+def _service_with_known_documents(
+    *,
+    settings: Settings,
+    known_documents: set[uuid.UUID],
+) -> ClaimComparisonService:
+    return ClaimComparisonService(
+        session=FakeSession(known_documents),  # type: ignore[arg-type]
+        parsing=FakeParsingService(None),  # type: ignore[arg-type]
+        search=FakeSearchService(  # type: ignore[arg-type]
+            _empty_outcome(searched_index_run_count=0)
+        ),
+        settings=settings,
+    )
+
+
 @pytest.mark.asyncio
 async def test_indexed_reference_with_zero_candidates_is_no_matches(settings: Settings) -> None:
     target_document_id = uuid.uuid4()
@@ -146,6 +161,48 @@ async def test_indexed_reference_with_zero_candidates_is_no_matches(settings: Se
     assert outcome.searched_index_run_count == 1
     assert outcome.matches == []
     assert outcome.no_correspondence_reason == "no_matches"
+
+
+@pytest.mark.asyncio
+async def test_missing_target_document_is_explicit(settings: Settings) -> None:
+    target_document_id = uuid.uuid4()
+    reference_document_id = uuid.uuid4()
+    service = _service_with_known_documents(
+        settings=settings,
+        known_documents={reference_document_id},
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await service.compare(
+            target_document_id=target_document_id,
+            target_claim_number=1,
+            reference_document_id=reference_document_id,
+            mode=RetrievalMode.HYBRID,
+            top_k=5,
+        )
+
+    assert exc_info.value.code is ErrorCode.DOCUMENT_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_missing_reference_document_is_explicit(settings: Settings) -> None:
+    target_document_id = uuid.uuid4()
+    reference_document_id = uuid.uuid4()
+    service = _service_with_known_documents(
+        settings=settings,
+        known_documents={target_document_id},
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await service.compare(
+            target_document_id=target_document_id,
+            target_claim_number=1,
+            reference_document_id=reference_document_id,
+            mode=RetrievalMode.HYBRID,
+            top_k=5,
+        )
+
+    assert exc_info.value.code is ErrorCode.DOCUMENT_NOT_FOUND
 
 
 @pytest.mark.asyncio
