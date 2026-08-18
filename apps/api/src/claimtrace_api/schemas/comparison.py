@@ -9,7 +9,7 @@ correspondence and provenance only; there is no field for a legal conclusion.
 from __future__ import annotations
 
 import uuid
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -31,7 +31,7 @@ class ClaimComparisonRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=MAX_TOP_K)
 
     @model_validator(mode="after")
-    def _require_distinct_documents(self) -> "ClaimComparisonRequest":
+    def _require_distinct_documents(self) -> Self:
         if self.target_document_id == self.reference_document_id:
             raise ValueError("target and reference documents must be different")
         return self
