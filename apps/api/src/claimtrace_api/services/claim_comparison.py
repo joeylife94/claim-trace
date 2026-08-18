@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.core.config import Settings
 from claimtrace_api.core.errors import AppError, ErrorCode
-from claimtrace_api.db.models import ClaimSpan, ClaimType, Document
+from claimtrace_api.db.models import ClaimParseStatus, ClaimSpan, ClaimType, Document
 from claimtrace_api.indexing.profile import IndexProfile
 from claimtrace_api.retrieval.base import RetrievalMode
 from claimtrace_api.services.claim_parsing import ClaimParsingService
@@ -92,6 +92,13 @@ class ClaimComparisonService:
             raise AppError(
                 ErrorCode.CLAIM_PARSE_NOT_FOUND,
                 "The target document has not been parsed for claims yet.",
+            )
+        if snapshot.result.status is not ClaimParseStatus.COMPLETED:
+            raise AppError(
+                ErrorCode.CLAIM_PARSE_NOT_COMPLETED,
+                "Claim comparison needs a completed target claim parse result. "
+                f"This document's claim parsing finished with status "
+                f"'{snapshot.result.status.value}'.",
             )
 
         target_claim = next(
