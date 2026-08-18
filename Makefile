@@ -81,8 +81,11 @@ verify-v1-02: ## Run the exact Claim Comparison Backend closure gates in Docker
 		tests/test_claim_comparison_service.py \
 		tests/test_claim_comparison_edge_cases.py \
 		tests/test_claim_comparison_schema.py \
-		tests/test_claim_comparison_api.py \
-		tests/test_claim_comparison_integration.py
+		tests/test_claim_comparison_api.py
+	$(COMPOSE) run --rm api sh -ec '\
+		pytest -q --disable-warnings tests/test_claim_comparison_integration.py \
+			| tee /tmp/v1-02-integration.txt; \
+		grep -Eq "(^|, )3 passed(,| in|$$)" /tmp/v1-02-integration.txt'
 	$(COMPOSE) run --rm api ruff check .
 	$(COMPOSE) run --rm api ruff format --check .
 
