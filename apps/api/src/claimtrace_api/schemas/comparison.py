@@ -65,14 +65,50 @@ class ClaimComparisonResponse(BaseModel):
     ``no_correspondence_found`` means retrieval returned no claims from the selected
     reference document. It is not a legal statement about novelty, equivalence,
     infringement, validity, or patentability.
+
+    The response also owns the final representation-level invariants. The service
+    already refuses a retrieval scope leak, but enforcing the same rule here keeps a
+    future alternate caller or mapper from serialising contradictory provenance or
+    no-correspondence state.
     """
 
     target: ComparisonClaimResponse
     reference_document_id: uuid.UUID
     mode: RetrievalMode
     profile: RetrievalProfileResponse
-    searched_index_run_count: int
+    searched_index_run_count: int = Field(ge=0)
     no_correspondence_found: bool
     no_correspondence_reason: Literal["reference_not_indexed", "no_matches"] | None = None
-    match_count: int
+    match_count: int = Field(ge=0)
     matches: list[ComparisonMatchResponse] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _require_coherent_comparison_state(self) -> Self:
+        if self.target.document_id == self.reference_document_id:
+            raise ValueError("target and reference documents must be different")
+
+        if any(match.document_id != self.reference_document_id for match in self.matches):
+            raise ValueError("all comparison matches must belong to the reference document")
+
+        if self.match_count != len(self.matches):
+            raise ValueError("match_count must equal the number of matches")
+
+        has_matches = bool(self.matches)
+        if self.no_correspondence_found == has_matches:
+            raise ValueError("no_correspondence_found must be true exactly when matches are empty")
+
+        if has_matches:
+            if self.no_correspondence_reason is not None:
+                raise ValueError("no_correspondence_reason must be null when matches exist")
+            return self
+
+        if self.no_correspondence_reason is None:
+            raise ValueError("empty comparison results require a no_correspondence_reason")
+
+        if self.no_correspondence_reason == "reference_not_indexed":
+            if self.searched_index_run_count != 0:
+                raise ValueError("reference_not_indexed requires zero searched index runs")
+        elif self.searched_index_run_count == 0:
+            raise ValueError("no_matches requires at least one searched index run")
+
+        return self
