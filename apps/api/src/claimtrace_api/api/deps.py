@@ -19,6 +19,7 @@ from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
 from claimtrace_api.llm.base import LLMProvider
 from claimtrace_api.parsing.base import DocumentParser
 from claimtrace_api.parsing.claims.base import ClaimParser
+from claimtrace_api.services.claim_comparison import ClaimComparisonService
 from claimtrace_api.services.claim_indexing import ClaimIndexingService
 from claimtrace_api.services.claim_parsing import ClaimParsingService
 from claimtrace_api.services.claim_search import ClaimSearchService
@@ -147,6 +148,26 @@ def get_claim_search_service(
 
 
 ClaimSearchServiceDep = Annotated[ClaimSearchService, Depends(get_claim_search_service)]
+
+
+def get_claim_comparison_service(
+    session: SessionDep,
+    parsing: ClaimParsingServiceDep,
+    search: ClaimSearchServiceDep,
+    settings: SettingsDep,
+) -> ClaimComparisonService:
+    """Assemble bounded claim comparison from existing parse and search services."""
+    return ClaimComparisonService(
+        session=session,
+        parsing=parsing,
+        search=search,
+        settings=settings,
+    )
+
+
+ClaimComparisonServiceDep = Annotated[
+    ClaimComparisonService, Depends(get_claim_comparison_service)
+]
 
 
 def get_llm_service(provider: LLMProviderDep, settings: SettingsDep) -> LLMGenerationService:
