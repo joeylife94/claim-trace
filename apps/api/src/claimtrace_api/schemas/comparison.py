@@ -38,14 +38,20 @@ class ClaimComparisonRequest(BaseModel):
 
 
 class ComparisonClaimResponse(BaseModel):
-    """Stored claim text with its canonical source coordinates."""
+    """Stored claim text with canonical source coordinates from the same document."""
 
     document_id: uuid.UUID
     claim_number: int
     claim_type: ClaimType
     text: str
     depends_on: list[int] = Field(default_factory=list)
-    source_spans: list[SourceLocator]
+    source_spans: list[SourceLocator] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _require_source_span_document_identity(self) -> Self:
+        if any(span.document_id != self.document_id for span in self.source_spans):
+            raise ValueError("all claim source spans must belong to the claim document")
+        return self
 
 
 class ComparisonMatchResponse(ComparisonClaimResponse):
