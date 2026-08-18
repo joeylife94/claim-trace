@@ -152,6 +152,7 @@ Acceptance:
 - [x] target and reference documents must be distinct;
 - [x] target claim text is the comparison query, not arbitrary caller text;
 - [x] target comparison requires a completed claim parse result;
+- [x] unknown target/reference document handling is explicit in database-free edge coverage;
 - [x] retrieval is scoped to exactly one reference document;
 - [x] service performs a defensive second scope-leak check;
 - [x] target and reference results carry canonical source spans;
@@ -161,7 +162,7 @@ Acceptance:
 - [x] database-free service tests added for scope/no-index/same-document behavior;
 - [x] API contract tests added;
 - [x] PostgreSQL-backed integration tests added for strict reference scope and source-span resolution;
-- [x] edge-state tests added for `no_matches`, missing/incomplete target parse, and missing target claim;
+- [x] edge-state tests added for missing target/reference documents, `no_matches`, missing/incomplete target parse, and missing target claim;
 - [x] pure response-invariant tests added;
 - [ ] comparison pytest tests actually executed successfully;
 - [ ] Ruff/format checks actually executed successfully;
@@ -298,28 +299,28 @@ Known uncertainty or follow-up work.
 - database-free service/API/edge-state, response-invariant, and PostgreSQL-backed comparison tests exist;
 - hardened target-side lifecycle handling: a parse snapshot must be `ClaimParseStatus.COMPLETED`; `PROCESSING`, `NO_CLAIMS_FOUND`, and `FAILED` now produce `claim_parse_not_completed` instead of falling through to misleading claim lookup behavior;
 - updated existing comparison service test fixtures to model completed parse state explicitly;
-- added parametrized edge-state coverage for all three incomplete target parse statuses.
+- added parametrized edge-state coverage for all three incomplete target parse statuses;
+- added explicit database-free edge coverage for missing target and missing reference documents, both pinned to `ErrorCode.DOCUMENT_NOT_FOUND`.
 
 ### What was actually executed
 
 - read this master before changes;
-- inspected current comparison service/schema/API mapper, claim parsing snapshot behavior, indexing lifecycle handling, comparison service tests, edge-state tests, and error taxonomy;
+- re-inspected current comparison service, response schema, service tests, schema tests, and edge-state tests;
 - attempted a clean public `git clone`; environment again failed with `Could not resolve host: github.com`;
-- confirmed the execution environment currently has Python, Pydantic, FastAPI, SQLAlchemy, and pytest, but does not have Ruff, `psycopg`, or `pgvector`;
-- updated `claim_comparison.py` at commit `6588223fa3b3ab7cd4b8dc878b5d53580f55a193`;
-- updated `test_claim_comparison_service.py` at commit `418f7b5229b249f636b2ed4983017a9d493cf151`;
-- updated `test_claim_comparison_edge_cases.py` at commit `dc827a9217c18d3cf503dfb3c8cbeb6610811b92`;
-- performed syntax-level `python -m py_compile` checks on the locally reconstructed changed comparison source shape: **PASS**;
-- checked GitHub combined status for the latest source commit: no status checks are present.
+- confirmed the execution environment has no Docker runtime in this run;
+- updated `test_claim_comparison_edge_cases.py` at commit `2606e6aee49fff0a14940874bb2d5ee6ced6f44e`;
+- checked GitHub combined status for commit `2606e6aee49fff0a14940874bb2d5ee6ced6f44e`: no status checks are present.
 
 Earlier V1-02 executed evidence retained:
 
+- syntax-level `python -m py_compile` checks on locally reconstructed changed comparison source shape: **PASS**;
 - response-validator logic isolated execution: **PASS** for one coherent response and **PASS-by-rejection** for five contradictory responses;
 - schema source maximum line length measured at 99 against repository `line-length = 100`.
 
 ### What was not verified
 
 - repository comparison pytest tests were **not actually run** against the real package checkout;
+- the newly added missing-document tests were not pytest-executed;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
@@ -329,7 +330,8 @@ Earlier V1-02 executed evidence retained:
 
 ### Remaining risks
 
-- comparison code/tests remain runtime-unverified because this environment still cannot clone the repository and lacks `psycopg`/`pgvector`/Ruff;
+- comparison code/tests remain runtime-unverified because this environment still cannot clone the repository and lacks the full execution stack;
+- missing-document behavior is implemented by `_require_document` and now explicitly covered in source tests, but those tests still need actual pytest execution;
 - the new completed-parse guard is aligned with existing claim-indexing lifecycle semantics, but its repository tests still need actual pytest execution;
 - the strengthened response validator may expose mapper inconsistencies when real API tests first run; that is intentional but not yet verified;
 - integration tests may expose import/runtime/database defects when first executed;
@@ -350,6 +352,7 @@ Earlier V1-02 executed evidence retained:
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
+| Missing comparison documents | IMPLEMENTED + SOURCE TEST COVERAGE | pytest pending |
 | Completed target parse guard | IMPLEMENTED + STATICALLY REVIEWED | mirrors indexing lifecycle semantics; pytest pending |
 | Comparison database-free tests | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
