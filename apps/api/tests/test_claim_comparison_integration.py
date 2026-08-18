@@ -1,13 +1,14 @@
 """PostgreSQL-backed verification for bounded claim comparison.
 
-The comparison feature deliberately reuses the existing claim retrieval stack. These
-integration tests load the same synthetic two-document corpus used by retrieval tests,
-then assert the property V1-02 exists to guarantee: one stored target claim may retrieve
-textual correspondences only from the caller-selected reference document, and every
-returned target/reference span resolves exactly against persisted page text.
+The comparison feature deliberately reuses the existing claim retrieval stack.
+These integration tests load the same synthetic two-document corpus used by
+retrieval tests, then assert the property V1-02 exists to guarantee: one stored
+target claim may retrieve textual correspondences only from the caller-selected
+reference document, and every returned target/reference span resolves exactly
+against persisted page text.
 
-The deterministic embedding provider makes these structural tests reproducible. They do
-not claim semantic or legal comparison quality.
+The deterministic embedding provider makes these structural tests reproducible.
+They do not claim semantic or legal comparison quality.
 """
 
 from __future__ import annotations
@@ -92,7 +93,9 @@ def test_comparison_is_strictly_scoped_to_reference_document(
     assert body["target"]["document_id"] == target_id
     assert body["reference_document_id"] == reference_id
     assert body["searched_index_run_count"] == 1
-    assert body["matches"], "dense/hybrid retrieval over an indexed reference must return candidates"
+    assert body["matches"], (
+        "dense/hybrid retrieval over an indexed reference must return candidates"
+    )
     assert {match["document_id"] for match in body["matches"]} == {reference_id}
 
 
