@@ -151,6 +151,7 @@ Acceptance:
 - [x] comparison request/response contract exists;
 - [x] target and reference documents must be distinct;
 - [x] target claim text is the comparison query, not arbitrary caller text;
+- [x] target comparison requires a completed claim parse result;
 - [x] retrieval is scoped to exactly one reference document;
 - [x] service performs a defensive second scope-leak check;
 - [x] target and reference results carry canonical source spans;
@@ -160,7 +161,7 @@ Acceptance:
 - [x] database-free service tests added for scope/no-index/same-document behavior;
 - [x] API contract tests added;
 - [x] PostgreSQL-backed integration tests added for strict reference scope and source-span resolution;
-- [x] edge-state tests added for `no_matches`, missing target parse, and missing target claim;
+- [x] edge-state tests added for `no_matches`, missing/incomplete target parse, and missing target claim;
 - [x] pure response-invariant tests added;
 - [ ] comparison pytest tests actually executed successfully;
 - [ ] Ruff/format checks actually executed successfully;
@@ -293,42 +294,44 @@ Known uncertainty or follow-up work.
 - retrieval is forced to `[reference_document_id]` with a defensive second scope-leak check;
 - target/reference results preserve canonical source spans;
 - explicit `reference_not_indexed` vs `no_matches` state exists;
-- database-free service/API/edge-state and PostgreSQL-backed comparison tests exist;
-- added response-model invariants so serialization itself rejects:
-  - target/reference document collapse;
-  - any match outside the selected reference document;
-  - `match_count` disagreement with `matches`;
-  - contradictory `no_correspondence_found` state;
-  - missing/invalid no-correspondence reasons relative to searched index-run count;
-- added `test_claim_comparison_schema.py` with one coherent-state case and five contradiction cases.
+- response-model invariants reject target/reference collapse, cross-reference matches, count disagreement, and contradictory no-correspondence states;
+- database-free service/API/edge-state, response-invariant, and PostgreSQL-backed comparison tests exist;
+- hardened target-side lifecycle handling: a parse snapshot must be `ClaimParseStatus.COMPLETED`; `PROCESSING`, `NO_CLAIMS_FOUND`, and `FAILED` now produce `claim_parse_not_completed` instead of falling through to misleading claim lookup behavior;
+- updated existing comparison service test fixtures to model completed parse state explicitly;
+- added parametrized edge-state coverage for all three incomplete target parse statuses.
 
 ### What was actually executed
 
 - read this master before changes;
-- inspected current `main`, comparison service, API mapper, schema, error taxonomy, existing comparison tests, and API tests;
-- attempted a clean public `git clone`; environment still failed with `Could not resolve host: github.com`;
-- updated `apps/api/src/claimtrace_api/schemas/comparison.py` at commit `e791f34c9bd85ef72e789bd7842d88d82fc3eb29`;
-- added `apps/api/tests/test_claim_comparison_schema.py` at commit `dc5a4a5bd1c748899751487e7401a1a83cd11863`;
-- reproduced the exact response-validator logic in the execution sandbox and ran `python -m py_compile`: **PASS**;
-- measured the updated schema source maximum line length at **99**, within repository `line-length = 100`;
-- executed the actual validator logic in an isolated Pydantic environment with only external repository imports stubbed: **PASS** for 1 coherent case and **PASS-by-rejection** for 5 contradictory cases;
-- first isolated validator attempt failed because Pydantic forward references were not rebuilt in the stubbed environment; the harness was corrected with `model_rebuild`, after which the six intended cases behaved as required.
+- inspected current comparison service/schema/API mapper, claim parsing snapshot behavior, indexing lifecycle handling, comparison service tests, edge-state tests, and error taxonomy;
+- attempted a clean public `git clone`; environment again failed with `Could not resolve host: github.com`;
+- confirmed the execution environment currently has Python, Pydantic, FastAPI, SQLAlchemy, and pytest, but does not have Ruff, `psycopg`, or `pgvector`;
+- updated `claim_comparison.py` at commit `6588223fa3b3ab7cd4b8dc878b5d53580f55a193`;
+- updated `test_claim_comparison_service.py` at commit `418f7b5229b249f636b2ed4983017a9d493cf151`;
+- updated `test_claim_comparison_edge_cases.py` at commit `dc827a9217c18d3cf503dfb3c8cbeb6610811b92`;
+- performed syntax-level `python -m py_compile` checks on the locally reconstructed changed comparison source shape: **PASS**;
+- checked GitHub combined status for the latest source commit: no status checks are present.
+
+Earlier V1-02 executed evidence retained:
+
+- response-validator logic isolated execution: **PASS** for one coherent response and **PASS-by-rejection** for five contradictory responses;
+- schema source maximum line length measured at 99 against repository `line-length = 100`.
 
 ### What was not verified
 
-- repository comparison pytest tests were **not actually run**;
+- repository comparison pytest tests were **not actually run** against the real package checkout;
 - Ruff/format checks were not run with Ruff itself;
-- the newly added schema test file was not run by pytest;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
 - PostgreSQL-backed scoped retrieval was not executed;
 - Docker Compose was not executed;
-- isolated Pydantic execution validates the response-invariant logic, not the real package import graph or database behavior.
+- syntax/isolated checks do not prove the real import graph, SQL behavior, or integration fixtures.
 
 ### Remaining risks
 
-- comparison code/tests remain runtime-unverified because this execution environment cannot obtain a complete runnable checkout and lacks `psycopg`/`pgvector`/Ruff;
-- the newly strengthened response validator could expose an existing mapper inconsistency when real API tests first run; that is intentional but still unverified;
+- comparison code/tests remain runtime-unverified because this environment still cannot clone the repository and lacks `psycopg`/`pgvector`/Ruff;
+- the new completed-parse guard is aligned with existing claim-indexing lifecycle semantics, but its repository tests still need actual pytest execution;
+- the strengthened response validator may expose mapper inconsistencies when real API tests first run; that is intentional but not yet verified;
 - integration tests may expose import/runtime/database defects when first executed;
 - the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
 - comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
@@ -347,12 +350,12 @@ Known uncertainty or follow-up work.
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
+| Completed target parse guard | IMPLEMENTED + STATICALLY REVIEWED | mirrors indexing lifecycle semantics; pytest pending |
 | Comparison database-free tests | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
-| Comparison edge-state test source | PY_COMPILE PASS, PYTEST NOT EXECUTED | syntax + line-length only |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | 1 valid + 5 rejected contradictory states |
-| Comparison response invariant pytest file | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
-| Current CI green | NOT PRESENT | V1-06 |
+| Comparison changed-source syntax | PY_COMPILE PASS ON RECONSTRUCTED SOURCE | not a real checkout import test |
+| Current CI green | NOT PRESENT | latest source commit has no status checks |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
