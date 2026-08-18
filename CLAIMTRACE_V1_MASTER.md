@@ -161,6 +161,7 @@ Acceptance:
 - [x] database-free service tests added for scope/no-index/same-document behavior;
 - [x] API contract tests added;
 - [x] PostgreSQL-backed integration tests added for strict reference scope and source-span resolution;
+- [x] edge-state tests added for `no_matches`, missing target parse, and missing target claim;
 - [ ] new tests actually executed successfully;
 - [ ] lint/format checks actually executed successfully;
 - [ ] live PostgreSQL-backed scoped retrieval actually executed successfully.
@@ -293,36 +294,40 @@ Known uncertainty or follow-up work.
 - target/reference results preserve canonical source spans;
 - explicit `reference_not_indexed` vs `no_matches` state exists;
 - database-free service and API contract tests cover scope, request validation, and source-locator response shape;
-- added `apps/api/tests/test_claim_comparison_integration.py` using the committed two-document synthetic corpus;
+- added PostgreSQL-backed comparison integration coverage using the committed two-document synthetic corpus;
 - integration coverage specifies both-direction reference scoping and exact target/reference span resolution against persisted page text;
-- refined the new integration test file to conform to the repository Ruff `line-length = 100` convention before runtime execution.
+- refined integration test formatting to the repository `line-length = 100` convention;
+- added `test_claim_comparison_edge_cases.py` to pin three remaining service contracts: indexed reference + zero candidates → `no_matches`; missing target parse → `claim_parse_not_found`; missing target claim → `claim_not_found`.
 
 ### What was actually executed
 
 - read this master before changes;
-- re-inspected `ClaimComparisonService`, comparison schema/API, `ClaimSearchService`, retrieval integration fixtures, and `apps/api/pyproject.toml` Ruff configuration;
-- wrote PostgreSQL-backed comparison integration coverage to GitHub `main` at `357352a9f0eb79c0a9f78b8edd0e36ea5ed527c9`;
-- statically inspected the created test file and corrected formatting-risk lines at `c75aeaeb32f608cda19c80a4c314f3f4898420f6`;
-- attempted a clean public `git clone` again; execution environment still failed before clone with `Could not resolve host: github.com`;
-- checked GitHub combined status for `c75aeaeb32f608cda19c80a4c314f3f4898420f6`: no status checks were present.
+- re-inspected comparison service/schema/API, existing claim parsing/search behavior, integration fixtures, and synthetic retrieval corpus;
+- confirmed the committed retrieval corpus currently contains exactly the expected `sensor` and `battery` documents used by comparison integration coverage;
+- wrote `apps/api/tests/test_claim_comparison_edge_cases.py` to GitHub `main` at commit `38ddf6dec6efe745278dca8c71054ab672b87390`;
+- reproduced that exact new test source in the execution sandbox and ran `python -m py_compile`: **PASS**;
+- measured the new test file maximum line length: **99**, within the repository Ruff `line-length = 100` convention;
+- checked GitHub combined status for `38ddf6dec6efe745278dca8c71054ab672b87390`: no status checks were present;
+- attempted local dependency availability for PostgreSQL execution; the sandbox lacks `psycopg` and `pgvector`, and offline installation was unavailable.
 
 ### What was not verified
 
-- comparison unit/API/integration tests were **not actually run**;
-- Ruff/format checks were not run;
+- comparison pytest tests were **not actually run**;
+- Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
 - PostgreSQL-backed scoped retrieval was not executed;
-- Docker Compose was not executed.
+- Docker Compose was not executed;
+- `py_compile` proves Python syntax only; it does not prove imports, fixtures, service behavior, or database behavior.
 
 ### Remaining risks
 
-- comparison code and integration tests remain runtime-unverified because the execution environment cannot fetch the repository;
-- integration tests may still expose import/runtime defects when first executed;
-- the core remaining V1-02 gate is executed verification, not additional feature scope;
+- comparison code/tests remain runtime-unverified because this execution environment cannot obtain a runnable repository/dependency set;
+- integration tests may still expose import/runtime/database defects when first executed;
+- the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, not additional feature scope;
 - `searched_index_run_count == 0` must later render clearly as unindexed/incompatible profile rather than ordinary no-match;
 - comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
-- persistent CI is still absent until V1-06.
+- persistent CI remains intentionally deferred to V1-06.
 
 ---
 
@@ -339,6 +344,7 @@ Known uncertainty or follow-up work.
 | Comparison contract/service/API | IMPLEMENTED, NOT RUNTIME-VERIFIED | V1-02 |
 | Comparison database-free tests | WRITTEN, NOT EXECUTED | V1-02 |
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
+| Comparison edge-state test source | PY_COMPILE PASS, PYTEST NOT EXECUTED | syntax + line-length only |
 | Current CI green | NOT PRESENT | V1-06 |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
