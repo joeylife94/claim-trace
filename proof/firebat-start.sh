@@ -30,6 +30,24 @@ printf '[PROOF] ClaimTrace runtime: web=%s api=%s postgres=%s ollama=%s model=%s
 # downloaded only on the first run (subsequent pulls verify/reuse local layers).
 docker compose --profile llm up --build -d postgres ollama
 
+# `docker compose up -d` only starts the process; it does not guarantee Ollama is
+# ready to accept CLI/API calls yet. Bound the wait so a broken container fails
+# clearly instead of hanging at the pull command.
+echo "[PROOF] Waiting for Ollama readiness"
+ollama_ready=0
+for _ in $(seq 1 45); do
+  if docker compose --profile llm exec -T ollama ollama list >/dev/null 2>&1; then
+    ollama_ready=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$ollama_ready" != "1" ]]; then
+  echo "[FAIL] Ollama did not become ready within 90 seconds" >&2
+  docker compose --profile llm logs --tail=80 ollama >&2 || true
+  exit 1
+fi
+
 echo "[PROOF] Ensuring local Ollama model is available: $MODEL"
 docker compose --profile llm exec -T ollama ollama pull "$MODEL"
 
