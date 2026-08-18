@@ -167,6 +167,7 @@ Acceptance:
 - [x] a single focused closure command exists: `make verify-v1-02`;
 - [x] closure command initializes safe local `.env` defaults when a clean checkout has no `.env`;
 - [x] closure command explicitly builds the API Docker image before running tests;
+- [x] closure command explicitly starts PostgreSQL and waits for `pg_isready` before executing tests;
 - [x] closure command cannot silently pass when comparison integration tests are skipped;
 - [x] closure command does not hardcode the integration test count;
 - [ ] `make verify-v1-02` actually executes successfully in a real checkout with Docker;
@@ -268,7 +269,8 @@ The V1-02 backend contains:
 
 - `make verify-v1-02` depends on idempotent `init`, creating `.env` from safe committed defaults only when missing;
 - existing `.env` files are preserved;
-- `make verify-v1-02` now explicitly runs `docker compose build api` before test execution, so a fresh checkout does not rely on a pre-existing/stale API image;
+- `make verify-v1-02` explicitly runs `docker compose build api` before test execution, so a fresh checkout does not rely on a pre-existing/stale API image;
+- the closure command explicitly starts the PostgreSQL service and polls `pg_isready` for up to 10 seconds before any comparison test runs;
 - four database-free comparison modules run first;
 - PostgreSQL-backed comparison integration runs separately;
 - integration guard requires reported passing tests and rejects any reported skipped tests;
@@ -280,13 +282,13 @@ The V1-02 backend contains:
 
 Current run:
 
-- read this MASTER before changes;
-- rechecked `main` and confirmed V1-02 remained the earliest unfinished batch;
-- attempted `git ls-remote https://github.com/joeylife94/claim-trace.git HEAD`; result: **FAIL — `Could not resolve host: github.com`**, so a real checkout remained unavailable in this execution environment;
-- inspected the current root `Makefile`, `docker-compose.yml`, API `Dockerfile`, shared PostgreSQL integration fixture, comparison service/schema, and comparison integration tests through the GitHub connector;
-- confirmed the API Docker image installs the `dev` extra, so pytest and Ruff belong in the image used by the closure command;
-- updated the source `Makefile` at commit `1b06c4d278bd07b8309cf19fcaf287b9f18fb4e6` to explicitly build the API image before V1-02 verification;
-- reconstructed the changed target locally and executed `make -n verify-v1-02`: **PASS**, showing `.env` initialization → `docker compose build api` → database-free pytest → integration pytest guard → Ruff lint → Ruff format-check in that order.
+- read this MASTER before changes and confirmed V1-02 remained the earliest unfinished batch;
+- inspected the current root `Makefile`, `docker-compose.yml`, `.env.example`, and the shared PostgreSQL integration fixture through the GitHub connector;
+- confirmed the comparison integration fixture creates a dedicated test database and applies Alembic migrations from empty, but skips when PostgreSQL is unreachable;
+- identified that the closure command still relied on `docker compose run api` to start its dependency implicitly, leaving PostgreSQL readiness less explicit than the V1-02 closure gate should be;
+- updated `Makefile` at commit `b5054f47552cf6a6c6374a0d36fea872fab0c11d` so `verify-v1-02` runs `docker compose up -d postgres` and a bounded `pg_isready` loop before test execution;
+- reconstructed the changed target locally and executed `make -n verify-v1-02`: **PASS**;
+- executed `sh -n` against the new PostgreSQL readiness loop: **PASS**.
 
 Earlier retained V1-02 evidence:
 
@@ -300,6 +302,7 @@ Earlier retained V1-02 evidence:
 
 - `make verify-v1-02` itself was **not actually executed** against a real repository checkout;
 - API Docker image build was not actually executed;
+- the new PostgreSQL startup/readiness commands were not executed against Docker Compose;
 - repository comparison pytest tests were not actually run against the real package checkout;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
@@ -310,7 +313,8 @@ Earlier retained V1-02 evidence:
 ### Remaining risks
 
 - comparison code/tests remain runtime-unverified until `make verify-v1-02` runs successfully in a real checkout;
-- the first real Docker build may expose dependency/build defects despite the closure command now owning that step explicitly;
+- the first real Docker build may expose dependency/build defects despite the closure command owning that step explicitly;
+- PostgreSQL service startup/readiness behavior remains structurally checked but not Docker-executed;
 - integration tests may expose import/runtime/database defects on first execution;
 - provenance invariants may reveal mapper/fixture assumptions when real pytest runs;
 - the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
@@ -332,7 +336,8 @@ Earlier retained V1-02 evidence:
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
 | Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
-| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | initializes `.env`, builds API image, rejects skipped DB verification, count-independent |
+| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | initializes `.env`, builds API, starts/waits for PostgreSQL, rejects skipped DB verification |
+| PostgreSQL readiness shell | SYNTAX EXECUTION PASS | `sh -n`; Docker execution still required |
 | Integration guard simulations | EXECUTED PASS | pass-only accepted; mixed/all-skipped rejected |
 | Real Docker V1-02 closure run | NOT VERIFIED | next required gate |
 | Current CI green | NOT PRESENT | intentionally V1-06 |
