@@ -166,8 +166,9 @@ Acceptance:
 - [x] PostgreSQL-backed integration tests exist for strict reference scope and source-span resolution;
 - [x] a single focused closure command exists: `make verify-v1-02`;
 - [x] closure command initializes safe local `.env` defaults when a clean checkout has no `.env`;
+- [x] closure command explicitly builds the API Docker image before running tests;
 - [x] closure command cannot silently pass when comparison integration tests are skipped;
-- [x] closure command no longer hardcodes the integration test count;
+- [x] closure command does not hardcode the integration test count;
 - [ ] `make verify-v1-02` actually executes successfully in a real checkout with Docker;
 - [ ] comparison pytest tests actually execute successfully;
 - [ ] Ruff/format checks actually execute successfully;
@@ -252,7 +253,7 @@ Known uncertainty or follow-up work.
 
 ### What changed
 
-The V1-02 backend now contains:
+The V1-02 backend contains:
 
 - comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
 - persisted target claim text as the comparison query;
@@ -263,27 +264,29 @@ The V1-02 backend now contains:
 - completed-target-parse lifecycle enforcement;
 - database-free service/API/edge/schema tests and PostgreSQL-backed strict-scope/provenance integration tests.
 
-**2026-08-19 verification-path hardening:**
+**Verification-path hardening completed so far:**
 
-- `make verify-v1-02` now depends on `init`, so a clean checkout creates `.env` from the committed safe local `.env.example` before Docker Compose evaluates required PostgreSQL variables;
-- existing `.env` files are preserved unchanged by `init`;
-- `make verify-v1-02` runs the four database-free comparison modules first;
-- the PostgreSQL-backed comparison integration module runs separately inside the API Docker container;
-- the integration guard requires at least one reported passing test and rejects any reported skipped tests;
-- the guard cannot silently succeed when PostgreSQL is unreachable;
-- the prior brittle exact test-count coupling is removed;
-- Ruff lint and Ruff format-check remain mandatory after the comparison tests;
-- this remains V1-02 verification hardening and does **not** pull persistent CI work forward from V1-06.
+- `make verify-v1-02` depends on idempotent `init`, creating `.env` from safe committed defaults only when missing;
+- existing `.env` files are preserved;
+- `make verify-v1-02` now explicitly runs `docker compose build api` before test execution, so a fresh checkout does not rely on a pre-existing/stale API image;
+- four database-free comparison modules run first;
+- PostgreSQL-backed comparison integration runs separately;
+- integration guard requires reported passing tests and rejects any reported skipped tests;
+- guard is count-independent and cannot silently pass when PostgreSQL is unreachable;
+- Ruff lint and Ruff format-check remain mandatory;
+- persistent CI remains intentionally deferred to V1-06.
 
 ### What was actually executed
 
 Current run:
 
 - read this MASTER before changes;
-- re-inspected the root `Makefile`, `docker-compose.yml`, `.env.example`, and shared `apps/api/tests/conftest.py` PostgreSQL fixture through the GitHub connector;
-- confirmed Docker Compose requires PostgreSQL values supplied by `.env` and the committed `.env.example` contains safe local placeholders;
-- changed the source `Makefile` at commit `295cca50d787f55229c9b056bfbb600d89981345` so `verify-v1-02` depends on the idempotent `init` target;
-- reconstructed the changed Make dependency locally and executed `make -n`: **PASS**, showing `.env` initialization before every Docker verification command.
+- rechecked `main` and confirmed V1-02 remained the earliest unfinished batch;
+- attempted `git ls-remote https://github.com/joeylife94/claim-trace.git HEAD`; result: **FAIL — `Could not resolve host: github.com`**, so a real checkout remained unavailable in this execution environment;
+- inspected the current root `Makefile`, `docker-compose.yml`, API `Dockerfile`, shared PostgreSQL integration fixture, comparison service/schema, and comparison integration tests through the GitHub connector;
+- confirmed the API Docker image installs the `dev` extra, so pytest and Ruff belong in the image used by the closure command;
+- updated the source `Makefile` at commit `1b06c4d278bd07b8309cf19fcaf287b9f18fb4e6` to explicitly build the API image before V1-02 verification;
+- reconstructed the changed target locally and executed `make -n verify-v1-02`: **PASS**, showing `.env` initialization → `docker compose build api` → database-free pytest → integration pytest guard → Ruff lint → Ruff format-check in that order.
 
 Earlier retained V1-02 evidence:
 
@@ -291,25 +294,25 @@ Earlier retained V1-02 evidence:
 - isolated response-validator execution passed for one coherent response and rejected contradictory responses as intended;
 - `.github/workflows` is absent and `main` has no required status checks;
 - integration guard simulations accepted pass-only output and rejected mixed/all-skipped output;
-- prior `make verify-v1-02` dry-runs passed command-construction inspection.
+- prior Make dry-runs passed command-construction inspection.
 
 ### What was not verified
 
 - `make verify-v1-02` itself was **not actually executed** against a real repository checkout;
+- API Docker image build was not actually executed;
 - repository comparison pytest tests were not actually run against the real package checkout;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
 - PostgreSQL-backed scoped retrieval was not executed;
-- Docker Compose was not executed;
-- `.env` initialization was verified by Make dry-run, not by a clean Docker checkout execution.
+- Docker Compose was not executed.
 
 ### Remaining risks
 
 - comparison code/tests remain runtime-unverified until `make verify-v1-02` runs successfully in a real checkout;
+- the first real Docker build may expose dependency/build defects despite the closure command now owning that step explicitly;
 - integration tests may expose import/runtime/database defects on first execution;
 - provenance invariants may reveal mapper/fixture assumptions when real pytest runs;
-- Docker image/build availability may still block the first real closure run even though the missing-`.env` precondition is now removed;
 - the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
 - comparison remains textual correspondence only and must never be represented as legal equivalence or infringement analysis;
 - persistent CI remains intentionally deferred to V1-06.
@@ -329,7 +332,7 @@ Earlier retained V1-02 evidence:
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
 | Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
-| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | initializes `.env`, rejects skipped DB verification, count-independent |
+| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | initializes `.env`, builds API image, rejects skipped DB verification, count-independent |
 | Integration guard simulations | EXECUTED PASS | pass-only accepted; mixed/all-skipped rejected |
 | Real Docker V1-02 closure run | NOT VERIFIED | next required gate |
 | Current CI green | NOT PRESENT | intentionally V1-06 |
