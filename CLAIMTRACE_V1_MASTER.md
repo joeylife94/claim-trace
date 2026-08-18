@@ -156,6 +156,7 @@ Acceptance:
 - [x] retrieval is scoped to exactly one reference document;
 - [x] service performs a defensive second scope-leak check;
 - [x] target and reference results carry canonical source spans;
+- [x] each comparison claim response requires at least one source span and every span must belong to that claim's document;
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
 - [x] API response has no legal-conclusion field;
 - [x] response model enforces reference scope and coherent match/no-correspondence state;
@@ -296,6 +297,8 @@ Known uncertainty or follow-up work.
 - target/reference results preserve canonical source spans;
 - explicit `reference_not_indexed` vs `no_matches` state exists;
 - response-model invariants reject target/reference collapse, cross-reference matches, count disagreement, and contradictory no-correspondence states;
+- response-level provenance is hardened further: `ComparisonClaimResponse.source_spans` must be non-empty and every locator must carry the same `document_id` as the owning claim;
+- pure schema coverage now includes missing source spans and cross-document source-span rejection;
 - database-free service/API/edge-state, response-invariant, and PostgreSQL-backed comparison tests exist;
 - hardened target-side lifecycle handling: a parse snapshot must be `ClaimParseStatus.COMPLETED`; `PROCESSING`, `NO_CLAIMS_FOUND`, and `FAILED` now produce `claim_parse_not_completed` instead of falling through to misleading claim lookup behavior;
 - updated existing comparison service test fixtures to model completed parse state explicitly;
@@ -305,22 +308,25 @@ Known uncertainty or follow-up work.
 ### What was actually executed
 
 - read this master before changes;
-- re-inspected current comparison service, response schema, service tests, schema tests, and edge-state tests;
+- re-inspected current comparison service, response schema, service tests, schema tests, API mapper, and edge-state coverage through the GitHub connector;
 - attempted a clean public `git clone`; environment again failed with `Could not resolve host: github.com`;
-- confirmed the execution environment has no Docker runtime in this run;
-- updated `test_claim_comparison_edge_cases.py` at commit `2606e6aee49fff0a14940874bb2d5ee6ced6f44e`;
-- checked GitHub combined status for commit `2606e6aee49fff0a14940874bb2d5ee6ced6f44e`: no status checks are present.
+- added response provenance hardening in `apps/api/src/claimtrace_api/schemas/comparison.py` at commit `d6e1bf5a8d2183141d7b92c41c9bf1da948baac7`;
+- added corresponding pure schema tests in `apps/api/tests/test_claim_comparison_schema.py` at commit `7fd356f104baef4972889578ef612f85fb529e94`;
+- executed `python -m py_compile` against a locally reconstructed shape of the changed comparison schema: **PASS**;
+- measured the reconstructed changed schema maximum line length at **88**, below the repository `line-length = 100` convention;
+- checked GitHub combined status for commit `7fd356f104baef4972889578ef612f85fb529e94`: no status checks are present.
 
 Earlier V1-02 executed evidence retained:
 
 - syntax-level `python -m py_compile` checks on locally reconstructed changed comparison source shape: **PASS**;
 - response-validator logic isolated execution: **PASS** for one coherent response and **PASS-by-rejection** for five contradictory responses;
-- schema source maximum line length measured at 99 against repository `line-length = 100`.
+- earlier schema source maximum line length measured at 99 against repository `line-length = 100`.
 
 ### What was not verified
 
 - repository comparison pytest tests were **not actually run** against the real package checkout;
-- the newly added missing-document tests were not pytest-executed;
+- the newly added source-provenance schema tests were not pytest-executed;
+- the previously added missing-document and incomplete-parse tests were not pytest-executed;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
@@ -331,9 +337,9 @@ Earlier V1-02 executed evidence retained:
 ### Remaining risks
 
 - comparison code/tests remain runtime-unverified because this environment still cannot clone the repository and lacks the full execution stack;
-- missing-document behavior is implemented by `_require_document` and now explicitly covered in source tests, but those tests still need actual pytest execution;
-- the new completed-parse guard is aligned with existing claim-indexing lifecycle semantics, but its repository tests still need actual pytest execution;
-- the strengthened response validator may expose mapper inconsistencies when real API tests first run; that is intentional but not yet verified;
+- the new source-span ownership invariant is intentional provenance defense, but real API/pytest execution may expose pre-existing mapper or fixture assumptions that need correction;
+- missing-document behavior is implemented by `_require_document` and explicitly covered in source tests, but those tests still need actual pytest execution;
+- the completed-parse guard is aligned with existing claim-indexing lifecycle semantics, but its repository tests still need actual pytest execution;
 - integration tests may expose import/runtime/database defects when first executed;
 - the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
 - comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
@@ -354,6 +360,7 @@ Earlier V1-02 executed evidence retained:
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
 | Missing comparison documents | IMPLEMENTED + SOURCE TEST COVERAGE | pytest pending |
 | Completed target parse guard | IMPLEMENTED + STATICALLY REVIEWED | mirrors indexing lifecycle semantics; pytest pending |
+| Comparison source-span ownership invariant | IMPLEMENTED + SOURCE TEST COVERAGE | non-empty spans + claim-document identity; pytest pending |
 | Comparison database-free tests | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | 1 valid + 5 rejected contradictory states |
