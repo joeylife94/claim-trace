@@ -2,7 +2,8 @@
 
 These tests pin the remaining response distinctions needed by V1-02 without
 introducing another retrieval path: an indexed reference with zero candidates is
-``no_matches``, while missing target parse/claim state remains an explicit error.
+``no_matches``, while missing or incomplete target parse/claim state remains an
+explicit error.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import pytest
 
 from claimtrace_api.core.config import Settings
 from claimtrace_api.core.errors import AppError, ErrorCode
-from claimtrace_api.db.models import Claim, ClaimSpan, ClaimType
+from claimtrace_api.db.models import Claim, ClaimParseStatus, ClaimSpan, ClaimType
 from claimtrace_api.indexing.profile import IndexProfile
 from claimtrace_api.retrieval.base import RetrievalMode
 from claimtrace_api.services.claim_comparison import ClaimComparisonService
@@ -82,6 +83,18 @@ def _target_claim() -> Claim:
     return claim
 
 
+def _snapshot(
+    claim: Claim,
+    *,
+    status: ClaimParseStatus = ClaimParseStatus.COMPLETED,
+) -> object:
+    return SimpleNamespace(
+        result=SimpleNamespace(status=status),
+        claims=[claim],
+        dependencies={claim.id: []},
+    )
+
+
 def _empty_outcome(*, searched_index_run_count: int) -> SearchOutcome:
     return SearchOutcome(
         mode=RetrievalMode.HYBRID,
@@ -119,7 +132,7 @@ async def test_indexed_reference_with_zero_candidates_is_no_matches(settings: Se
         settings=settings,
         target_document_id=target_document_id,
         reference_document_id=reference_document_id,
-        snapshot=SimpleNamespace(claims=[target_claim], dependencies={target_claim.id: []}),
+        snapshot=_snapshot(target_claim),
     )
 
     outcome = await service.compare(
@@ -159,6 +172,39 @@ async def test_missing_target_parse_is_explicit(settings: Settings) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status",
+    [
+        ClaimParseStatus.PROCESSING,
+        ClaimParseStatus.NO_CLAIMS_FOUND,
+        ClaimParseStatus.FAILED,
+    ],
+)
+async def test_incomplete_target_parse_is_explicit(
+    settings: Settings, status: ClaimParseStatus
+) -> None:
+    target_document_id = uuid.uuid4()
+    reference_document_id = uuid.uuid4()
+    service = _service(
+        settings=settings,
+        target_document_id=target_document_id,
+        reference_document_id=reference_document_id,
+        snapshot=_snapshot(_target_claim(), status=status),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await service.compare(
+            target_document_id=target_document_id,
+            target_claim_number=1,
+            reference_document_id=reference_document_id,
+            mode=RetrievalMode.HYBRID,
+            top_k=5,
+        )
+
+    assert exc_info.value.code is ErrorCode.CLAIM_PARSE_NOT_COMPLETED
+
+
+@pytest.mark.asyncio
 async def test_missing_target_claim_is_explicit(settings: Settings) -> None:
     target_document_id = uuid.uuid4()
     reference_document_id = uuid.uuid4()
@@ -167,7 +213,7 @@ async def test_missing_target_claim_is_explicit(settings: Settings) -> None:
         settings=settings,
         target_document_id=target_document_id,
         reference_document_id=reference_document_id,
-        snapshot=SimpleNamespace(claims=[target_claim], dependencies={target_claim.id: []}),
+        snapshot=_snapshot(target_claim),
     )
 
     with pytest.raises(AppError) as exc_info:
