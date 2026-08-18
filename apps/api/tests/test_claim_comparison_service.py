@@ -10,7 +10,7 @@ import pytest
 
 from claimtrace_api.core.config import Settings
 from claimtrace_api.core.errors import AppError, ErrorCode
-from claimtrace_api.db.models import Claim, ClaimSpan, ClaimType
+from claimtrace_api.db.models import Claim, ClaimParseStatus, ClaimSpan, ClaimType
 from claimtrace_api.indexing.profile import IndexProfile
 from claimtrace_api.retrieval.base import RetrievalMode
 from claimtrace_api.services.claim_comparison import ClaimComparisonService
@@ -78,6 +78,14 @@ def _claim(*, number: int = 1, text: str = "센서 데이터를 수집하는 통
     return claim
 
 
+def _completed_snapshot(claim: Claim, *, dependencies: list[int] | None = None) -> object:
+    return SimpleNamespace(
+        result=SimpleNamespace(status=ClaimParseStatus.COMPLETED),
+        claims=[claim],
+        dependencies={claim.id: dependencies or []},
+    )
+
+
 @pytest.mark.asyncio
 async def test_comparison_scopes_search_to_reference_document(settings: Settings) -> None:
     target_document_id = uuid.uuid4()
@@ -117,9 +125,7 @@ async def test_comparison_scopes_search_to_reference_document(settings: Settings
             ],
         )
     )
-    parsing = FakeParsingService(
-        SimpleNamespace(claims=[target_claim], dependencies={target_claim.id: [2]})
-    )
+    parsing = FakeParsingService(_completed_snapshot(target_claim, dependencies=[2]))
     service = ClaimComparisonService(
         session=FakeSession({target_document_id, reference_document_id}),  # type: ignore[arg-type]
         parsing=parsing,  # type: ignore[arg-type]
@@ -175,9 +181,7 @@ async def test_comparison_refuses_scope_leak(settings: Settings) -> None:
     )
     service = ClaimComparisonService(
         session=FakeSession({target_document_id, reference_document_id}),  # type: ignore[arg-type]
-        parsing=FakeParsingService(
-            SimpleNamespace(claims=[target_claim], dependencies={target_claim.id: []})
-        ),  # type: ignore[arg-type]
+        parsing=FakeParsingService(_completed_snapshot(target_claim)),  # type: ignore[arg-type]
         search=search,  # type: ignore[arg-type]
         settings=settings,
     )
@@ -210,9 +214,7 @@ async def test_comparison_distinguishes_unindexed_reference(settings: Settings) 
     )
     service = ClaimComparisonService(
         session=FakeSession({target_document_id, reference_document_id}),  # type: ignore[arg-type]
-        parsing=FakeParsingService(
-            SimpleNamespace(claims=[target_claim], dependencies={target_claim.id: []})
-        ),  # type: ignore[arg-type]
+        parsing=FakeParsingService(_completed_snapshot(target_claim)),  # type: ignore[arg-type]
         search=search,  # type: ignore[arg-type]
         settings=settings,
     )
