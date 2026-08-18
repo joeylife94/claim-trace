@@ -29,17 +29,21 @@ Target user:
 - one analyst, engineer, researcher, or reviewer;
 - trusted workstation or controlled on-premise environment;
 - text-based Korean patent PDFs;
-- needs analytical output that can be checked against original source text.
+- analytical output must be checkable against original source text.
 
-> **ClaimTrace v1.0 is a single-user, on-premise patent analysis pilot for text-based Korean patent PDFs. It structures claims, retrieves related evidence, produces evidence-grounded answers, supports bounded document/claim comparison, decomposes claims into reviewable source-backed elements, preserves human review separately from machine output, and exposes limitations instead of inventing certainty.**
+### Explicit non-goals
 
-| Level | Meaning | Status |
-| --- | --- | --- |
-| L1 | Idea / PoC | Passed |
-| L2 | Technical demo | Passed |
-| L3 | Functional MVP | **Current baseline** |
-| L4 | Controlled pilot | **v1.0 target** |
-| L5 | Production SaaS / enterprise operations | Out of scope |
+Do not add these unless this master is deliberately re-scoped:
+
+- OCR / scanned-PDF recovery;
+- authentication / RBAC / multi-tenancy;
+- public cloud hosting / Kubernetes / production deployment pipelines;
+- billing / admin console / team workspace;
+- chat history / memory / streaming / general tool calling / notifications;
+- broad observability platform work;
+- full multilingual support;
+- hosted third-party LLM APIs as the default path;
+- legal advice or determinations of infringement, validity, novelty, equivalence, inventive step, or patentability.
 
 ---
 
@@ -68,9 +72,9 @@ Already implemented before v1 hardening:
 - real-model statement citation coverage `1.000`;
 - forbidden cross-document citations `0` in committed evaluation.
 
-These are **historical/committed evidence**, not a current v1 release-candidate rerun.
+These remain historical/committed evidence until rerun for the v1 candidate.
 
-### Golden-path gap state
+### Golden-path state
 
 | Stage | Status | v1 delta |
 | --- | --- | --- |
@@ -85,57 +89,7 @@ These are **historical/committed evidence**, not a current v1 release-candidate 
 
 ---
 
-## 4. Frozen v1.0 Workflow
-
-1. Upload text-based patent PDF.
-2. Validate and persist document.
-3. Extract page text with canonical source locators.
-4. Parse claim structure and dependencies.
-5. Inspect claims and jump to exact source spans.
-6. Index claims.
-7. Search with dense / lexical / hybrid retrieval.
-8. Open search result at original source location.
-9. Ask evidence-grounded question.
-10. Receive cited statements or explicit insufficient evidence.
-11. Select target and reference documents.
-12. Select target claim and compare against related claims in the reference document.
-13. Decompose claim into reviewable source-backed elements.
-14. Persist reviewer judgement separately from machine output.
-15. Verify every rendered analytical assertion against persisted source evidence.
-
-**When this workflow is complete, reproducible, validated, and packaged, feature development for v1.0 stops.**
-
----
-
-## 5. Scope
-
-### In scope
-
-- bounded target-claim vs one-reference-document comparison;
-- reference-document-only retrieval and target/reference canonical source locators;
-- explicit `reference_not_indexed` / `no_matches` states;
-- claim element decomposition anchored to canonical claim source;
-- versioned/idempotent machine output plus persisted `accepted` / `needs_correction` human review;
-- clean checkout/start, empty-DB migration reproduction, deterministic demo data, CI quality gates;
-- proof-oriented README, architecture visual, screenshots, demo asset, evaluation summary, visible CI, limitations, v1.0 release/tag.
-
-### Explicit non-goals
-
-Do not add these unless this master is deliberately re-scoped:
-
-- OCR / scanned-PDF recovery;
-- authentication / RBAC / multi-tenancy;
-- public cloud hosting / Kubernetes / production deployment pipelines;
-- billing / admin console / team workspace;
-- chat history / memory / streaming / general tool calling / notifications;
-- broad observability platform work;
-- full multilingual support;
-- hosted third-party LLM APIs as the default path;
-- legal advice or determinations of infringement, validity, novelty, equivalence, inventive step, or patentability.
-
----
-
-## 6. Execution Plan
+## 4. Execution Plan
 
 ### V1-00 — Master Freeze
 **Status:** CLOSED
@@ -165,11 +119,12 @@ Acceptance:
 - [x] database-free service/API/edge/schema tests exist;
 - [x] PostgreSQL-backed integration tests exist for strict reference scope and source-span resolution;
 - [x] a single focused closure command exists: `make verify-v1-02`;
-- [x] closure command initializes safe local `.env` defaults when a clean checkout has no `.env`;
-- [x] closure command explicitly builds the API Docker image before running tests;
-- [x] closure command explicitly starts PostgreSQL and waits for `pg_isready` before executing tests;
-- [x] closure command cannot silently pass when comparison integration tests are skipped;
-- [x] closure command does not hardcode the integration test count;
+- [x] closure command safely initializes `.env` when missing and preserves existing `.env`;
+- [x] closure command performs `docker compose config --quiet` preflight;
+- [x] closure command explicitly builds the API Docker image;
+- [x] closure command explicitly starts PostgreSQL and waits for `pg_isready`;
+- [x] closure command rejects skipped comparison integration tests;
+- [x] closure command does not hardcode integration test count;
 - [ ] `make verify-v1-02` actually executes successfully in a real checkout with Docker;
 - [ ] comparison pytest tests actually execute successfully;
 - [ ] Ruff/format checks actually execute successfully;
@@ -228,7 +183,7 @@ Acceptance:
 
 ---
 
-## 7. Execution Rules
+## 5. Execution Rules
 
 Every batch defines: **Goal / Scope / Acceptance / Non-goals**.
 
@@ -250,59 +205,62 @@ Known uncertainty or follow-up work.
 
 ---
 
-## 8. Current Batch Record — V1-02
+## 6. Current Batch Record — V1-02
 
 ### What changed
 
-The V1-02 backend contains:
+The V1-02 backend currently contains:
 
 - comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
-- persisted target claim text as the comparison query;
+- persisted target claim text as comparison query;
 - strict `[reference_document_id]` retrieval plus defensive scope-leak rejection;
-- target/reference canonical source spans;
+- canonical target/reference source spans;
 - explicit `reference_not_indexed` vs `no_matches`;
 - response invariants for document separation, reference scope, match count, no-correspondence state, and source-span ownership;
 - completed-target-parse lifecycle enforcement;
-- database-free service/API/edge/schema tests and PostgreSQL-backed strict-scope/provenance integration tests.
+- database-free service/API/edge/schema tests;
+- PostgreSQL-backed strict-scope/provenance integration tests.
 
-**Verification-path hardening completed so far:**
+Verification-path hardening now includes:
 
-- `make verify-v1-02` depends on idempotent `init`, creating `.env` from safe committed defaults only when missing;
-- existing `.env` files are preserved;
-- `make verify-v1-02` explicitly runs `docker compose build api` before test execution, so a fresh checkout does not rely on a pre-existing/stale API image;
-- the closure command explicitly starts the PostgreSQL service and polls `pg_isready` for up to 10 seconds before any comparison test runs;
-- four database-free comparison modules run first;
-- PostgreSQL-backed comparison integration runs separately;
-- integration guard requires reported passing tests and rejects any reported skipped tests;
-- guard is count-independent and cannot silently pass when PostgreSQL is unreachable;
-- Ruff lint and Ruff format-check remain mandatory;
+- `make verify-v1-02` depends on idempotent `init`;
+- missing `.env` is created from committed safe defaults; existing `.env` is preserved;
+- `docker compose config --quiet` runs before build/start to fail fast on invalid Compose/env interpolation;
+- API Docker image is explicitly rebuilt;
+- PostgreSQL is explicitly started and polled with bounded `pg_isready` before tests;
+- database-free comparison tests run first;
+- PostgreSQL comparison integration runs separately;
+- integration output must contain passing tests and must not contain skipped tests;
+- Ruff lint and Ruff format-check are mandatory;
 - persistent CI remains intentionally deferred to V1-06.
 
 ### What was actually executed
 
 Current run:
 
-- read this MASTER before changes and confirmed V1-02 remained the earliest unfinished batch;
-- inspected the current root `Makefile`, `docker-compose.yml`, `.env.example`, and the shared PostgreSQL integration fixture through the GitHub connector;
-- confirmed the comparison integration fixture creates a dedicated test database and applies Alembic migrations from empty, but skips when PostgreSQL is unreachable;
-- identified that the closure command still relied on `docker compose run api` to start its dependency implicitly, leaving PostgreSQL readiness less explicit than the V1-02 closure gate should be;
-- updated `Makefile` at commit `b5054f47552cf6a6c6374a0d36fea872fab0c11d` so `verify-v1-02` runs `docker compose up -d postgres` and a bounded `pg_isready` loop before test execution;
-- reconstructed the changed target locally and executed `make -n verify-v1-02`: **PASS**;
-- executed `sh -n` against the new PostgreSQL readiness loop: **PASS**.
+- read this MASTER first and confirmed V1-02 remains the earliest unfinished batch;
+- attempted `git ls-remote https://github.com/joeylife94/claim-trace.git HEAD` from the execution environment; it failed with `Could not resolve host: github.com`;
+- inspected the current repository `Makefile` through the GitHub connector;
+- added `docker compose config --quiet` as a fail-fast preflight before API image build and PostgreSQL startup;
+- updated `Makefile` in commit `78efdb1fad4908df37b391b5980a8faf4045a0ae`;
+- fetched the committed Makefile back from GitHub and confirmed the new preflight is present;
+- reconstructed the changed closure target locally and executed `make -n verify-v1-02`: **PASS**.
 
-Earlier retained V1-02 evidence:
+Retained earlier V1-02 execution evidence:
 
 - locally reconstructed comparison source passed syntax-level `python -m py_compile` checks;
 - isolated response-validator execution passed for one coherent response and rejected contradictory responses as intended;
 - `.github/workflows` is absent and `main` has no required status checks;
 - integration guard simulations accepted pass-only output and rejected mixed/all-skipped output;
+- PostgreSQL readiness loop passed `sh -n` syntax validation;
 - prior Make dry-runs passed command-construction inspection.
 
 ### What was not verified
 
 - `make verify-v1-02` itself was **not actually executed** against a real repository checkout;
+- `docker compose config --quiet` was not executed against the real checkout;
 - API Docker image build was not actually executed;
-- the new PostgreSQL startup/readiness commands were not executed against Docker Compose;
+- PostgreSQL startup/readiness was not executed against Docker Compose;
 - repository comparison pytest tests were not actually run against the real package checkout;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
@@ -312,18 +270,17 @@ Earlier retained V1-02 evidence:
 
 ### Remaining risks
 
-- comparison code/tests remain runtime-unverified until `make verify-v1-02` runs successfully in a real checkout;
-- the first real Docker build may expose dependency/build defects despite the closure command owning that step explicitly;
-- PostgreSQL service startup/readiness behavior remains structurally checked but not Docker-executed;
-- integration tests may expose import/runtime/database defects on first execution;
-- provenance invariants may reveal mapper/fixture assumptions when real pytest runs;
-- the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
-- comparison remains textual correspondence only and must never be represented as legal equivalence or infringement analysis;
+- comparison code/tests remain runtime-unverified until `make verify-v1-02` succeeds in a real checkout;
+- first real Compose config/build may expose environment interpolation, dependency, or Dockerfile defects despite the preflight/hardening;
+- PostgreSQL integration may expose import/runtime/database defects on first execution;
+- provenance invariants may reveal mapper/fixture assumptions under real pytest;
+- the remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
+- comparison is textual correspondence only and must never be represented as legal equivalence or infringement analysis;
 - persistent CI remains intentionally deferred to V1-06.
 
 ---
 
-## 9. Verification Evidence
+## 7. Verification Evidence
 
 | Evidence | State | Note |
 | --- | --- | --- |
@@ -336,10 +293,10 @@ Earlier retained V1-02 evidence:
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
 | Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
-| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | initializes `.env`, builds API, starts/waits for PostgreSQL, rejects skipped DB verification |
-| PostgreSQL readiness shell | SYNTAX EXECUTION PASS | `sh -n`; Docker execution still required |
+| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | env init, Compose config preflight, API build, PostgreSQL readiness, no-skip guard |
+| PostgreSQL readiness shell | SYNTAX EXECUTION PASS | Docker execution still required |
 | Integration guard simulations | EXECUTED PASS | pass-only accepted; mixed/all-skipped rejected |
-| Real Docker V1-02 closure run | NOT VERIFIED | next required gate |
+| Real Docker V1-02 closure run | NOT VERIFIED | required closure gate |
 | Current CI green | NOT PRESENT | intentionally V1-06 |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
@@ -347,7 +304,7 @@ Earlier retained V1-02 evidence:
 
 ---
 
-## 10. Known Risks / Unverified
+## 8. Known Risks / Unverified
 
 - Citation resolvability is not semantic entailment.
 - Current real-model evidence uses a small `qwen2.5:1.5b` model and synthetic data.
@@ -360,7 +317,7 @@ Earlier retained V1-02 evidence:
 
 ---
 
-## 11. Closure Condition
+## 9. Closure Condition
 
 ClaimTrace v1.0 is **CLOSED** only when all three are true:
 
@@ -387,7 +344,7 @@ ClaimTrace v1.0 is **CLOSED** only when all three are true:
 - architecture visual;
 - screenshots;
 - concise demo evidence;
-- visible metrics and limitations;
-- v1.0 release/tag.
+- visible evaluation results and limitations;
+- v1.0 release/tag freezes proof state.
 
-**When these conditions are met, stop adding features to v1.0.**
+When these conditions are met, **stop adding features to v1.0**.
