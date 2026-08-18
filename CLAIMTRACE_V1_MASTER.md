@@ -68,6 +68,19 @@ Target user:
 
 These are **historical/committed evidence**, not a current v1 release-candidate rerun.
 
+### Golden-path gap state
+
+| Stage | Status | v1 delta |
+| --- | --- | --- |
+| 1–10: ingest through grounded Q&A | READY | Runtime re-verification only |
+| 11: target/reference selection | PARTIAL | Backend contract exists; UI is V1-03 |
+| 12: claim comparison | PARTIAL | Backend exists; executed verification incomplete |
+| 13: element decomposition | MISSING | V1-04 |
+| 14: persisted human review | MISSING | V1-05 |
+| 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; new surfaces must inherit guarantee |
+
+**Do not rebuild stages 1–10.**
+
 ---
 
 ## 4. Frozen v1.0 Workflow
@@ -89,19 +102,6 @@ These are **historical/committed evidence**, not a current v1 release-candidate 
 15. Verify every rendered analytical assertion against persisted source evidence.
 
 **When this workflow is complete, reproducible, validated, and packaged, feature development for v1.0 stops.**
-
-### Golden-path gap state
-
-| Stage | Status | v1 delta |
-| --- | --- | --- |
-| 1–10: ingest through grounded Q&A | READY | Runtime re-verification only |
-| 11: target/reference selection | PARTIAL | Backend contract exists; UI is V1-03 |
-| 12: claim comparison | PARTIAL | Backend exists; executed verification incomplete |
-| 13: element decomposition | MISSING | V1-04 |
-| 14: persisted human review | MISSING | V1-05 |
-| 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; new surfaces must inherit guarantee |
-
-**Do not rebuild stages 1–10.**
 
 ---
 
@@ -141,8 +141,6 @@ Do not add these unless this master is deliberately re-scoped:
 ### V1-01 — Golden Path Gap Audit
 **Status:** CLOSED
 
-Result: stages 1–10 already exist; real feature gap is comparison, decomposition, persisted review, then operational/proof closure.
-
 ### V1-02 — Claim Comparison Backend
 **Status:** **IN PROGRESS**
 
@@ -158,12 +156,14 @@ Acceptance:
 - [x] target and reference results carry canonical source spans;
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
 - [x] API response has no legal-conclusion field;
+- [x] response model enforces reference scope and coherent match/no-correspondence state;
 - [x] database-free service tests added for scope/no-index/same-document behavior;
 - [x] API contract tests added;
 - [x] PostgreSQL-backed integration tests added for strict reference scope and source-span resolution;
 - [x] edge-state tests added for `no_matches`, missing target parse, and missing target claim;
-- [ ] new tests actually executed successfully;
-- [ ] lint/format checks actually executed successfully;
+- [x] pure response-invariant tests added;
+- [ ] comparison pytest tests actually executed successfully;
+- [ ] Ruff/format checks actually executed successfully;
 - [ ] live PostgreSQL-backed scoped retrieval actually executed successfully.
 
 **Do not close V1-02 until executed verification exists.**
@@ -288,44 +288,49 @@ Known uncertainty or follow-up work.
 
 ### What changed
 
-- added comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
+- comparison schema/service/dependency/API router and `POST /api/v1/compare/claims` exist;
 - target persisted claim text is the only comparison query;
 - retrieval is forced to `[reference_document_id]` with a defensive second scope-leak check;
 - target/reference results preserve canonical source spans;
 - explicit `reference_not_indexed` vs `no_matches` state exists;
-- database-free service and API contract tests cover scope, request validation, and source-locator response shape;
-- added PostgreSQL-backed comparison integration coverage using the committed two-document synthetic corpus;
-- integration coverage specifies both-direction reference scoping and exact target/reference span resolution against persisted page text;
-- refined integration test formatting to the repository `line-length = 100` convention;
-- added `test_claim_comparison_edge_cases.py` to pin three remaining service contracts: indexed reference + zero candidates → `no_matches`; missing target parse → `claim_parse_not_found`; missing target claim → `claim_not_found`.
+- database-free service/API/edge-state and PostgreSQL-backed comparison tests exist;
+- added response-model invariants so serialization itself rejects:
+  - target/reference document collapse;
+  - any match outside the selected reference document;
+  - `match_count` disagreement with `matches`;
+  - contradictory `no_correspondence_found` state;
+  - missing/invalid no-correspondence reasons relative to searched index-run count;
+- added `test_claim_comparison_schema.py` with one coherent-state case and five contradiction cases.
 
 ### What was actually executed
 
 - read this master before changes;
-- re-inspected comparison service/schema/API, existing claim parsing/search behavior, integration fixtures, and synthetic retrieval corpus;
-- confirmed the committed retrieval corpus currently contains exactly the expected `sensor` and `battery` documents used by comparison integration coverage;
-- wrote `apps/api/tests/test_claim_comparison_edge_cases.py` to GitHub `main` at commit `38ddf6dec6efe745278dca8c71054ab672b87390`;
-- reproduced that exact new test source in the execution sandbox and ran `python -m py_compile`: **PASS**;
-- measured the new test file maximum line length: **99**, within the repository Ruff `line-length = 100` convention;
-- checked GitHub combined status for `38ddf6dec6efe745278dca8c71054ab672b87390`: no status checks were present;
-- attempted local dependency availability for PostgreSQL execution; the sandbox lacks `psycopg` and `pgvector`, and offline installation was unavailable.
+- inspected current `main`, comparison service, API mapper, schema, error taxonomy, existing comparison tests, and API tests;
+- attempted a clean public `git clone`; environment still failed with `Could not resolve host: github.com`;
+- updated `apps/api/src/claimtrace_api/schemas/comparison.py` at commit `e791f34c9bd85ef72e789bd7842d88d82fc3eb29`;
+- added `apps/api/tests/test_claim_comparison_schema.py` at commit `dc5a4a5bd1c748899751487e7401a1a83cd11863`;
+- reproduced the exact response-validator logic in the execution sandbox and ran `python -m py_compile`: **PASS**;
+- measured the updated schema source maximum line length at **99**, within repository `line-length = 100`;
+- executed the actual validator logic in an isolated Pydantic environment with only external repository imports stubbed: **PASS** for 1 coherent case and **PASS-by-rejection** for 5 contradictory cases;
+- first isolated validator attempt failed because Pydantic forward references were not rebuilt in the stubbed environment; the harness was corrected with `model_rebuild`, after which the six intended cases behaved as required.
 
 ### What was not verified
 
-- comparison pytest tests were **not actually run**;
+- repository comparison pytest tests were **not actually run**;
 - Ruff/format checks were not run with Ruff itself;
+- the newly added schema test file was not run by pytest;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
 - PostgreSQL-backed scoped retrieval was not executed;
 - Docker Compose was not executed;
-- `py_compile` proves Python syntax only; it does not prove imports, fixtures, service behavior, or database behavior.
+- isolated Pydantic execution validates the response-invariant logic, not the real package import graph or database behavior.
 
 ### Remaining risks
 
-- comparison code/tests remain runtime-unverified because this execution environment cannot obtain a runnable repository/dependency set;
-- integration tests may still expose import/runtime/database defects when first executed;
-- the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, not additional feature scope;
-- `searched_index_run_count == 0` must later render clearly as unindexed/incompatible profile rather than ordinary no-match;
+- comparison code/tests remain runtime-unverified because this execution environment cannot obtain a complete runnable checkout and lacks `psycopg`/`pgvector`/Ruff;
+- the newly strengthened response validator could expose an existing mapper inconsistency when real API tests first run; that is intentional but still unverified;
+- integration tests may expose import/runtime/database defects when first executed;
+- the core remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
 - comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
 - persistent CI remains intentionally deferred to V1-06.
 
@@ -341,10 +346,12 @@ Known uncertainty or follow-up work.
 | Ollama citation resolution 1.000 | COMMITTED EVALUATION | synthetic corpus |
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
-| Comparison contract/service/API | IMPLEMENTED, NOT RUNTIME-VERIFIED | V1-02 |
-| Comparison database-free tests | WRITTEN, NOT EXECUTED | V1-02 |
+| Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
+| Comparison database-free tests | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
 | Comparison edge-state test source | PY_COMPILE PASS, PYTEST NOT EXECUTED | syntax + line-length only |
+| Comparison response invariant logic | ISOLATED EXECUTION PASS | 1 valid + 5 rejected contradictory states |
+| Comparison response invariant pytest file | WRITTEN, NOT PYTEST-EXECUTED | V1-02 |
 | Current CI green | NOT PRESENT | V1-06 |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
