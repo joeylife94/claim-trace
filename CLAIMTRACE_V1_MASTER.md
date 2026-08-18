@@ -4,7 +4,7 @@
 >
 > Read this file before every implementation batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains system design, and `docs/ROADMAP.md` records broader possibilities. **This file controls what ClaimTrace v1.0 is actually finishing now.**
 
-**Last execution update:** 2026-08-18  
+**Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-02 — Claim Comparison Backend
 
@@ -303,7 +303,8 @@ Known uncertainty or follow-up work.
 - hardened target-side lifecycle handling: a parse snapshot must be `ClaimParseStatus.COMPLETED`; `PROCESSING`, `NO_CLAIMS_FOUND`, and `FAILED` now produce `claim_parse_not_completed` instead of falling through to misleading claim lookup behavior;
 - updated existing comparison service test fixtures to model completed parse state explicitly;
 - added parametrized edge-state coverage for all three incomplete target parse statuses;
-- added explicit database-free edge coverage for missing target and missing reference documents, both pinned to `ErrorCode.DOCUMENT_NOT_FOUND`.
+- added explicit database-free edge coverage for missing target and missing reference documents, both pinned to `ErrorCode.DOCUMENT_NOT_FOUND`;
+- no comparison feature code was added in the 2026-08-19 verification-only run; the master was updated to record the execution blocker without expanding into V1-06 CI work.
 
 ### What was actually executed
 
@@ -314,7 +315,11 @@ Known uncertainty or follow-up work.
 - added corresponding pure schema tests in `apps/api/tests/test_claim_comparison_schema.py` at commit `7fd356f104baef4972889578ef612f85fb529e94`;
 - executed `python -m py_compile` against a locally reconstructed shape of the changed comparison schema: **PASS**;
 - measured the reconstructed changed schema maximum line length at **88**, below the repository `line-length = 100` convention;
-- checked GitHub combined status for commit `7fd356f104baef4972889578ef612f85fb529e94`: no status checks are present.
+- checked GitHub combined status for commit `7fd356f104baef4972889578ef612f85fb529e94`: no status checks are present;
+- on 2026-08-19, re-read the authoritative master and confirmed `main` at `a79e37497c46fe171b1db1351a3a287ef6b490bc` before this documentation update;
+- on 2026-08-19, retried a clean clone in the execution environment: **FAILED** with `Could not resolve host: github.com`;
+- on 2026-08-19, inspected `.github/workflows` through the GitHub connector: **directory not present**;
+- on 2026-08-19, inspected `main` branch protection/status configuration: branch is unprotected and has no required status checks.
 
 Earlier V1-02 executed evidence retained:
 
@@ -337,6 +342,7 @@ Earlier V1-02 executed evidence retained:
 ### Remaining risks
 
 - comparison code/tests remain runtime-unverified because this environment still cannot clone the repository and lacks the full execution stack;
+- there is no existing GitHub Actions workflow that can be used to satisfy the V1-02 execution gate remotely; adding persistent CI now would pull V1-06 operational-hardening scope forward, so it was intentionally not done;
 - the new source-span ownership invariant is intentional provenance defense, but real API/pytest execution may expose pre-existing mapper or fixture assumptions that need correction;
 - missing-document behavior is implemented by `_require_document` and explicitly covered in source tests, but those tests still need actual pytest execution;
 - the completed-parse guard is aligned with existing claim-indexing lifecycle semantics, but its repository tests still need actual pytest execution;
@@ -365,7 +371,7 @@ Earlier V1-02 executed evidence retained:
 | Comparison PostgreSQL integration coverage | WRITTEN + STATICALLY REVIEWED, NOT EXECUTED | strict scope + exact provenance |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | 1 valid + 5 rejected contradictory states |
 | Comparison changed-source syntax | PY_COMPILE PASS ON RECONSTRUCTED SOURCE | not a real checkout import test |
-| Current CI green | NOT PRESENT | latest source commit has no status checks |
+| Current CI green | NOT PRESENT | `.github/workflows` absent; `main` unprotected with no required checks |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
