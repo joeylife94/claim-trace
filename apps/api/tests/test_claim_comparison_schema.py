@@ -84,6 +84,35 @@ def test_response_accepts_coherent_match_state() -> None:
     assert response.no_correspondence_found is False
 
 
+def test_claim_response_requires_source_span() -> None:
+    with pytest.raises(ValidationError, match="List should have at least 1 item"):
+        ComparisonClaimResponse(
+            document_id=TARGET_DOCUMENT,
+            claim_number=1,
+            claim_type=ClaimType.INDEPENDENT,
+            text="source-backed claim",
+            source_spans=[],
+        )
+
+
+def test_claim_response_refuses_cross_document_source_span() -> None:
+    with pytest.raises(ValidationError, match="claim document"):
+        ComparisonClaimResponse(
+            document_id=TARGET_DOCUMENT,
+            claim_number=1,
+            claim_type=ClaimType.INDEPENDENT,
+            text="source-backed claim",
+            source_spans=[
+                SourceLocator(
+                    document_id=OTHER_DOCUMENT,
+                    page_number=1,
+                    start_char=0,
+                    end_char=20,
+                )
+            ],
+        )
+
+
 def test_response_refuses_reference_scope_leak() -> None:
     with pytest.raises(ValidationError, match="reference document"):
         _response(matches=[_match(OTHER_DOCUMENT)])
