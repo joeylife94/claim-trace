@@ -46,7 +46,11 @@ def _profile() -> IndexProfile:
     )
 
 
-def _outcome(*, with_match: bool = True) -> ClaimComparisonOutcome:
+def _outcome(
+    *,
+    with_match: bool = True,
+    no_correspondence_reason: str | None = None,
+) -> ClaimComparisonOutcome:
     target_span = ClaimSpan(
         id=uuid.uuid4(),
         claim_id=uuid.uuid4(),
@@ -84,6 +88,10 @@ def _outcome(*, with_match: bool = True) -> ClaimComparisonOutcome:
             )
         )
 
+    reason = no_correspondence_reason
+    if not with_match and reason is None:
+        reason = "no_matches"
+
     return ClaimComparisonOutcome(
         target=ComparisonTarget(
             document_id=TARGET_DOCUMENT,
@@ -97,7 +105,7 @@ def _outcome(*, with_match: bool = True) -> ClaimComparisonOutcome:
         mode=RetrievalMode.HYBRID,
         profile=_profile(),
         searched_index_run_count=1,
-        no_correspondence_reason=None if with_match else "no_matches",
+        no_correspondence_reason=reason,
         matches=matches,
     )
 
@@ -123,6 +131,12 @@ def _payload() -> dict[str, object]:
     }
 
 
+def _client_for_outcome(app: FastAPI, outcome: ClaimComparisonOutcome) -> TestClient:
+    app.dependency_overrides[get_postgres_ready] = lambda: True
+    app.dependency_overrides[get_claim_comparison_service] = lambda: StubComparisonService(outcome)
+    return TestClient(app)
+
+
 def test_comparison_returns_both_sides_with_source_locators(
     comparison_client: TestClient,
 ) -> None:
@@ -136,6 +150,33 @@ def test_comparison_returns_both_sides_with_source_locators(
     assert body["matches"][0]["source_spans"][0]["page_number"] == 3
     assert body["no_correspondence_found"] is False
     assert body["no_correspondence_reason"] is None
+
+
+def test_no_matches_is_explicit_in_http_response(app: FastAPI) -> None:
+    with _client_for_outcome(app, _outcome(with_match=False)) as client:
+        response = client.post(URL, json=_payload())
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["matches"] == []
+    assert body["match_count"] == 0
+    assert body["no_correspondence_found"] is True
+    assert body["no_correspondence_reason"] == "no_matches"
+
+
+def test_reference_not_indexed_is_distinct_in_http_response(app: FastAPI) -> None:
+    outcome = _outcome(with_match=False, no_correspondence_reason="reference_not_indexed")
+    with _client_for_outcome(app, outcome) as client:
+        response = client.post(URL, json=_payload())
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["matches"] == []
+    assert body["match_count"] == 0
+    assert body["no_correspondence_found"] is True
+    assert body["no_correspondence_reason"] == "reference_not_indexed"
 
 
 def test_comparison_contract_has_no_legal_conclusion_fields(
