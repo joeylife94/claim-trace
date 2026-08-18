@@ -114,6 +114,7 @@ Acceptance:
 - [x] target and reference results carry canonical source spans;
 - [x] each comparison claim response requires at least one source span and every span belongs to that claim's document;
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
+- [x] API contract explicitly preserves distinct `reference_not_indexed` and `no_matches` no-correspondence reasons;
 - [x] API response has no legal-conclusion field;
 - [x] response model enforces coherent scope/count/no-correspondence state;
 - [x] database-free service/API/edge/schema tests exist;
@@ -219,9 +220,10 @@ The V1-02 backend currently contains:
 - response invariants for document separation, reference scope, match count, no-correspondence state, and source-span ownership;
 - completed-target-parse lifecycle enforcement;
 - database-free service/API/edge/schema tests;
-- PostgreSQL-backed strict-scope/provenance integration tests.
+- PostgreSQL-backed strict-scope/provenance integration tests;
+- API contract tests now explicitly assert that `no_matches` and `reference_not_indexed` remain distinct HTTP no-correspondence reasons.
 
-Verification-path hardening now includes:
+Verification-path hardening includes:
 
 - `make verify-v1-02` depends on idempotent `init`;
 - missing `.env` is created from committed safe defaults; existing `.env` is preserved;
@@ -239,12 +241,12 @@ Verification-path hardening now includes:
 Current run:
 
 - read this MASTER first and confirmed V1-02 remains the earliest unfinished batch;
-- attempted `git ls-remote https://github.com/joeylife94/claim-trace.git HEAD` from the execution environment; it failed with `Could not resolve host: github.com`;
-- inspected the current repository `Makefile` through the GitHub connector;
-- added `docker compose config --quiet` as a fail-fast preflight before API image build and PostgreSQL startup;
-- updated `Makefile` in commit `78efdb1fad4908df37b391b5980a8faf4045a0ae`;
-- fetched the committed Makefile back from GitHub and confirmed the new preflight is present;
-- reconstructed the changed closure target locally and executed `make -n verify-v1-02`: **PASS**.
+- inspected the current `Makefile`, `docker-compose.yml`, comparison PostgreSQL integration test, shared PostgreSQL fixtures, API Dockerfile, and comparison API tests through the GitHub connector;
+- confirmed the integration fixture creates/upgrades a dedicated test database and the comparison integration tests exercise strict two-document reference scoping plus exact persisted source-span resolution;
+- added HTTP contract coverage for distinct `no_matches` and `reference_not_indexed` response reasons in commit `8f783ec6d413b24f6f694b88afba12e3d3822996`;
+- fetched the committed API test file back from GitHub and confirmed the two new contract tests are present;
+- reconstructed the changed API test source locally and executed `python -m py_compile`: **PASS**;
+- measured the reconstructed changed source maximum line length: **99**, within the repository Ruff line-length convention of 100.
 
 Retained earlier V1-02 execution evidence:
 
@@ -261,7 +263,7 @@ Retained earlier V1-02 execution evidence:
 - `docker compose config --quiet` was not executed against the real checkout;
 - API Docker image build was not actually executed;
 - PostgreSQL startup/readiness was not executed against Docker Compose;
-- repository comparison pytest tests were not actually run against the real package checkout;
+- repository comparison pytest tests, including the two new API contract tests, were not actually run against the real package checkout;
 - Ruff/format checks were not run with Ruff itself;
 - FastAPI startup was not run;
 - no live comparison HTTP request was executed;
@@ -291,8 +293,9 @@ Retained earlier V1-02 execution evidence:
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
-| Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration |
+| Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration + HTTP no-correspondence reasons |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
+| New comparison API test source | SYNTAX EXECUTION PASS | `py_compile`; max line length 99 |
 | V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | env init, Compose config preflight, API build, PostgreSQL readiness, no-skip guard |
 | PostgreSQL readiness shell | SYNTAX EXECUTION PASS | Docker execution still required |
 | Integration guard simulations | EXECUTED PASS | pass-only accepted; mixed/all-skipped rejected |
