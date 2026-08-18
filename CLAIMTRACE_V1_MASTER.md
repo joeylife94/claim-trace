@@ -31,13 +31,7 @@ Target user:
 - text-based Korean patent PDFs;
 - needs retrieval/comparison output that can be checked against original source text.
 
-Product-level definition:
-
 > **ClaimTrace v1.0 is a single-user, on-premise patent analysis pilot for text-based Korean patent PDFs. It structures claims, retrieves related evidence, produces evidence-grounded answers, supports bounded document/claim comparison, decomposes claims into reviewable source-backed elements, preserves human review separately from machine output, and exposes limitations instead of inventing certainty.**
-
----
-
-## 3. Product Level
 
 | Level | Meaning | Status |
 | --- | --- | --- |
@@ -49,27 +43,19 @@ Product-level definition:
 
 ---
 
-## 4. Current State
+## 3. Current State
 
 ### Existing engine — already implemented
 
-- FastAPI backend + Next.js frontend.
-- PostgreSQL 17 + pgvector + pg_trgm.
-- PDF validation, persistence, SHA-256 identity, explicit ingestion failures.
-- Page-level persisted text and canonical `SourceLocator` provenance.
-- Deterministic Korean claim structural parsing and dependency graph.
-- Claim source spans, including page-crossing claims.
-- Claim indexing lifecycle and retrieval profiles.
-- Dense, lexical, and RRF hybrid retrieval.
-- Search result ranking metadata + exact source links.
-- Local/self-hosted LLM boundary with Ollama, OpenAI-compatible local endpoint, deterministic fake provider.
-- Strict structured-output validation.
-- Evidence-grounded Q&A with server-issued evidence IDs.
-- Server-side citation resolution to stored page text.
-- Explicit `insufficient_evidence` behavior.
-- Grounded-answer UI and source navigation.
-- Deterministic + real-local-model evaluation tiers.
-- Hostile evidence / forged citation guardrail tests.
+- FastAPI + Next.js, PostgreSQL 17 + pgvector + pg_trgm.
+- PDF validation/persistence, SHA-256 identity, explicit ingestion failures.
+- Page-level text with canonical `SourceLocator` provenance.
+- Deterministic Korean claim parsing, dependencies, and page-relative claim spans.
+- Dense, lexical, and RRF hybrid retrieval with exact source links.
+- Local/self-hosted LLM boundary: Ollama, OpenAI-compatible local endpoint, deterministic fake provider.
+- Strict structured-output validation and evidence-grounded Q&A using server-issued evidence IDs.
+- Server-side citation resolution, explicit `insufficient_evidence`, grounded UI/source navigation.
+- Deterministic + real-local-model evaluation tiers and hostile-evidence guardrails.
 - Docker Compose development environment.
 
 ### Historical evidence before v1 hardening
@@ -84,7 +70,7 @@ These are **historical/committed evidence**, not a current v1 release-candidate 
 
 ---
 
-## 5. Frozen v1.0 Workflow
+## 4. Frozen v1.0 Workflow
 
 1. Upload text-based patent PDF.
 2. Validate and persist document.
@@ -104,88 +90,42 @@ These are **historical/committed evidence**, not a current v1 release-candidate 
 
 **When this workflow is complete, reproducible, validated, and packaged, feature development for v1.0 stops.**
 
----
+### Golden-path gap state
 
-## 6. Golden Path Gap Audit
+| Stage | Status | v1 delta |
+| --- | --- | --- |
+| 1–10: ingest through grounded Q&A | READY | Runtime re-verification only |
+| 11: target/reference selection | PARTIAL | Backend contract exists; UI is V1-03 |
+| 12: claim comparison | PARTIAL | Backend exists; executed verification incomplete |
+| 13: element decomposition | MISSING | V1-04 |
+| 14: persisted human review | MISSING | V1-05 |
+| 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; new surfaces must inherit guarantee |
 
-| # | Stage | Status | v1 delta |
-| --- | --- | --- | --- |
-| 1 | PDF upload | READY | Runtime re-verification only |
-| 2 | Validate + persist | READY | Runtime re-verification only |
-| 3 | Page text + locator | READY | Runtime re-verification only |
-| 4 | Claim parse + dependency | READY | Runtime re-verification only |
-| 5 | Claim → exact source | READY | Runtime re-verification only |
-| 6 | Claim indexing | READY | Runtime re-verification only |
-| 7 | Dense/lexical/hybrid search | READY | Runtime re-verification only |
-| 8 | Search → exact source | READY | Runtime re-verification only |
-| 9 | Grounded Q&A | READY | Runtime re-verification only |
-| 10 | Insufficient evidence | READY | Runtime re-verification only |
-| 11 | Target/reference selection | **PARTIAL** | Backend contract now exists; UI not yet implemented |
-| 12 | Claim comparison | **PARTIAL** | V1-02 implementation present; runtime verification incomplete |
-| 13 | Element decomposition | MISSING | V1-04 |
-| 14 | Persisted human review | MISSING | V1-05 |
-| 15 | Source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; comparison/decomposition must inherit guarantee |
-
-Do **not** rebuild stages 1–10.
+**Do not rebuild stages 1–10.**
 
 ---
 
-## 7. In Scope
+## 5. Scope
 
-### Claim comparison
+### In scope
 
-- target document + target claim + one reference document;
-- reference-document-only retrieval scope;
-- target/reference canonical source locators;
-- side-by-side textual correspondence;
-- explicit `reference_not_indexed` / `no_matches` state;
-- reuse existing retrieval stack;
-- no legal-conclusion fields.
+- bounded target-claim vs one-reference-document comparison;
+- reference-document-only retrieval and target/reference canonical source locators;
+- explicit `reference_not_indexed` / `no_matches` states;
+- claim element decomposition anchored to canonical claim source;
+- versioned/idempotent machine output plus persisted `accepted` / `needs_correction` human review;
+- clean checkout/start, empty-DB migration reproduction, deterministic demo data, CI quality gates;
+- proof-oriented README, architecture visual, screenshots, demo asset, evaluation summary, visible CI, limitations, v1.0 release/tag.
 
-### Claim element decomposition + review
+### Explicit non-goals
 
-- individually addressable elements/limitations;
-- each element anchored to canonical claim source;
-- versioned/idempotent machine output;
-- persisted human `accepted` / `needs_correction` minimum review state;
-- re-processing must not silently erase review history.
-
-### Operational hardening
-
-- clean checkout/start;
-- empty-DB migration reproduction;
-- committed deterministic demo data;
-- documented golden path;
-- CI quality gates;
-- expected failure-path verification.
-
-### Proof packaging
-
-- proof-oriented README;
-- architecture visual;
-- screenshots;
-- concise demo asset;
-- evaluation summary;
-- visible CI;
-- limitations;
-- v1.0 release/tag.
-
----
-
-## 8. Explicit Non-Goals
-
-Do not add these to v1.0 unless this master is deliberately re-scoped:
+Do not add these unless this master is deliberately re-scoped:
 
 - OCR / scanned-PDF recovery;
-- authentication / RBAC;
-- multi-tenancy;
-- public cloud hosting;
-- Kubernetes;
-- production deployment pipelines;
+- authentication / RBAC / multi-tenancy;
+- public cloud hosting / Kubernetes / production deployment pipelines;
 - billing / admin console / team workspace;
-- chat history / conversation memory / streaming;
-- general tool calling;
-- notifications;
+- chat history / memory / streaming / general tool calling / notifications;
 - broad observability platform work;
 - full multilingual support;
 - hosted third-party LLM APIs as the default path;
@@ -193,7 +133,7 @@ Do not add these to v1.0 unless this master is deliberately re-scoped:
 
 ---
 
-## 9. Execution Plan
+## 6. Execution Plan
 
 ### V1-00 — Master Freeze
 **Status:** CLOSED
@@ -218,11 +158,12 @@ Acceptance:
 - [x] target and reference results carry canonical source spans;
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
 - [x] API response has no legal-conclusion field;
-- [x] focused service tests added for scope/no-index/same-document behavior;
-- [x] focused API contract tests added;
+- [x] database-free service tests added for scope/no-index/same-document behavior;
+- [x] API contract tests added;
+- [x] PostgreSQL-backed integration tests added for strict reference scope and source-span resolution;
 - [ ] new tests actually executed successfully;
 - [ ] lint/format checks actually executed successfully;
-- [ ] live PostgreSQL-backed scoped retrieval verified.
+- [ ] live PostgreSQL-backed scoped retrieval actually executed successfully.
 
 **Do not close V1-02 until executed verification exists.**
 
@@ -230,10 +171,8 @@ Acceptance:
 **Status:** PLANNED
 
 - `/compare` workspace;
-- target/reference selectors;
-- target claim selector;
-- side-by-side results;
-- source navigation;
+- target/reference selectors and target-claim selector;
+- side-by-side results with direct source navigation;
 - no-match/error/loading states;
 - contextual links from document detail to search, grounded Q&A, comparison.
 
@@ -279,14 +218,13 @@ Acceptance:
 
 ---
 
-## 10. Acceptance Criteria
+## 7. v1.0 Acceptance Criteria
 
 ### Functional
 
 - [ ] Full stages 1–15 workflow usable from supported UI.
 - [ ] Search/Q&A/comparison/decomposition analytical output has source navigation.
-- [ ] Comparison strictly respects reference document scope.
-- [ ] Comparison exposes no-correspondence state.
+- [ ] Comparison strictly respects reference document scope and exposes no-correspondence state.
 - [ ] Decomposition yields source-backed elements.
 - [ ] Human review is persisted separately from machine output.
 
@@ -305,8 +243,7 @@ Acceptance:
 - [ ] Grounded deterministic evaluation reproducible.
 - [ ] Real local-model validation rerun or explicitly marked not rerun.
 - [ ] Citation resolution verified.
-- [ ] Scope-leak guards pass.
-- [ ] Hostile evidence guards pass.
+- [ ] Scope-leak and hostile-evidence guards pass.
 - [ ] Comparison provenance checks pass.
 - [ ] Decomposition/review persistence checks pass.
 - [ ] Model-quality limitations remain visible.
@@ -324,16 +261,11 @@ Acceptance:
 
 ---
 
-## 11. Execution Rules
+## 8. Execution Rules
 
-Every batch must define:
+Every batch defines: **Goal / Scope / Acceptance / Non-goals**.
 
-1. **Goal** — smallest useful outcome.
-2. **Scope** — allowed surfaces.
-3. **Acceptance** — observable pass conditions.
-4. **Non-goals** — explicit scope boundary.
-
-Every batch update must record:
+Every batch update records:
 
 ### What changed
 Concrete source/schema/document changes.
@@ -351,53 +283,48 @@ Known uncertainty or follow-up work.
 
 ---
 
-## 12. Current Batch Record — V1-02
+## 9. Current Batch Record — V1-02
 
 ### What changed
 
-- added `apps/api/src/claimtrace_api/schemas/comparison.py`;
-- added bounded request validation with `extra="forbid"` and distinct target/reference documents;
-- added `apps/api/src/claimtrace_api/services/claim_comparison.py`;
-- target claim persisted text is reused as the retrieval query;
-- search is forced to `[reference_document_id]` and a second service-level leak check rejects out-of-scope results;
-- added explicit `reference_not_indexed` vs `no_matches` outcome reason;
-- added `COMPARISON_INVALID_REQUEST` application error code;
-- wired `ClaimComparisonService` through FastAPI dependencies;
-- added `POST /api/v1/compare/claims`;
-- registered the comparison router;
-- added database-free service tests for reference scope, scope leak rejection, unindexed reference, and same-document rejection;
-- added HTTP contract tests for source locators, forbidden legal fields, same-document validation, and extra-field rejection.
+- added comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
+- target persisted claim text is the only comparison query;
+- retrieval is forced to `[reference_document_id]` with a defensive second scope-leak check;
+- target/reference results preserve canonical source spans;
+- explicit `reference_not_indexed` vs `no_matches` state exists;
+- database-free service and API contract tests cover scope, request validation, and source-locator response shape;
+- **added `apps/api/tests/test_claim_comparison_integration.py`** using the committed two-document synthetic corpus;
+- integration coverage now specifies both-direction reference scoping and exact target/reference span resolution against persisted page text.
 
 ### What was actually executed
 
-- read current `CLAIMTRACE_V1_MASTER.md` before changes;
-- inspected existing `ClaimSearchService`, search API, retrieval schemas, claim API, parsing snapshot, dependency wiring, error taxonomy, test fixtures, and project Ruff/Python configuration;
-- wrote the comparison source and test files to GitHub `main`;
-- fetched `main` after writes and confirmed HEAD advanced to `1f29f675dfb4e0e4d7c8e0bc2d1440b74f5ac7bb` before this master update;
-- checked GitHub combined status for that HEAD: no status checks were present;
-- attempted a clean public `git clone` in the execution container in order to run tests; the command failed before clone because the environment could not resolve `github.com`.
+- read this master before changes;
+- re-inspected `ClaimComparisonService`, comparison schema/API, and `ClaimSearchService` document-scoping implementation;
+- inspected existing PostgreSQL retrieval integration fixtures and provenance assertions before adding comparison integration coverage;
+- wrote `test_claim_comparison_integration.py` to GitHub `main` at commit `357352a9f0eb79c0a9f78b8edd0e36ea5ed527c9`;
+- attempted a clean public `git clone` again; execution environment still failed before clone with `Could not resolve host: github.com`.
 
 ### What was not verified
 
-- no Python test was actually run;
-- no Ruff/format check was actually run;
-- no FastAPI app startup was executed;
-- no comparison request was executed against a live API;
-- no PostgreSQL-backed comparison retrieval was executed;
-- no Docker Compose path was executed.
+- comparison unit/API/integration tests were **not actually run**;
+- Ruff/format checks were not run;
+- FastAPI startup was not run;
+- no live comparison HTTP request was executed;
+- PostgreSQL-backed scoped retrieval was not executed;
+- Docker Compose was not executed.
 
 ### Remaining risks
 
-- new comparison code is statically inspected but not runtime-verified;
-- test files may still expose import/style/runtime defects until executed;
-- real retrieval must still prove that reference-document scope produces only reference-document claims;
-- `searched_index_run_count == 0` currently represents an unindexed/incompatible active profile and must be rendered clearly in the future UI;
-- comparison ranks textual correspondence only and must never be presented as legal equivalence or infringement analysis;
-- CI is still absent, so no persistent green evidence exists yet.
+- comparison code and the new integration tests remain runtime-unverified because the execution environment cannot fetch the repository;
+- integration tests may still expose import/style/runtime defects when first executed;
+- the core remaining V1-02 gate is executed verification, not additional feature scope;
+- `searched_index_run_count == 0` must later render clearly as unindexed/incompatible profile rather than ordinary no-match;
+- comparison is textual correspondence only and must never be presented as legal equivalence or infringement analysis;
+- persistent CI is still absent until V1-06.
 
 ---
 
-## 13. Verification Evidence
+## 10. Verification Evidence
 
 | Evidence | State | Note |
 | --- | --- | --- |
@@ -408,7 +335,8 @@ Known uncertainty or follow-up work.
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT RUNTIME-VERIFIED | V1-02 |
-| Comparison focused tests | WRITTEN, NOT EXECUTED | V1-02 |
+| Comparison database-free tests | WRITTEN, NOT EXECUTED | V1-02 |
+| Comparison PostgreSQL integration coverage | WRITTEN, NOT EXECUTED | strict scope + exact provenance |
 | Current CI green | NOT PRESENT | V1-06 |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Golden-path browser run | NOT VERIFIED | V1-06 |
@@ -417,7 +345,7 @@ Known uncertainty or follow-up work.
 
 ---
 
-## 14. Known Risks / Unverified
+## 11. Known Risks / Unverified
 
 - Citation resolvability is not semantic entailment.
 - Current real-model evidence uses a small `qwen2.5:1.5b` model and synthetic data.
@@ -430,7 +358,7 @@ Known uncertainty or follow-up work.
 
 ---
 
-## 15. Closure Condition
+## 12. Closure Condition
 
 ClaimTrace v1.0 is **CLOSED** only when all three are true:
 
