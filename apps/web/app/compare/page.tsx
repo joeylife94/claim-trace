@@ -5,7 +5,12 @@ import { listDocuments } from "@/lib/documents";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComparePage() {
+export default async function ComparePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ target?: string }>;
+}) {
+  const { target } = await searchParams;
   const documents = await listDocuments(100)
     .then((response) => response.items.filter((document) => document.status === "completed"))
     .catch(() => []);
@@ -32,7 +37,10 @@ export default async function ComparePage() {
           conclusion.
         </p>
 
-        <ComparisonPanel documents={comparisonDocuments} />
+        <ComparisonPanel
+          documents={comparisonDocuments}
+          initialTargetDocumentId={target ?? ""}
+        />
       </main>
       <footer>
         ClaimTrace does not determine infringement, validity, novelty, equivalence, inventive
