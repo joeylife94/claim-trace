@@ -27,10 +27,12 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}"
 export LLM_PROVIDER=ollama
 export LLM_OLLAMA_BASE_URL=http://ollama:11434
 export LLM_OLLAMA_MODEL="$MODEL"
-# The buyer-facing HERO needs two concise supported statements, not a long
-# generation. Keep enough room for the fixed JSON schema while bounding slow or
-# pathological local generations. One corrective attempt remains available.
-export GROUNDED_MAX_OUTPUT_TOKENS="${GROUNDED_MAX_OUTPUT_TOKENS:-384}"
+# Keep the application default-sized output budget for structured grounded
+# generation. The qwen2.5:1.5b native-schema response can legitimately exceed
+# 384 tokens even for a short two-fact answer because the JSON envelope carries
+# statements, citation ids, and insufficiency fields. A lower Proof-only cap was
+# observed to truncate exactly at the token ceiling and fail structured parsing.
+export GROUNDED_MAX_OUTPUT_TOKENS="${GROUNDED_MAX_OUTPUT_TOKENS:-1024}"
 export GROUNDED_TIMEOUT_SECONDS="${GROUNDED_TIMEOUT_SECONDS:-150}"
 export GROUNDED_REPAIR_MAX_ATTEMPTS="${GROUNDED_REPAIR_MAX_ATTEMPTS:-1}"
 
