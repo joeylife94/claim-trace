@@ -6,6 +6,7 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from claimtrace_api.db.models import (
@@ -22,7 +23,7 @@ from claimtrace_api.db.models import (
 pytestmark = pytest.mark.integration
 
 
-def _seed_claim(sync_engine, *, text: str) -> tuple[uuid.UUID, int]:
+def _seed_claim(sync_engine: Engine, *, text: str) -> tuple[uuid.UUID, int]:
     document_id = uuid.uuid4()
     parse_result_id = uuid.uuid4()
     claim_id = uuid.uuid4()
@@ -92,7 +93,7 @@ def _url(document_id: uuid.UUID, claim_number: int) -> str:
 
 def test_element_api_is_idempotent_and_source_backed(
     integration_client: TestClient,
-    sync_engine,
+    sync_engine: Engine,
 ) -> None:
     document_id, claim_number = _seed_claim(sync_engine, text="센서부; 통신부")
 
@@ -130,7 +131,7 @@ def test_element_api_is_idempotent_and_source_backed(
 
 def test_element_api_exposes_resistant_shape_warning(
     integration_client: TestClient,
-    sync_engine,
+    sync_engine: Engine,
 ) -> None:
     document_id, claim_number = _seed_claim(sync_engine, text="센서 데이터를 수집하는 장치")
 
@@ -146,7 +147,7 @@ def test_element_api_exposes_resistant_shape_warning(
 
 def test_element_api_returns_explicit_missing_claim_error(
     integration_client: TestClient,
-    sync_engine,
+    sync_engine: Engine,
 ) -> None:
     document_id, _ = _seed_claim(sync_engine, text="센서부; 통신부")
 
