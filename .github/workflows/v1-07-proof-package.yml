@@ -13,6 +13,7 @@ on:
       - "apps/web/**"
       - "docker-compose.yml"
       - ".env.example"
+      - "Makefile"
       - "infra/postgres/init/**"
 
 permissions:
