@@ -34,7 +34,9 @@ from tests.claim_fixtures import build_korean_claims_pdf
 
 DEFAULT_BASE_URL: Final = "http://127.0.0.1:8000"
 PROOF_DOCUMENT_IDS: Final = ("collector", "thermal")
-REQUEST_TIMEOUT_SECONDS: Final = 180.0
+# The first real-embedding Proof run may download multilingual-e5-small before
+# indexing. Later runs reuse the model-cache volume and complete much faster.
+REQUEST_TIMEOUT_SECONDS: Final = 600.0
 
 
 @dataclass(frozen=True, slots=True)
