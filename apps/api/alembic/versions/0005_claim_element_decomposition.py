@@ -106,9 +106,7 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "element_id", "sequence_number", name="uq_element_spans_element_sequence"
         ),
-        sa.CheckConstraint(
-            "sequence_number >= 0", name="ck_element_spans_sequence_non_negative"
-        ),
+        sa.CheckConstraint("sequence_number >= 0", name="ck_element_spans_sequence_non_negative"),
         sa.CheckConstraint("page_number >= 1", name="ck_element_spans_page_positive"),
         sa.CheckConstraint("start_char >= 0", name="ck_element_spans_start_non_negative"),
         sa.CheckConstraint("end_char > start_char", name="ck_element_spans_end_after_start"),
