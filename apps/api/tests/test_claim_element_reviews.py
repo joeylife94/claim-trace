@@ -251,9 +251,9 @@ def test_review_api_rejects_invalid_state_and_missing_run(
     assert isinstance(invalid.json()["detail"], list)
 
     openapi = integration_client.app.openapi()
-    validation_schema = openapi["paths"][
-        "/api/v1/element-decomposition-runs/{run_id}/reviews"
-    ]["post"]["responses"]["422"]["content"]["application/json"]["schema"]
+    validation_schema = openapi["paths"]["/api/v1/element-decomposition-runs/{run_id}/reviews"][
+        "post"
+    ]["responses"]["422"]["content"]["application/json"]["schema"]
     assert validation_schema == {"$ref": "#/components/schemas/HTTPValidationError"}
 
     missing = integration_client.get(_url(run_id))
