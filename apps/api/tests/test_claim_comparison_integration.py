@@ -73,8 +73,7 @@ def page_texts(client: TestClient, document_id: str) -> dict[int, str]:
 
 def resolve_spans(pages: dict[int, str], spans: list[dict[str, Any]]) -> str:
     return "\n".join(
-        pages[span["page_number"]][span["start_char"] : span["end_char"]]
-        for span in spans
+        pages[span["page_number"]][span["start_char"] : span["end_char"]] for span in spans
     )
 
 
