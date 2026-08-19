@@ -1,0 +1,82 @@
+name: V1-06 Whole-Product Golden Path
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/verify-v1-06-golden-path.sh"
+      - "apps/api/**"
+      - "apps/web/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "Makefile"
+      - "infra/postgres/init/**"
+      - ".github/workflows/v1-06-golden-path.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  whole-product-golden-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js for browser validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install browser runner
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Execute deterministic whole-product golden path
+        run: sh scripts/verify-v1-06-golden-path.sh
+
+      - name: Capture runtime diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -p claimtrace-v1-06-golden-path ps || true
+          docker compose -p claimtrace-v1-06-golden-path logs --no-color postgres api web || true
+
+      - name: Tear down verification runtime
+        if: always()
+        run: docker compose -p claimtrace-v1-06-golden-path down -v --remove-orphans || true
