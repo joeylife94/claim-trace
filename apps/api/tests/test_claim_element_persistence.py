@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.core.config import Settings
@@ -25,6 +28,7 @@ from claimtrace_api.parsing.elements import DeterministicElementParser
 from claimtrace_api.services.claim_elements import ClaimElementService
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+API_ROOT = Path(__file__).resolve().parents[1]
 
 
 async def _seed_claim(session: AsyncSession) -> tuple[uuid.UUID, str]:
@@ -169,3 +173,46 @@ async def test_new_parser_version_coexists_without_overwriting_prior_run(
             assert run_count == 2
     finally:
         await engine.dispose()
+
+
+async def test_same_version_unique_conflict_returns_winning_run(
+    integration_settings: Settings,
+    clean_database: None,
+) -> None:
+    class StaleFirstLookupService(ClaimElementService):
+        def __init__(self, *, session: AsyncSession) -> None:
+            super().__init__(session=session, parser=DeterministicElementParser())
+            self._force_stale_lookup = True
+
+        async def _find_run(self, claim_id: uuid.UUID) -> ElementDecompositionRun | None:
+            if self._force_stale_lookup:
+                self._force_stale_lookup = False
+                return None
+            return await super()._find_run(claim_id)
+
+    engine = create_engine(integration_settings)
+    factory = create_session_factory(engine)
+    try:
+        async with factory() as seed_session:
+            claim_id, _ = await _seed_claim(seed_session)
+            winner = await ClaimElementService(
+                session=seed_session,
+                parser=DeterministicElementParser(),
+            ).decompose(claim_id)
+
+        async with factory() as stale_session:
+            recovered = await StaleFirstLookupService(session=stale_session).decompose(claim_id)
+            assert recovered.created is False
+            assert recovered.run.id == winner.run.id
+            assert await stale_session.scalar(sa.select(sa.literal(1))) == 1
+    finally:
+        await engine.dispose()
+
+
+async def test_alembic_metadata_matches_migrated_element_schema(
+    integration_database_url: str,
+) -> None:
+    config = Config(str(API_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(API_ROOT / "alembic"))
+    config.attributes["sqlalchemy_url"] = integration_database_url
+    command.check(config)
