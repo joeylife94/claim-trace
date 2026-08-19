@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-03 — Comparison UI + Flow Stitching  
-**Current batch state:** **IN PROGRESS — browser validation gate**
+**Current batch state:** **IN PROGRESS — browser validation rerun active**
 
 ---
 
@@ -43,8 +43,8 @@ Golden-path state:
 | Stage | Status | v1 delta |
 | --- | --- | --- |
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
-| 11 target/reference selection | IMPLEMENTED | browser validation pending |
-| 12 claim comparison | BACKEND + UI IMPLEMENTED | browser validation pending |
+| 11 target/reference selection | IMPLEMENTED | browser validation rerun active |
+| 12 claim comparison | BACKEND + UI IMPLEMENTED | browser validation rerun active |
 | 13 element decomposition | MISSING | V1-04 |
 | 14 persisted human review | MISSING | V1-05 |
 | 15 source verification everywhere | PARTIAL | comparison UI source-linked; decomposition must inherit guarantee |
@@ -75,7 +75,7 @@ Executed closure evidence:
 - merged to `main` as `db5e39d2118e42527a3794a32173e08535f18cec`.
 
 ### V1-03 — Comparison UI + Flow Stitching
-**IN PROGRESS — browser validation gate**
+**IN PROGRESS — browser validation rerun active**
 
 Goal: make the closed comparison backend usable from web UI and connect it to the existing document flow.
 
@@ -91,7 +91,7 @@ Acceptance:
 - [x] `/compare?target=<document-id>` honors a valid contextual target;
 - [x] target-claim selector resets when the target document changes;
 - [x] exact-head frontend lint/typecheck checks pass for both V1-03 PR slices;
-- [ ] browser-level golden-path interaction has actually been executed on a runnable main checkout/runtime.
+- [ ] browser-level golden-path interaction has actually completed GREEN on the current PR exact head.
 
 Executed V1-03 evidence:
 
@@ -118,6 +118,20 @@ Merged scope: typed comparison client, server action, `/compare` workspace, targ
 - merged with expected-head guard to `main` as `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
 
 Merged scope: document-detail links to Search/Grounded/Compare, `/compare?target=` preselection, and target-claim selector reset on target change.
+
+#### PR #10 — browser golden-path verification
+
+- previous exact head `53c4abc492fa36389cf44bc5ec101f67151ffc8a`;
+- comparison-backend workflow run `32235034753` → **success**;
+- V1-03 workflow run `32235034754` → **cancelled**;
+- cancelled job `browser-golden-path` completed build, PostgreSQL migration, deterministic seed, API/web startup, and Node setup successfully;
+- concrete cancellation point: `Install Chromium browser runner`;
+- job logs show `npx playwright install --with-deps chromium` entered apt dependency installation, Ubuntu/Azure mirror package retrieval stalled, and the job was cancelled at the 30-minute timeout before the browser script ever executed;
+- this is workflow/infrastructure installation behavior, **not a product/test hang**;
+- smallest repair committed on PR #10: removed `--with-deps` and now install Playwright Chromium only;
+- current exact head after repair: `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
+- exact-head rerun `32242502306` is currently active; V1-02 regression run `32242502338` is also active;
+- no unresolved review threads.
 
 Non-goals:
 
@@ -156,7 +170,7 @@ Every batch defines **Goal / Scope / Acceptance / Non-goals** and records **What
 PR lifecycle:
 
 1. inspect active focused PR and exact-head pull-request-visible workflows first;
-2. RED → inspect first failing job/step/log; fix only that executed failure;
+2. RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED/stale IN_PROGRESS → inspect first concrete job/step/log; fix only that executed failure;
 3. GREEN + in scope + no unresolved review/security/human-decision blocker → merge with expected-head guard;
 4. update this MASTER on `main` with concrete evidence and main SHA;
 5. continue to the next smallest step in the earliest unfinished batch.
@@ -174,30 +188,42 @@ Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent 
 - implemented and merged contextual document-analysis navigation via PR #9;
 - `/compare` now accepts contextual target preselection;
 - target-claim selection resets when target document changes;
-- no backend/decomposition/review scope expansion occurred.
+- opened PR #10 to execute the browser golden path against a real PostgreSQL/API/Web runtime;
+- after cancelled run `32235034754`, changed only the failing workflow install step from `npx playwright install --with-deps chromium` to `npx playwright install chromium`;
+- no product/decomposition/review scope expansion occurred.
 
 ### What was actually executed
 
 - PR #8 run `32228257540`: dependency install, ESLint, TypeScript → **PASS**;
 - PR #9 run `32228493202`: dependency install, ESLint, TypeScript → **PASS**;
-- PR #8 review threads: none; merged with expected-head guard;
-- PR #9 review threads: none; merged with expected-head guard;
-- current merged source SHA after PR #9: `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
+- PR #10 previous head `53c4abc...`:
+  - V1-02 regression `32235034753` → **SUCCESS**;
+  - V1-03 run `32235034754` → **CANCELLED**;
+  - Docker API/Web build → **PASS**;
+  - PostgreSQL startup + migrations → **PASS**;
+  - deterministic two-document upload/parse/index seed → **PASS**;
+  - API/Web runtime readiness → **PASS**;
+  - web-checks job → **PASS**;
+  - browser install step → **CANCELLED after apt mirror stall**;
+  - browser golden-path script → **NOT EXECUTED**;
+- PR #10 current head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c` triggered exact-head reruns `32242502306` and `32242502338`;
+- PR #10 review threads: none unresolved.
 
 ### What was not verified
 
-- no real browser session has yet exercised: document detail → Compare → target/reference/claim selection → compare request → result → exact source deep link;
-- no visual interaction check has verified selector behavior and empty/error states in a running UI;
-- V1-03 therefore remains open despite compile/static gates being GREEN.
+- current exact-head browser workflow `32242502306` has not yet completed GREEN;
+- therefore the browser script has not yet been accepted as closure evidence;
+- PR #10 is not mergeable by process until that exact-head browser gate completes GREEN.
 
 ### Remaining risks
 
-- browser/runtime wiring could still expose state-selection or source-navigation behavior not caught by lint/typecheck;
+- current rerun may expose a concrete browser/runtime failure once Chromium installation completes;
+- if it does, fix only that executed failure;
 - unrelated draft proof PR #6 remains outside the active batch.
 
 ### Exact next action
 
-**Run one browser-level V1-03 golden path on a runnable main checkout/runtime using at least two parsed/indexed documents: open document detail → follow Compare → confirm target preselection → choose target claim/reference → execute comparison → inspect normal or explicit no-correspondence state → open one target and one reference source link. If that executed flow passes, close V1-03 and advance to V1-04. If it fails, fix only the concrete failure in a focused PR.**
+**Inspect exact-head run `32242502306`. If the browser-golden-path job completes GREEN, confirm no unresolved blockers, merge PR #10 with expected head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`, update this MASTER with the merge SHA and executed browser evidence, close V1-03, and advance to V1-04. If the run fails/cancels/times out, inspect the first concrete failing step/log and fix only that failure.**
 
 ---
 
@@ -211,9 +237,11 @@ Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent 
 | V1-02 PostgreSQL | 3 PASS / 0 skipped | exact PR head |
 | V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8, run `32228257540` |
 | V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9, run `32228493202` |
-| V1-03 frontend lint | PASS | both exact PR heads |
-| V1-03 TypeScript | PASS | both exact PR heads |
-| V1-03 browser golden path | NOT YET EXECUTED | closure gate |
+| V1-03 frontend lint | PASS | PR #8/#9 and PR #10 previous web-checks |
+| V1-03 TypeScript | PASS | PR #8/#9 and PR #10 previous web-checks |
+| V1-03 browser runtime setup | PARTIAL EXECUTED | PR #10 run `32235034754`: build/migrate/seed/start PASS |
+| V1-03 browser runner install | REPAIRED / RERUN ACTIVE | previous `--with-deps` apt stall removed |
+| V1-03 browser golden path | NOT YET GREEN | exact-head run `32242502306` active |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
