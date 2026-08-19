@@ -40,6 +40,24 @@ jobs:
       - name: Run focused element parser tests
         run: docker compose run --rm api pytest tests/test_claim_element_parser.py
 
+      - name: Start PostgreSQL
+        run: |
+          docker compose up -d postgres
+          for attempt in {1..20}; do
+            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Run element persistence integration tests
+        run: |
+          output=$(docker compose run --rm api pytest --disable-warnings tests/test_claim_element_persistence.py)
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Eq '[0-9]+ passed'
+          ! printf '%s\n' "$output" | grep -Eq '[0-9]+ skipped'
+
       - name: Ruff lint
         run: docker compose run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 
