@@ -16,7 +16,10 @@ on:
       - "infra/postgres/init/**"
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  V1_07_CAPTURE_DIR: ${{ runner.temp }}/claimtrace-v1-07-proof
 
 jobs:
   proof-package:
@@ -49,22 +52,48 @@ jobs:
           npx playwright install chromium
 
       - name: Capture deterministic proof package
-        run: sh scripts/capture-v1-07-proof.sh
+        run: V1_07_PROOF_DIR="${V1_07_CAPTURE_DIR}" sh scripts/capture-v1-07-proof.sh
 
-      - name: Verify proof inventory
+      - name: Verify captured proof inventory
+        run: |
+          test -s docs/proof/architecture-v1.svg
+          test "$(find "${V1_07_CAPTURE_DIR}/screenshots" -type f -name '*.png' | wc -l)" -ge 4
+          test -s "${V1_07_CAPTURE_DIR}/demo/claimtrace-golden-path.webm"
+
+      - name: Commit first executed proof capture to PR branch
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if test -s docs/proof/screenshots/01-documents.png \
+            && test -s docs/proof/demo/claimtrace-golden-path.webm; then
+            echo "Executed proof assets are already committed; leaving branch untouched."
+            exit 0
+          fi
+
+          mkdir -p docs/proof/screenshots docs/proof/demo
+          cp "${V1_07_CAPTURE_DIR}"/screenshots/*.png docs/proof/screenshots/
+          cp "${V1_07_CAPTURE_DIR}"/demo/claimtrace-golden-path.webm docs/proof/demo/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/proof/screenshots docs/proof/demo
+          git diff --cached --quiet && exit 0
+          git commit -m "proof(v1-07): commit executed capture assets"
+          git push origin "HEAD:${HEAD_REF}"
+
+      - name: Verify committed proof inventory
         run: |
           test -s docs/proof/architecture-v1.svg
           test "$(find docs/proof/screenshots -type f -name '*.png' | wc -l)" -ge 4
           test -s docs/proof/demo/claimtrace-golden-path.webm
 
-      - name: Upload proof package
+      - name: Upload current executed proof package
         uses: actions/upload-artifact@v4
         with:
           name: v1-07-proof-package-${{ github.event.pull_request.head.sha }}
           path: |
             docs/proof/architecture-v1.svg
-            docs/proof/screenshots/*.png
-            docs/proof/demo/claimtrace-golden-path.webm
+            ${{ env.V1_07_CAPTURE_DIR }}/screenshots/*.png
+            ${{ env.V1_07_CAPTURE_DIR }}/demo/claimtrace-golden-path.webm
           if-no-files-found: error
           retention-days: 14
 
