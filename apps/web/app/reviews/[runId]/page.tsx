@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReviewSubmitButtons } from "@/components/ReviewSubmitButtons";
 import { getElementReviews, type ReviewStatus } from "@/lib/claim-elements";
 import { spanHref } from "@/lib/search";
 import { submitElementReviewAction } from "./actions";
@@ -111,12 +112,7 @@ export default async function ElementReviewPage({
           <h2 id="review-heading">Append review judgement</h2>
         </div>
         <form action={submitReview} className="search-controls">
-          <button type="submit" name="status" value="accepted">
-            Accept decomposition
-          </button>
-          <button type="submit" name="status" value="needs_correction">
-            Mark needs correction
-          </button>
+          <ReviewSubmitButtons />
         </form>
         <p className="meta">
           A new review entry is appended each time. Previous review history is preserved.
