@@ -14,6 +14,13 @@ if [ ! -f .env ]; then
 fi
 
 test -f .env
+
+# Verification is isolated by Compose project name and by host-port assignment.
+# Docker treats a published host port of 0 as an ephemeral port, so this project
+# can coexist with the ordinary developer stack without binding 5432/8000.
+export POSTGRES_PORT=0
+export API_PORT=0
+
 ${COMPOSE} config --quiet
 
 # This project name is dedicated to verification. Removing its volumes guarantees
@@ -39,8 +46,12 @@ ${COMPOSE} run --rm api alembic current
 ${COMPOSE} up -d api
 
 for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-  if curl --fail --silent --show-error http://127.0.0.1:${API_PORT:-8000}/health >/tmp/claimtrace-health.json \
-    && curl --fail --silent --show-error http://127.0.0.1:${API_PORT:-8000}/ready >/tmp/claimtrace-ready.json; then
+  if ${COMPOSE} exec -T api python -c \
+    "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()" \
+    >/tmp/claimtrace-health.json 2>/dev/null \
+    && ${COMPOSE} exec -T api python -c \
+    "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read().decode())" \
+    >/tmp/claimtrace-ready.json 2>/dev/null; then
     break
   fi
   if [ "$attempt" -eq 20 ]; then
@@ -51,6 +62,15 @@ for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   fi
   sleep 1
 done
+
+# The API container has already proven /health through its Docker HEALTHCHECK.
+# Re-read both endpoints as text inside the container so response content is also verified.
+${COMPOSE} exec -T api python -c \
+  "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read().decode())" \
+  >/tmp/claimtrace-health.json
+${COMPOSE} exec -T api python -c \
+  "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read().decode())" \
+  >/tmp/claimtrace-ready.json
 
 grep -q '"status":"ok"' /tmp/claimtrace-health.json
 grep -q '"status":"ready"' /tmp/claimtrace-ready.json
