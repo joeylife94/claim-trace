@@ -51,10 +51,12 @@ jobs:
           done
           exit 1
 
-      - name: Run element persistence integration tests
+      - name: Run element persistence and API integration tests
         run: |
           set +e
-          output=$(docker compose run --rm api pytest --disable-warnings tests/test_claim_element_persistence.py 2>&1)
+          output=$(docker compose run --rm api pytest --disable-warnings \
+            tests/test_claim_element_persistence.py \
+            tests/test_claim_element_api.py 2>&1)
           status=$?
           set -e
           printf '%s\n' "$output"
