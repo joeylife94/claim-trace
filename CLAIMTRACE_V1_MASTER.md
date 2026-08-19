@@ -6,7 +6,8 @@
 
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-02 — Claim Comparison Backend
+**Current active batch:** V1-02 — Claim Comparison Backend  
+**Current batch state:** **BLOCKED — GitHub Actions execution prerequisite**
 
 ---
 
@@ -80,7 +81,7 @@ These remain historical/committed evidence until rerun for the v1 candidate.
 | --- | --- | --- |
 | 1–10: ingest through grounded Q&A | READY | Runtime re-verification only |
 | 11: target/reference selection | PARTIAL | Backend contract exists; UI is V1-03 |
-| 12: claim comparison | PARTIAL | Backend exists; executed verification incomplete |
+| 12: claim comparison | PARTIAL / BLOCKED ON EXECUTED VERIFICATION | Backend exists; runtime closure evidence missing |
 | 13: element decomposition | MISSING | V1-04 |
 | 14: persisted human review | MISSING | V1-05 |
 | 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; new surfaces must inherit guarantee |
@@ -98,7 +99,7 @@ These remain historical/committed evidence until rerun for the v1 candidate.
 **Status:** CLOSED
 
 ### V1-02 — Claim Comparison Backend
-**Status:** **IN PROGRESS — VERIFICATION GATE OPEN**
+**Status:** **BLOCKED — VERIFICATION GATE OPEN**
 
 Goal: smallest source-backed two-document claim comparison capability.
 
@@ -208,7 +209,7 @@ One smallest non-redundant action that advances the active batch.
 
 ### What changed
 
-The implemented comparison slice already contains:
+Implemented comparison slice:
 
 - comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
 - persisted target claim text as comparison query;
@@ -221,7 +222,7 @@ The implemented comparison slice already contains:
 - PostgreSQL-backed strict-scope/provenance integration tests;
 - focused Docker closure command `make verify-v1-02`.
 
-Verification-path hardening already present:
+Verification path already present:
 
 - idempotent `.env` initialization;
 - `docker compose config --quiet` preflight;
@@ -229,31 +230,21 @@ Verification-path hardening already present:
 - explicit PostgreSQL start + bounded `pg_isready` wait;
 - separate database-free and PostgreSQL-backed comparison test execution;
 - integration output must contain passing tests and zero skipped tests;
-- mandatory Ruff lint + Ruff format-check.
+- mandatory Ruff lint + Ruff format-check;
+- bounded `.github/workflows/v1-02-verify.yml` executing `make verify-v1-02` on a real GitHub checkout.
 
-**This run added one bounded verification-only workflow:**
-
-- `.github/workflows/v1-02-verify.yml`;
-- triggers only on `main` changes relevant to V1-02 plus `workflow_dispatch`;
-- uses `actions/checkout@v4` on a real GitHub runner checkout;
-- records Docker / Docker Compose versions;
-- executes the existing `make verify-v1-02` closure command unchanged;
-- captures PostgreSQL Compose state/logs on failure;
-- always cleans Docker volumes/orphans;
-- has read-only repository permissions and a 30-minute timeout.
-
-This is a **temporary/bounded V1-02 verification path**, not the general CI system planned for V1-06.
+**No comparison source/test/Makefile behavior was added in this run.** The authoritative state changed only because the verification path was inspected and confirmed not to be executing.
 
 ### What was actually executed
 
 Current run:
 
 - read this MASTER first and confirmed V1-02 is the earliest unfinished batch;
-- inspected `Makefile` and `docker-compose.yml` through the GitHub connector;
-- confirmed `.github/workflows` was absent before this run;
-- created `.github/workflows/v1-02-verify.yml` on `main` in commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`;
-- fetched the committed workflow back from GitHub and confirmed its exact contents are present;
-- queried commit status for `5adbc8d400b95254f8f795871d8ca3b163dc5572`; no GitHub-visible status/check result was returned at inspection time.
+- confirmed `main` HEAD is `10064439b28a046009c77834445f8790d2e7ce15` and its parent is workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`;
+- queried the current `main` commit combined status: **zero statuses/checks returned**;
+- queried workflow runs associated with workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`: **zero workflow runs returned**;
+- confirmed branch protection is disabled and no required status checks are configured;
+- made no comparison implementation change because there is no concrete runtime failure to fix.
 
 Retained earlier V1-02 execution evidence:
 
@@ -265,21 +256,25 @@ Retained earlier V1-02 execution evidence:
 
 ### What was not verified
 
-- the newly added GitHub Actions job has not yet produced visible success/failure evidence in the inspected connector state;
-- `make verify-v1-02` has not yet been observed completing successfully on a real checkout;
+- no GitHub Actions job has produced executable V1-02 evidence;
+- `make verify-v1-02` has not been observed completing successfully on a real checkout;
 - comparison pytest, Ruff, and live PostgreSQL scoped retrieval are therefore still not closure evidence;
 - FastAPI startup and live comparison HTTP request remain unverified.
 
 ### Remaining risks
 
-- the first real GitHub runner execution may expose Docker Compose, build, dependency, migration, or PostgreSQL integration failures;
-- if Actions are disabled or restricted for this repository, the workflow may not start until repository Actions permissions are enabled;
+- GitHub Actions execution appears disabled, restricted, or otherwise not starting for this repository/workflow;
+- once Actions execution is available, the first runner execution may expose Docker Compose, build, dependency, migration, PostgreSQL integration, pytest, or Ruff failures;
 - comparison remains textual correspondence only and must never be represented as legal equivalence or infringement analysis;
 - **no additional comparison feature/test hardening is justified until a concrete runtime result identifies a failure.**
 
+### Blocker
+
+**V1-02 cannot advance safely from repository code alone. The single external prerequisite is: enable/allow GitHub Actions execution for this repository so `.github/workflows/v1-02-verify.yml` can produce a real run.**
+
 ### Exact next action
 
-**Inspect the first `V1-02 Claim Comparison Verification` GitHub Actions run for commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`. If green, record the executed pytest/Ruff/PostgreSQL evidence and close V1-02. If red, fix only the concrete failing step and rerun. If no run exists, the single external prerequisite is to enable GitHub Actions execution for this repository.**
+**Enable GitHub Actions for `joeylife94/claim-trace`, then execute or allow the `V1-02 Claim Comparison Verification` workflow to run on `main`. Inspect that first real run: green closes V1-02; red authorizes fixing only the concrete failing step.**
 
 ---
 
@@ -297,7 +292,8 @@ Retained earlier V1-02 execution evidence:
 | Comparison tests | WRITTEN, NOT YET REAL-RUN VERIFIED | database-free + PostgreSQL integration |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
 | V1-02 closure command | IMPLEMENTED + HARDENED | real execution required |
-| Bounded V1-02 GitHub Actions workflow | COMMITTED | commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`; run result not yet visible |
+| Bounded V1-02 GitHub Actions workflow | COMMITTED, NO RUN OBSERVED | workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572` |
+| Current `main` status/checks | NONE OBSERVED | HEAD `10064439b28a046009c77834445f8790d2e7ce15` |
 | Real Docker V1-02 closure run | NOT VERIFIED | required closure gate |
 | General CI green | NOT YET APPLICABLE | V1-06 scope |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
