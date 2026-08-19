@@ -165,9 +165,7 @@ def get_claim_comparison_service(
     )
 
 
-ClaimComparisonServiceDep = Annotated[
-    ClaimComparisonService, Depends(get_claim_comparison_service)
-]
+ClaimComparisonServiceDep = Annotated[ClaimComparisonService, Depends(get_claim_comparison_service)]
 
 
 def get_llm_service(provider: LLMProviderDep, settings: SettingsDep) -> LLMGenerationService:
