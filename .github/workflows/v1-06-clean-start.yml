@@ -7,6 +7,8 @@ on:
       - "scripts/verify-v1-06-clean-start.sh"
       - "docker-compose.yml"
       - ".env.example"
+      - "Makefile"
+      - "infra/postgres/init/**"
       - "apps/api/**"
       - ".github/workflows/v1-06-clean-start.yml"
 
@@ -20,6 +22,8 @@ jobs:
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run isolated clean-start verification
         run: sh scripts/verify-v1-06-clean-start.sh
