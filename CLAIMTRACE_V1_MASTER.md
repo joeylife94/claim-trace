@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-20  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-06 — Operational Hardening  
-**Current batch state:** **IN PROGRESS — clean checkout + empty-DB migration acceptance closed via Issue #20 / PR #21; next bounded V1-06 acceptance gap must be selected Issue-first**
+**Current batch state:** **IN PROGRESS — clean start/empty-DB and deterministic whole-product reproducibility are executed GREEN; general CI + expected failure-state hardening remain**
 
 ---
 
@@ -42,12 +42,12 @@ Golden-path state:
 
 | Stage | Status | v1 delta |
 | --- | --- | --- |
-| 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
-| 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
-| 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | EXECUTED GREEN | V1-04 closed |
-| 14 persisted human review | EXECUTED GREEN | V1-05 closed |
-| 15 source verification everywhere | EXECUTED GREEN for current golden path | review source navigation browser-verified; whole-product operational/proof rerun remains V1-06/V1-07 |
+| 1–10 ingest → grounded Q&A | EXECUTED GREEN in deterministic whole-product run | final V1-07 evaluation rerun remains |
+| 11 target/reference selection | EXECUTED GREEN | V1-03 + V1-06 whole-product proof |
+| 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 + V1-06 whole-product proof |
+| 13 element decomposition | EXECUTED GREEN | V1-04 + V1-06 whole-product proof |
+| 14 persisted human review | EXECUTED GREEN | V1-05 + V1-06 whole-product proof |
+| 15 source verification everywhere | EXECUTED GREEN for frozen golden path | search, grounded, comparison, review source navigation verified |
 
 **Do not rebuild stages 1–14.**
 
@@ -79,98 +79,105 @@ Closure evidence: PR #11 run `32252992292` success; PR #12 run `32259126905` suc
 ### V1-05 — Human Review Boundary
 **CLOSED**
 
-Persistence/API — Issue #15 / PR #16:
-
-- exact head `b4f3d3bef2817909b81afae5bfede89be127d425`;
-- V1-05 run `32264262027` success;
-- PostgreSQL review persistence/API **2 PASS / 0 skipped**;
-- Ruff PASS;
-- merge `bf8623b0bdeb12c6b037bc538cea597ec0ecc50d`;
-- Issue #15 completed.
-
-Review UI/source navigation — Issue #17 / PR #18:
-
-- final exact head `9943e0427362d8626cfdc8e3f75a2cc52f4b4977`;
-- V1-03 regression run `32265797797` success;
-- V1-05 run `32265797594` success;
-- frontend ESLint + TypeScript success;
-- browser path success: document → `Decompose & review` → exact run → append accepted review → persisted history → exact source link → source highlight;
-- review controls are pending-aware after executed review feedback; thread resolved;
-- merge `2c0471dde083c36a4c3c8ecbf893fa051df0e2b4`;
-- Issue #17 completed.
-
-Reconciliation note: Issue #19 was accidentally created from a stale MASTER snapshot, then immediately closed as `duplicate` after current state showed #17/#18 had already completed the same gap. No implementation attached.
+- Issue #15 / PR #16: persistence/API, exact-head run `32264262027` success, PostgreSQL **2 PASS / 0 skipped**, Ruff PASS; merge `bf8623b0bdeb12c6b037bc538cea597ec0ecc50d`.
+- Issue #17 / PR #18: review UI/source navigation, exact-head V1-03 regression `32265797797` and V1-05 `32265797594` success; browser document → decomposition → accepted review → persisted history → exact source highlight; merge `2c0471dde083c36a4c3c8ecbf893fa051df0e2b4`.
+- Issue #19 was created from a stale snapshot and immediately closed as duplicate; no implementation attached.
 
 ### V1-06 — Operational Hardening
 **IN PROGRESS**
 
-Goal: prove the supported product is reproducible and operationally repeatable, not merely implemented on prior PR-specific paths.
+Goal: prove the supported product is reproducible and operationally repeatable, not merely implemented on isolated feature PRs.
 
 Acceptance areas:
 
-- clean clone/start path;
-- empty-DB migration path;
-- deterministic demo/sample material sufficient for the full supported golden path;
-- one repeatable golden-path procedure;
-- general CI backend/integration/lint/frontend gates;
-- expected unsupported/failure-state validation.
+- [x] clean clone/start path;
+- [x] empty-DB migration path;
+- [x] deterministic demo/sample material sufficient for the full supported golden path;
+- [x] one repeatable whole-product golden-path procedure;
+- [ ] general CI backend/integration/lint/frontend gates;
+- [ ] expected unsupported/failure-state validation.
 
-#### Closed work item — Issue #20 / PR #21
+#### Closed work item — Issue #20 / PR #21: clean checkout + empty DB
 
-**Goal:** prove clean checkout + empty PostgreSQL migration + API readiness without developer-local state.
+**Changed**
 
-**Changed:**
+- isolated Compose verifier `scripts/verify-v1-06-clean-start.sh`;
+- exact-head PR-visible `.github/workflows/v1-06-clean-start.yml`;
+- safe `.env` initialization, empty isolated PostgreSQL state, full migration chain, API health/readiness;
+- workflow coverage includes Compose/env/API/Makefile/PostgreSQL init inputs and uses ephemeral host ports.
 
-- `scripts/verify-v1-06-clean-start.sh` adds an isolated Compose-project verifier;
-- `.github/workflows/v1-06-clean-start.yml` adds PR-visible verification;
-- exact PR head checkout is explicit via `github.event.pull_request.head.sha`;
-- workflow path coverage includes `Makefile` and `infra/postgres/init/**` in addition to Compose/env/API/verifier inputs;
-- verification publishes PostgreSQL/API on ephemeral host ports and performs health/readiness checks from inside the API container, so the verifier can coexist with the ordinary developer stack;
-- PR #21 retained `Closes #20` and remained bounded to Issue #20.
+**Actually Executed**
 
-**Actually Executed:**
+- final exact PR head `5030fb023e34b9a58b1c3a2c4d8d3d2ed9d978ea`;
+- run `32275712641`, job `96142528344` → **SUCCESS**;
+- full Alembic `0001 → 0006 (head)` from empty database;
+- `/health` → `{"status":"ok"}`;
+- `/ready` → `{"status":"ready","dependencies":{"postgres":"ok"}}`;
+- three review correctness findings fixed in the same PR and resolved;
+- expected-head squash merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1`;
+- Issue #20 auto-closed `completed`.
 
-- first PR-visible clean-start run `32270376815` completed successfully on historical head but review identified three correctness gaps;
-- review findings were repaired in the same Issue/PR: synthetic merge checkout, incomplete workflow path coverage, and ordinary-stack host-port collisions;
-- final PR #21 exact head `5030fb023e34b9a58b1c3a2c4d8d3d2ed9d978ea`;
-- final exact-head run `32275712641`, job `96142528344` → **SUCCESS**;
-- exact SHA checkout confirmed in workflow logs;
-- committed example config created `.env` via existing safe `make init`;
-- isolated API image built successfully;
-- isolated PostgreSQL volume created from empty state and became healthy;
-- Alembic executed the full chain `0001 → 0002 → 0003 → 0004 → 0005 → 0006`; `alembic current` reported `0006 (head)`;
-- API started against that migrated database;
-- `/health` returned `{"status":"ok"}`;
-- `/ready` returned `{"status":"ready","dependencies":{"postgres":"ok"}}`;
-- all three review threads were resolved after the repairs;
-- PR #21 merged with expected-head guard as squash merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1`;
-- Issue #20 auto-closed as `completed`.
+**Verified**
 
-**Verified:**
+- fresh GitHub-hosted checkout + committed defaults can construct configuration and start an isolated DB/API path;
+- empty database reaches current migration head;
+- API is live and DB-ready;
+- verifier is exact-head, PR-visible, and non-skipping.
 
-- fresh GitHub-hosted checkout can create local configuration from committed defaults without overwriting an existing `.env`;
-- isolated empty PostgreSQL state reaches current migration head;
-- API reaches documented health/readiness against the migrated database;
-- verification is exact-head PR-visible and fails instead of intentionally skipping the database/startup path;
-- verification isolation covers Compose project resources and host-port collisions with the ordinary developer stack.
+**Not Verified / Remaining Risk after this work item**
 
-**Not Verified:**
+- complete deterministic user workflow was not part of Issue #20; closed separately by #22/#23 below;
+- general CI and expected failure states remain.
 
-- deterministic full demo/sample material sufficient for the whole frozen workflow;
-- one whole-product repeatable browser/golden-path procedure from clean state;
-- general consolidated CI coverage for backend/integration/lint/frontend outside prior bounded workflows;
-- final expected unsupported/failure-state validation set;
-- V1-07 final evaluation/proof packaging.
+#### Closed work item — Issue #22 / PR #23: deterministic whole-product golden path
 
-**Remaining Risks:**
+**Changed**
 
-- clean-start evidence proves migration/readiness only; it does not yet prove the complete user workflow from deterministic sample material;
-- existing quality evidence is distributed across bounded historical workflows rather than one final general V1-06 gate;
-- final proof still requires V1-07 reruns/assets/release after V1-06 closes.
+- reused committed synthetic Korean patent-like corpus and the existing real ingestion → parse → index seed path; no new product data subsystem;
+- added `scripts/verify-v1-06-golden-path.sh` for isolated deterministic fake-embedding/fake-LLM runtime;
+- added `apps/web/e2e/v1-06-golden-path.mjs` connecting Search → Grounded Q&A → Compare → Decompose/Review → exact source highlighting after real seeded ingest/parse/index;
+- added exact-head PR-visible `.github/workflows/v1-06-golden-path.yml` with frontend lint/typecheck plus whole-product browser gate;
+- search/grounded selectors explicitly verify the selected target document, and source hrefs are checked against the expected target/reference document path so document-scope leakage cannot silently pass.
 
-**Exact Next Action:**
+**Actually Executed**
 
-**Search current open Issues for one that exactly represents the next V1-06 acceptance gap: deterministic demo/sample material + one repeatable whole-product golden-path procedure. Reuse only an exact active Issue; otherwise create exactly one bounded Issue before implementation, then follow Issue → branch → PR → exact-head verification → merge → MASTER reconciliation.**
+- first exact-head V1-06 run `32276297759` reached a healthy migrated/seeded runtime but failed on an ambiguous Playwright `Question` selector; only that concrete selector was repaired;
+- second run `32276794552` completed the combined path but review identified insufficient document-scope assertions; only those assertions were added and the review thread was resolved;
+- final exact PR head `a1490d9154cb871adbe6f84de85e8efd24273ede`;
+- final V1-06 run `32277157847`, job `96147171139` → **SUCCESS**;
+- final V1-03 regression run `32277157837` → **SUCCESS**;
+- final V1-05 regression run `32277157902` → **SUCCESS**, including review persistence/API, Ruff, frontend lint/typecheck, and browser review path;
+- final whole-product logs show exact-head checkout, `.env` creation from committed defaults, API/Web build, empty PostgreSQL start, Alembic `0001 → 0006`, deterministic ingestion/parse/index of `synthetic-sensor-collector.pdf` and `synthetic-battery-thermal.pdf`, healthy API/Web start, and `V1-06 whole-product golden path: PASS`;
+- PR #23 diff remained limited to three verification assets and had no unresolved review thread;
+- expected-head squash merge `b7f3326f35d47537a9415845ab26f3b3ce0b024e`;
+- Issue #22 auto-closed `completed`.
+
+**Verified**
+
+- deterministic committed sample material is sufficient for two-document comparison and the full frozen user workflow;
+- clean isolated runtime executes ingest → parse → index before browser steps;
+- document-scoped hybrid search exposes an exact target source highlight;
+- grounded Q&A exposes exact target evidence or the supported explicit insufficient-evidence path;
+- comparison target/reference selection and source navigation remain in their respective document scopes;
+- decomposition creates source-backed elements; accepted human review persists separately and is visible in review history;
+- the final review source opens the exact persisted source highlight;
+- frontend lint/typecheck and V1-03/V1-05 regression workflows remain GREEN on the final exact head.
+
+**Not Verified**
+
+- one consolidated general CI policy covering the repository’s required backend/unit/integration/lint/frontend gates on ordinary changes;
+- the final V1-06 set of deliberately unsupported/expected failure states under a clean current-head run;
+- V1-07 final retrieval/grounding evaluation reruns and proof packaging.
+
+**Remaining Risks**
+
+- quality evidence is still distributed across feature-specific workflows; V1-06 requires a clear general CI gate before closure;
+- expected failure behavior has historical/unit coverage but has not yet been frozen as the final current V1-06 failure-state set;
+- GitHub-hosted npm install output currently reports dependency audit findings; dependency-remediation work is not silently considered complete by lint/typecheck success and should only be pulled into v1.0 if required by the bounded V1-06/V1-07 acceptance contract.
+
+**Exact Next Action**
+
+**Search current open Issues for one that exactly represents the next V1-06 acceptance gap: general CI covering backend tests/integration/Ruff plus frontend lint/typecheck on ordinary repository changes. Reuse only an exact active Issue; otherwise create exactly one bounded Issue before implementation. After that work item merges and MASTER is reconciled, re-evaluate V1-06 closure before selecting the final expected-failure-state gap.**
 
 ### V1-07 — Final Validation + Wishket Proof
 **PLANNED**
@@ -187,7 +194,7 @@ Start every run in this order:
 
 **current repository/PR state → current exact head → exact-head required workflows → MASTER reconciliation → action**.
 
-Active PR first. Existing pre-Issue-first PRs are grandfathered; do not create retroactive Issues for them. For new gaps: exact active Issue first, otherwise exactly one bounded Issue before branch/commit/implementation. Keep one active implementation Issue at a time.
+Active PR first. For new gaps: exact active Issue first, otherwise exactly one bounded Issue before branch/commit/implementation. Keep one active implementation Issue at a time. Do not create Issues for concrete CI/review fixes inside the active work item.
 
 PR lifecycle: current exact-head RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED/stale IN_PROGRESS → fix only the first concrete executed failure. GREEN + in scope + no unresolved blocker → merge with expected-head guard, confirm intended Issue closure, reconcile MASTER on `main`, then re-evaluate closure before selecting another Issue.
 
@@ -202,11 +209,11 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 | V1-02 comparison backend | EXECUTED GREEN / CLOSED | PR #7, run `32225430081` |
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-04 decomposition | EXECUTED GREEN / CLOSED | PR #11/#12/#14 |
-| V1-05 review persistence/API | EXECUTED GREEN / CLOSED | Issue #15 / PR #16 |
-| V1-05 review UI/source navigation | EXECUTED GREEN / CLOSED | Issue #17 / PR #18, run `32265797594` |
-| V1-06 clean checkout + empty DB migration | EXECUTED GREEN / CLOSED | Issue #20 / PR #21, exact-head run `32275712641`, merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1` |
-| V1-06 full whole-product reproducibility | NOT VERIFIED | deterministic demo + repeatable full golden path remains |
-| V1-06 general CI/failure-state hardening | NOT VERIFIED | later bounded work |
+| V1-05 review persistence/API + UI/source | EXECUTED GREEN / CLOSED | Issues #15/#17, PRs #16/#18 |
+| V1-06 clean checkout + empty DB migration | EXECUTED GREEN / CLOSED | Issue #20 / PR #21, run `32275712641`, merge `380abc91...` |
+| V1-06 deterministic whole-product reproducibility | EXECUTED GREEN / CLOSED | Issue #22 / PR #23, final exact-head run `32277157847`, regressions `32277157837`/`32277157902`, merge `b7f3326f...` |
+| V1-06 general CI | NOT VERIFIED | next bounded acceptance gap |
+| V1-06 final expected failure-state set | NOT VERIFIED | follow-on only after general CI reconciliation |
 
 ---
 
