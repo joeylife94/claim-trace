@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-04 — Claim Element Decomposition  
-**Current batch state:** **IN PROGRESS — deterministic boundary merged; persistence/idempotency slice next**
+**Current batch state:** **IN PROGRESS — PR #12 persistence/idempotency exact-head verification pending**
 
 ---
 
@@ -45,9 +45,9 @@ Golden-path state:
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | IN PROGRESS | deterministic provenance boundary merged; persistence/API remain |
+| 13 element decomposition | IN PROGRESS | deterministic boundary merged; persistence/idempotency in PR #12 |
 | 14 persisted human review | MISSING | V1-05 |
-| 15 source verification everywhere | PARTIAL | comparison source-linked; element boundary preserves source sub-spans |
+| 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition persistence is source-span based |
 
 **Do not rebuild stages 1–12.**
 
@@ -84,8 +84,7 @@ Executed closure evidence:
 - PR #10 final exact head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
 - V1-02 regression run `32242502338` → **success**;
 - V1-03 run `32242502306` → **success**;
-- browser job completed exact-head checkout, deterministic runtime config, API/Web image build, PostgreSQL migration, deterministic two-document seed, API/Web startup, Chromium install, and browser golden-path execution → **PASS**;
-- no unresolved review threads;
+- browser golden path → **PASS**;
 - merged with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`.
 
 ### V1-04 — Claim Element Decomposition
@@ -107,26 +106,37 @@ Completed bounded slice — PR #11:
 
 - deterministic `DeterministicElementParser` boundary;
 - conservative explicit-semicolon splitting;
-- exact page-relative source sub-span mapping, including cross-page claims;
-- no-delimiter claim remains one element with explicit `no_structural_delimiter` warning;
-- provenance mismatch raises instead of approximating;
-- leading/consecutive semicolon empty segments are ignored with `EMPTY_SEGMENT` rather than becoming punctuation-only elements;
-- focused tests cover ordering, source containment, cross-page mapping, resistant/no-delimiter behavior, empty segments, and provenance mismatch;
+- exact page-relative source sub-span mapping including cross-page claims;
+- explicit resistant/no-delimiter and empty-segment warnings;
+- provenance mismatch rejection;
 - final exact head `7a2d39a7cdde4d62fec563ddf8d7887f17a8f409`;
-- V1-02 regression run `32252992179` → **success**;
-- V1-03 regression/browser run `32252992260` → **success**;
-- V1-04 Claim Element Verification run `32252992292` → **success**;
-- review thread for punctuation-only segments resolved;
-- merged with expected-head guard to `main` as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`.
+- V1-02 run `32252992179` → **success**;
+- V1-03 run `32252992260` → **success**;
+- V1-04 run `32252992292` → **success**;
+- review thread resolved;
+- merged with expected-head guard as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`.
 
-Next bounded slice:
+Current bounded slice — PR #12:
 
-- persistence/schema only for decomposition runs, ordered elements, and exact source spans;
-- parser name/version participates in idempotency identity;
-- rerunning the same parser version must not duplicate ambiguous element sets;
-- a later parser version may coexist without overwriting older provenance;
-- focused PostgreSQL tests must prove idempotency, ordering, and source-span containment;
-- no public API/UI/human-review state in this slice.
+- branch `v1-04-element-persistence`;
+- versioned `ElementDecompositionRun`, ordered `ClaimElement`, and ordered `ClaimElementSpan` persistence;
+- DB uniqueness on `(claim_id, parser_name, parser_version)`;
+- Alembic revision `0005`;
+- idempotent `ClaimElementService` returning the existing same-version run;
+- future parser version can coexist without overwriting prior provenance;
+- focused PostgreSQL tests prove same-version idempotency, ordered elements, exact source resolution, and version coexistence;
+- public API/UI/human-review state remain out of scope for this slice.
+
+First PR #12 exact-head execution (`9d3b163e968e934f7a6896805b002b52a5c09d1f`):
+
+- API image build → **PASS**;
+- focused parser tests → **6 PASS**;
+- PostgreSQL readiness → **PASS**;
+- persistence integration → **2 PASS / 0 skipped**;
+- Ruff lint → **FAIL**, nine concrete style/type-annotation findings only;
+- Ruff format was skipped because lint failed.
+
+The nine executed Ruff findings were fixed only: import formatting, one migration line wrap, one unused import, two missing `Settings` annotations, and three overlong test expressions. Current PR #12 exact head is `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c`; new exact-head workflows are pending.
 
 Non-goals:
 
@@ -173,47 +183,43 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 
 ### What changed
 
-- inspected PR #11 current exact-head RED runs instead of relying on historical handoff;
-- proved both V1-04 and V1-02 failures converged on the same PR-introduced Ruff-format mismatch after their functional tests passed;
-- formatted the focused element test;
-- inspected the remaining unresolved review thread and fixed the concrete leading/consecutive-semicolon bug;
-- added focused regression coverage proving empty semicolon segments warn without creating punctuation-only elements;
-- resolved the review thread;
-- merged PR #11 after all current-head required workflows became GREEN;
-- reconciled V1-04 to the next persistence/idempotency slice.
+- diagnosed and fixed PR #11 exact-head format failure and a concrete parser review bug, then merged PR #11 after all required current-head checks were GREEN;
+- created PR #12 from current `main` for persistence/idempotency only;
+- added decomposition-run, ordered element, and ordered source-span persistence models;
+- added Alembic revision `0005`;
+- added an idempotent persistence service keyed by claim/parser name/version;
+- added focused PostgreSQL integration tests;
+- extended V1-04 verification to require PostgreSQL persistence tests with no skips;
+- inspected the first PR #12 failure and fixed only its nine Ruff findings.
 
 ### What was actually executed
 
-- PR #11 current head/workflows fetched before action;
-- failed V1-04 job/log inspected: element tests **4 PASS**, Ruff lint **PASS**, Ruff format **FAIL** on one new test file;
-- failed V1-02 job/log inspected: comparison tests **26 PASS**, PostgreSQL **3 PASS**, Ruff lint **PASS**, same Ruff format failure;
-- after formatting, exact-head V1-02 run `32252680254` → **success**;
-- after formatting, exact-head V1-03 run `32252680249` → **success**;
-- after formatting, exact-head V1-04 run `32252680278` → **success**;
-- current review threads fetched; one parser correctness blocker found and fixed;
-- final exact-head `7a2d39a7cdde4d62fec563ddf8d7887f17a8f409` workflows: V1-02 `32252992179` **success**, V1-03 `32252992260` **success**, V1-04 `32252992292` **success**;
-- PR changed-file scope checked: only V1-04 workflow, parser boundary, and focused parser tests;
-- review thread rechecked resolved/outdated;
-- expected-head guarded merge → **success**, main merge SHA `0bb31d7151df85c43c5e8621acd25c8220b2f87f`;
-- existing `ClaimParseResult` and `ClaimIndexRun` idempotency patterns inspected to constrain the persistence design.
+- PR #11 final current-head V1-02/V1-03/V1-04 workflows all **success** and expected-head merge succeeded as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`;
+- existing `ClaimParseResult`, `ClaimIndexRun`, migrations, session factory, and PostgreSQL fixture patterns inspected before persistence implementation;
+- PR #12 first exact-head V1-04 run `32253941336` executed real checkout, Compose validation, API build, parser tests, PostgreSQL, migration-from-empty through integration fixture, persistence tests, and Ruff;
+- parser tests **6 PASS**;
+- persistence integration tests **2 PASS / 0 skipped**;
+- first run failed only at Ruff lint with nine enumerated findings;
+- those nine findings were fixed on PR #12; current exact head `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c` has new workflows queued;
+- PR #12 review threads checked: none at PR creation.
 
 ### What was not verified
 
-- decomposition persistence/schema does not exist yet;
-- idempotent persisted decomposition runs have not yet been executed against PostgreSQL;
-- decomposition API/UI are not implemented;
+- current exact-head PR #12 Ruff lint/format have not yet produced GREEN evidence;
+- V1-02/V1-03 regressions on current PR #12 exact head are still pending;
+- public decomposition API/UI are not implemented;
 - human review remains intentionally unimplemented until V1-05.
 
 ### Remaining risks
 
-- semicolon-only decomposition is deliberately conservative and may under-segment claims without explicit delimiters; this is surfaced as a warning rather than silently inferred;
-- the persistence identity must bind a claim to parser name/version without allowing duplicate same-version element sets;
-- element source spans must remain canonical claim-contained page-relative spans after persistence;
+- current exact-head formatting may still require `ruff format` output even after lint findings were fixed;
+- persistence source containment is currently guaranteed by parser/service behavior and executed integration assertions, not a cross-table SQL CHECK constraint;
+- concurrent same-version requests are DB-unique but have not yet been stress-tested for graceful conflict handling;
 - human review must remain separate from machine decomposition in V1-05.
 
 ### Exact next action
 
-**Create the smallest V1-04 persistence/idempotency slice from current `main`: add versioned decomposition-run/element/source-span persistence plus migration and focused PostgreSQL tests. Prove same-version rerun idempotency, ordering, and source containment. Do not add public API, UI, or human-review state until that slice is exact-head GREEN and merged.**
+**Fetch PR #12 CURRENT exact head and CURRENT exact-head PR-visible V1-02/V1-03/V1-04 workflows. If any required check is RED, inspect the first concrete failing step/log and fix only that executed failure. If all are GREEN, inspect current changed-file/review scope and merge PR #12 with expected-head guard. Then update this MASTER with merge evidence and proceed to the smallest public decomposition API slice; do not add UI or human review before the API slice is GREEN and merged.**
 
 ---
 
@@ -228,9 +234,9 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8 |
 | V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9 |
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
-| V1-03 regression | EXECUTED GREEN | PR #10, run `32242502338` |
-| V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292`, merge `0bb31d7151df85c43c5e8621acd25c8220b2f87f` |
-| V1-04 persistence/idempotency | NOT IMPLEMENTED | next bounded slice |
+| V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292` |
+| V1-04 persistence first execution | FUNCTIONAL TESTS GREEN / LINT RED | PR #12 run `32253941336`: parser 6 PASS, PostgreSQL persistence 2 PASS, Ruff 9 findings |
+| V1-04 persistence current exact head | PENDING | PR #12 head `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c` |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
