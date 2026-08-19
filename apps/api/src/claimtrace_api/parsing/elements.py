@@ -195,9 +195,9 @@ def _element_ranges(
     for index, character in enumerate(text):
         if character != ";":
             continue
-        start, end = _trim_range(text, cursor, index + 1)
-        if start < end:
-            ranges.append((start, end))
+        payload_start, payload_end = _trim_range(text, cursor, index)
+        if payload_start < payload_end:
+            ranges.append((payload_start, index + 1))
         else:
             warnings.append(
                 ElementWarning(
