@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - "apps/web/**"
-      - "apps/api/tests/v1_03_browser_seed.py"
+      - "apps/api/**"
+      - "docker-compose.yml"
+      - ".env.example"
       - ".github/workflows/v1-03-verify.yml"
 
 permissions:
