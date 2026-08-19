@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">ClaimTrace v1.0 controlled-pilot architecture</title>
+  <desc id="desc">Single-user on-premise workflow from browser to Next.js, FastAPI, PostgreSQL, deterministic parsing, retrieval, local LLM boundary, comparison, decomposition and persisted human review with exact source provenance.</desc>
+  <style>
+    text { font-family: Inter, Arial, sans-serif; fill: #161616; }
+    .title { font-size: 34px; font-weight: 700; }
+    .sub { font-size: 18px; fill: #4a4a4a; }
+    .box { fill: #ffffff; stroke: #222; stroke-width: 2; rx: 16; }
+    .muted { fill: #f4f4f4; }
+    .accent { fill: #eaf2ff; }
+    .human { fill: #fff5df; }
+    .label { font-size: 20px; font-weight: 700; }
+    .small { font-size: 16px; fill: #444; }
+    .arrow { stroke: #222; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    .boundary { fill: none; stroke: #777; stroke-width: 2; stroke-dasharray: 10 8; rx: 24; }
+  </style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#222"/></marker></defs>
+
+  <text x="70" y="70" class="title">ClaimTrace v1.0 — Controlled Pilot</text>
+  <text x="70" y="104" class="sub">Single user · on-premise · text-based Korean patent PDFs · source-verifiable analytical output</text>
+
+  <rect x="45" y="135" width="1310" height="555" class="boundary"/>
+  <text x="70" y="172" class="small">Trusted workstation / controlled on-premise boundary</text>
+
+  <rect x="80" y="220" width="220" height="120" class="box accent"/>
+  <text x="105" y="265" class="label">Browser</text>
+  <text x="105" y="298" class="small">Upload · Search · Ask</text>
+  <text x="105" y="322" class="small">Compare · Review</text>
+
+  <rect x="370" y="220" width="230" height="120" class="box"/>
+  <text x="395" y="265" class="label">Next.js Web</text>
+  <text x="395" y="298" class="small">Workflow UI</text>
+  <text x="395" y="322" class="small">Exact source links</text>
+
+  <rect x="680" y="220" width="250" height="120" class="box"/>
+  <text x="705" y="265" class="label">FastAPI</text>
+  <text x="705" y="298" class="small">Ingest · parse · index</text>
+  <text x="705" y="322" class="small">retrieve · compare · review</text>
+
+  <rect x="1010" y="220" width="270" height="120" class="box muted"/>
+  <text x="1035" y="265" class="label">PostgreSQL</text>
+  <text x="1035" y="298" class="small">pgvector · pg_trgm</text>
+  <text x="1035" y="322" class="small">pages · claims · runs · reviews</text>
+
+  <path d="M300 280 H370" class="arrow"/><path d="M600 280 H680" class="arrow"/><path d="M930 280 H1010" class="arrow"/>
+
+  <rect x="160" y="430" width="245" height="140" class="box muted"/>
+  <text x="185" y="470" class="label">Deterministic structure</text>
+  <text x="185" y="502" class="small">Claim parsing</text>
+  <text x="185" y="526" class="small">Element decomposition</text>
+  <text x="185" y="550" class="small">Canonical source spans</text>
+
+  <rect x="470" y="430" width="245" height="140" class="box accent"/>
+  <text x="495" y="470" class="label">Retrieval</text>
+  <text x="495" y="502" class="small">Dense + lexical</text>
+  <text x="495" y="526" class="small">RRF hybrid</text>
+  <text x="495" y="550" class="small">Strict document scope</text>
+
+  <rect x="780" y="430" width="245" height="140" class="box"/>
+  <text x="805" y="470" class="label">Local LLM boundary</text>
+  <text x="805" y="502" class="small">Ollama / local-compatible</text>
+  <text x="805" y="526" class="small">Server-issued evidence IDs</text>
+  <text x="805" y="550" class="small">Explicit insufficiency</text>
+
+  <rect x="1090" y="430" width="200" height="140" class="box human"/>
+  <text x="1115" y="470" class="label">Human review</text>
+  <text x="1115" y="502" class="small">Accepted / needs correction</text>
+  <text x="1115" y="526" class="small">Append-only review history</text>
+  <text x="1115" y="550" class="small">Source verification</text>
+
+  <path d="M805 340 V390 H282 V430" class="arrow"/>
+  <path d="M805 340 V390 H592 V430" class="arrow"/>
+  <path d="M805 340 V430" class="arrow"/>
+  <path d="M930 500 H1090" class="arrow"/>
+
+  <text x="70" y="730" class="small">Non-goals for v1.0: OCR · auth/RBAC · multi-tenancy · public cloud/Kubernetes · legal conclusions.</text>
+</svg>
