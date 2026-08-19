@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-03 — Comparison UI + Flow Stitching  
-**Current batch state:** **IN PROGRESS**
+**Current batch state:** **IN PROGRESS — browser validation gate**
 
 ---
 
@@ -43,11 +43,11 @@ Golden-path state:
 | Stage | Status | v1 delta |
 | --- | --- | --- |
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
-| 11 target/reference selection | UI IMPLEMENTED, FLOW STITCHING OPEN | V1-03 |
-| 12 claim comparison | BACKEND + FIRST UI SLICE GREEN | V1-02 closed; V1-03 ongoing |
+| 11 target/reference selection | IMPLEMENTED | browser validation pending |
+| 12 claim comparison | BACKEND + UI IMPLEMENTED | browser validation pending |
 | 13 element decomposition | MISSING | V1-04 |
 | 14 persisted human review | MISSING | V1-05 |
-| 15 source verification everywhere | PARTIAL | comparison UI now source-linked; decomposition must inherit guarantee |
+| 15 source verification everywhere | PARTIAL | comparison UI source-linked; decomposition must inherit guarantee |
 
 **Do not rebuild stages 1–10.**
 
@@ -67,46 +67,61 @@ Golden-path state:
 Executed closure evidence:
 
 - PR #7 exact head `f62b8847ec3bfd6df4ecf1750b6a0e5d90202f6c`;
-- PR-visible workflow run `32225430081` → **success**;
+- workflow run `32225430081` → **success**;
 - database-free comparison tests **26 PASS**;
 - PostgreSQL integration **3 PASS / 0 skipped**;
-- Ruff lint **All checks passed**;
-- Ruff format **141 files already formatted**;
-- Docker API build + PostgreSQL readiness succeeded;
-- fixes were limited to executed failures only;
+- Ruff lint + format **PASS**;
+- Docker API build + PostgreSQL readiness **PASS**;
 - merged to `main` as `db5e39d2118e42527a3794a32173e08535f18cec`.
 
 ### V1-03 — Comparison UI + Flow Stitching
-**IN PROGRESS**
+**IN PROGRESS — browser validation gate**
 
-Goal: make closed comparison backend usable from web UI and connect it to the existing document flow.
+Goal: make the closed comparison backend usable from web UI and connect it to the existing document flow.
 
 Acceptance:
 
-- [x] user can choose two distinct documents and one target claim in web UI;
-- [x] UI calls existing `POST /api/v1/compare/claims`, with no parallel comparison path;
-- [x] target and reference results render separately and preserve document identity;
-- [x] rendered comparison source spans navigate to exact source text using existing deep-link semantics;
-- [x] `reference_not_indexed` and `no_matches` are explicit user-visible states;
+- [x] user-facing controls exist for two distinct documents and one target claim;
+- [x] UI uses existing `POST /api/v1/compare/claims` contract only;
+- [x] target/reference results render separately with preserved document identity;
+- [x] comparison source spans use existing exact-source deep links;
+- [x] `reference_not_indexed` and `no_matches` have explicit user-visible states;
 - [x] loading and API error states are explicit;
-- [ ] document detail exposes contextual navigation to search, grounded Q&A, and comparison where valid;
-- [x] focused frontend checks for the first V1-03 slice executed successfully on exact PR head.
+- [x] document detail exposes contextual Search, Grounded Q&A, and Compare navigation when indexed;
+- [x] `/compare?target=<document-id>` honors a valid contextual target;
+- [x] target-claim selector resets when the target document changes;
+- [x] exact-head frontend lint/typecheck checks pass for both V1-03 PR slices;
+- [ ] browser-level golden-path interaction has actually been executed on a runnable main checkout/runtime.
 
-First bounded V1-03 slice evidence:
+Executed V1-03 evidence:
 
-- PR #8 `feat(web): add bounded claim comparison workspace`;
+#### PR #8 — comparison workspace
+
 - exact head `eed3222d117de5d79f2ab3a28c32c4c732b1ec2f`;
 - workflow run `32228257540` → **success**;
 - `npm ci` **PASS**;
 - ESLint **PASS**;
 - TypeScript `tsc --noEmit` **PASS**;
 - no unresolved review threads;
-- merged with expected-head guard to `main` as `3a12c6601da8ece8c71ea5233c77100d2229bbb9`;
-- merged scope: typed comparison client, comparison server action, `/compare` workspace, target/reference + target-claim selection, explicit no-match/error/loading states, source-backed result links, focused PR verification workflow.
+- merged with expected-head guard to `main` as `3a12c6601da8ece8c71ea5233c77100d2229bbb9`.
+
+Merged scope: typed comparison client, server action, `/compare` workspace, target/reference + target-claim selection, explicit no-match/error/loading states, source-backed target/reference result links, PR-visible frontend verification workflow.
+
+#### PR #9 — contextual flow stitching
+
+- exact head `302d813a1eb12190275646c1327a430587ce94e8`;
+- workflow run `32228493202` → **success**;
+- dependency install **PASS**;
+- ESLint **PASS**;
+- TypeScript typecheck **PASS**;
+- no unresolved review threads;
+- merged with expected-head guard to `main` as `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
+
+Merged scope: document-detail links to Search/Grounded/Compare, `/compare?target=` preselection, and target-claim selector reset on target change.
 
 Non-goals:
 
-- no comparison backend re-hardening without executed V1-03 failure;
+- no comparison backend re-hardening without executed failure;
 - no element decomposition;
 - no human review persistence;
 - no legal semantic judgement;
@@ -154,39 +169,35 @@ Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent 
 
 ### What changed
 
-- synchronized V1-02 to executed GREEN evidence and closed it;
-- implemented and merged the first V1-03 comparison UI slice via PR #8;
-- added typed web comparison client and server action;
-- added `/compare` workspace with target/reference document and target-claim selection;
-- rendered target/reference results separately with exact source links;
-- exposed explicit loading, API error, `reference_not_indexed`, and `no_matches` states;
-- added bounded PR-visible frontend lint/typecheck workflow.
+- closed V1-02 from exact-head executed evidence;
+- implemented and merged the comparison workspace via PR #8;
+- implemented and merged contextual document-analysis navigation via PR #9;
+- `/compare` now accepts contextual target preselection;
+- target-claim selection resets when target document changes;
+- no backend/decomposition/review scope expansion occurred.
 
 ### What was actually executed
 
-- PR #8 exact-head workflow run `32228257540` completed **success**;
-- dependency installation **PASS**;
-- ESLint **PASS**;
-- TypeScript typecheck **PASS**;
-- review threads: none;
-- merge completed with expected head `eed3222d117de5d79f2ab3a28c32c4c732b1ec2f`;
-- resulting `main` SHA after merge: `3a12c6601da8ece8c71ea5233c77100d2229bbb9`.
+- PR #8 run `32228257540`: dependency install, ESLint, TypeScript → **PASS**;
+- PR #9 run `32228493202`: dependency install, ESLint, TypeScript → **PASS**;
+- PR #8 review threads: none; merged with expected-head guard;
+- PR #9 review threads: none; merged with expected-head guard;
+- current merged source SHA after PR #9: `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
 
 ### What was not verified
 
-- browser-level interaction of `/compare` has not yet been exercised;
-- document-detail contextual links are not implemented yet;
-- V1-03 is therefore not closed.
+- no real browser session has yet exercised: document detail → Compare → target/reference/claim selection → compare request → result → exact source deep link;
+- no visual interaction check has verified selector behavior and empty/error states in a running UI;
+- V1-03 therefore remains open despite compile/static gates being GREEN.
 
 ### Remaining risks
 
-- target/reference selector UX must remain coherent when preselected from document detail;
-- source-link behavior is typechecked but awaits final browser-level golden-path validation;
-- unrelated draft proof PR #6 remains out of scope.
+- browser/runtime wiring could still expose state-selection or source-navigation behavior not caught by lint/typecheck;
+- unrelated draft proof PR #6 remains outside the active batch.
 
 ### Exact next action
 
-**Create the next smallest V1-03 PR: add contextual document-detail links to document-scoped Search, Grounded Q&A, and `/compare?target=<document-id>`; teach `/compare` to honor that target preselection; run exact-head frontend lint/typecheck, merge GREEN, then reassess whether V1-03 can close or needs browser-level validation before closure.**
+**Run one browser-level V1-03 golden path on a runnable main checkout/runtime using at least two parsed/indexed documents: open document detail → follow Compare → confirm target preselection → choose target claim/reference → execute comparison → inspect normal or explicit no-correspondence state → open one target and one reference source link. If that executed flow passes, close V1-03 and advance to V1-04. If it fails, fix only the concrete failure in a focused PR.**
 
 ---
 
@@ -198,11 +209,11 @@ Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent 
 | V1-02 comparison backend | EXECUTED GREEN / CLOSED | PR #7, run `32225430081` |
 | V1-02 DB-free tests | 26 PASS | exact PR head |
 | V1-02 PostgreSQL | 3 PASS / 0 skipped | exact PR head |
-| V1-02 Ruff | PASS | lint + format |
-| V1-03 first UI slice | EXECUTED GREEN / MERGED | PR #8, run `32228257540` |
-| V1-03 frontend lint | PASS | exact PR head |
-| V1-03 TypeScript | PASS | exact PR head |
-| V1-03 merged main | VERIFIED | `3a12c6601da8ece8c71ea5233c77100d2229bbb9` |
+| V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8, run `32228257540` |
+| V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9, run `32228493202` |
+| V1-03 frontend lint | PASS | both exact PR heads |
+| V1-03 TypeScript | PASS | both exact PR heads |
+| V1-03 browser golden path | NOT YET EXECUTED | closure gate |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
