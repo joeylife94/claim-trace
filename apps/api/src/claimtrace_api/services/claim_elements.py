@@ -112,7 +112,9 @@ class ClaimElementService:
                 ElementDecompositionRun.parser_name == self._parser.name,
                 ElementDecompositionRun.parser_version == self._parser.version,
             )
-            .options(selectinload(ElementDecompositionRun.elements).selectinload(ClaimElement.spans))
+            .options(
+                selectinload(ElementDecompositionRun.elements).selectinload(ClaimElement.spans)
+            )
         )
         return (await self._session.execute(statement)).scalars().first()
 
@@ -120,7 +122,9 @@ class ClaimElementService:
         statement = (
             select(ElementDecompositionRun)
             .where(ElementDecompositionRun.id == run_id)
-            .options(selectinload(ElementDecompositionRun.elements).selectinload(ClaimElement.spans))
+            .options(
+                selectinload(ElementDecompositionRun.elements).selectinload(ClaimElement.spans)
+            )
         )
         run = (await self._session.execute(statement)).scalars().one()
         return run
