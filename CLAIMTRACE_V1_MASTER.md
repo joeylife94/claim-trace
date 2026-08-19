@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-20  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
-**Current batch state:** **IN PROGRESS — current-head validation/retrieval/grounded deterministic evaluation is executed GREEN; external proof packaging + release/Human Review remain**
+**Current batch state:** **IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED**
 
 ---
 
@@ -36,7 +36,7 @@ Human Review is the **final release/proof gate**, not a requirement for ordinary
 
 Existing engine: FastAPI + Next.js, PostgreSQL + pgvector/pg_trgm, PDF persistence/provenance, deterministic Korean claim parsing, dense/lexical/RRF retrieval, exact source links, local/self-hosted LLM boundary, grounded Q&A with server-issued evidence IDs, citation resolution, explicit insufficient evidence, deterministic/real-local-model evaluation tiers, hostile-evidence guards, Docker Compose.
 
-Current V1-07 evaluation evidence is now authoritative for the deterministic proof tier:
+Current V1-07 evaluation evidence is authoritative for the deterministic proof tier:
 
 - retrieval corpus: 26 synthetic claims / 19 queries;
 - dense Recall@1/3/5 `0.7696 / 0.9265 / 0.9706`, MRR@10 `0.9608`;
@@ -50,6 +50,8 @@ Real-local-model evaluation is **NOT RERUN** in V1-07: the exact-head GitHub-hos
 
 Current operational evidence: V1-06 General CI proved **785 database-free PASS + 135 PostgreSQL integration PASS / 0 skipped**, with Ruff and frontend lint/typecheck GREEN, and PR #29 reran General CI GREEN on the final-evaluation exact head.
 
+Current proof-package evidence: Issue #30 / PR #31 completed the proof-facing README, architecture visual, six committed product screenshots, committed golden-path WebM, proof inventory workflow, and externally visible evidence/limitations. PR #31 exact head `f35b0a07e99e9459242e938a1e117c7103bb426d` had V1-07 Proof Package run `32284300436` SUCCESS plus General CI, V1-03, V1-05, and V1-06 Whole-Product PR-visible regressions GREEN. The proof-package job executed capture, inventory validation, commit verification, and artifact upload successfully. Squash merge: `fced9b40b216d710c6c92f29a03a67f78ad944f5`; Issue #30 auto-closed `completed`.
+
 Golden-path state:
 
 | Stage | Status | v1 delta |
@@ -61,7 +63,7 @@ Golden-path state:
 | 14 persisted human review | EXECUTED GREEN | V1-05 + V1-06 whole-product proof |
 | 15 source verification everywhere | EXECUTED GREEN for frozen golden path | search, grounded, comparison, review source navigation verified |
 
-**Do not rebuild stages 1–14.**
+**Do not rebuild stages 1–14.** No further implementation work is authorized before final Human Review.
 
 ---
 
@@ -138,7 +140,7 @@ Acceptance areas:
 - merge `1bc636985ba85754a0e99e3743b7ca5794c5d357`; Issue #26 auto-closed.
 
 ### V1-07 — Final Validation + Wishket Proof
-**IN PROGRESS**
+**IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED**
 
 Acceptance areas:
 
@@ -146,13 +148,13 @@ Acceptance areas:
 - [x] retrieval evaluation reproduced;
 - [x] grounded deterministic evaluation reproduced;
 - [x] real local model validation rerun **or explicitly and visibly marked not rerun**;
-- [ ] README communicates problem → solution → demo → evidence before deep implementation detail;
-- [ ] architecture visual exists and matches current v1 boundaries;
-- [ ] at least four useful product screenshots exist;
-- [ ] concise golden-path demo asset exists;
-- [ ] CI state/evidence is externally visible from proof surfaces;
-- [ ] proof metrics link to reproducible evidence;
-- [ ] known limitations are visible on proof surfaces;
+- [x] README communicates problem → solution → demo → evidence before deep implementation detail;
+- [x] architecture visual exists and matches current v1 boundaries;
+- [x] at least four useful product screenshots exist;
+- [x] concise golden-path demo asset exists;
+- [x] CI state/evidence is externally visible from proof surfaces;
+- [x] proof metrics link to reproducible evidence;
+- [x] known limitations are visible on proof surfaces;
 - [ ] v1.0 proof release/tag exists;
 - [ ] final Human Review / FREEZE decision.
 
@@ -194,15 +196,44 @@ Acceptance areas:
 - executed socket check confirmed no local Ollama endpoint on `host.docker.internal:11434`;
 - no hosted provider was substituted; historical `qwen2.5:1.5b` evidence is not represented as current V1-07 model quality.
 
+#### Closed — Issue #30 / PR #31: proof-facing package
+
+**Changed**
+- rewrote `README.md` around problem → supported workflow → proof → executed evidence → limitations → reproducibility;
+- added `docs/proof/architecture-v1.svg` matching the frozen single-user/on-premise v1 boundary;
+- committed six current product screenshots under `docs/proof/screenshots/`;
+- committed `docs/proof/demo/claimtrace-golden-path.webm`;
+- added deterministic proof capture and PR-visible proof inventory workflow.
+
+**Actually Executed**
+- exact PR head `f35b0a07e99e9459242e938a1e117c7103bb426d`;
+- V1-07 Proof Package run `32284300436` → **SUCCESS**;
+- proof-package job `96170115955` completed checkout, browser setup, deterministic capture, captured inventory verification, committed inventory verification, artifact upload, and teardown successfully;
+- General CI `32284300441` → **SUCCESS**;
+- V1-03 Comparison UI `32284300485` → **SUCCESS**;
+- V1-05 Human Review `32284300519` → **SUCCESS**;
+- V1-06 Whole-Product `32284300411` → **SUCCESS**;
+- both Codex review threads resolved before merge;
+- expected-head squash merge `fced9b40b216d710c6c92f29a03a67f78ad944f5`;
+- Issue #30 auto-closed `completed`.
+
+**Verified**
+- proof README links durable committed assets rather than transient-only CI artifacts;
+- architecture visual is committed;
+- six screenshots are committed and referenced;
+- concise WebM golden-path demo is committed and referenced;
+- current V1-06/V1-07 evidence and limitations are visible from proof-facing surfaces;
+- proof-package exact-head capture/inventory verification is GREEN.
+
 **Not Verified / Remaining Risks**
-- proof-facing README/visuals/screenshots/demo still need to be refreshed from the current product state;
-- the deterministic tier proves pipeline/source-control properties, not model semantic quality;
+- real-local-model semantic quality remains explicitly NOT RERUN for current V1-07;
+- deterministic/synthetic proof remains pipeline and provenance evidence, not benchmark-quality patent-analysis proof;
 - citation resolvability ≠ semantic entailment;
-- release/tag and final Human Review are intentionally not done in this evaluation work item.
+- release/tag has not been created because Human Review is the final release/proof gate.
 
 **Exact Next Action**
 
-**Re-read current main/MASTER and process any current active PR relevant to V1-07 proof packaging first. If none exists, search open Issues for one exactly covering proof-facing README + current architecture visual + ≥4 screenshots + concise demo asset + visible evidence/limitations. Reuse only an exact Issue; otherwise create one bounded proof-packaging Issue before implementation. Do not create the release/tag until proof packaging has executed verification and merged.**
+**STOP implementation and proof-package expansion. Present the merged proof candidate for final Human Review. If the reviewer approves FREEZE, create the v1.0 proof release/tag from the reviewed main state and reconcile this MASTER to CLOSED. If Human Review rejects or requests changes, create exactly one bounded Issue for the concrete review gap before implementation.**
 
 ---
 
@@ -237,7 +268,8 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 | V1-06 batch | **CLOSED** | every V1-06 acceptance area has current executed evidence |
 | V1-07 current retrieval + deterministic grounded evaluations | EXECUTED GREEN / CLOSED | Issue #28 / PR #29, run `32279743568`, artifact `9375395190` |
 | V1-07 real local model | **NOT RERUN — EXPLICIT** | executed hosted-runner check: no Ollama endpoint; no substitution |
-| V1-07 proof packaging | NOT VERIFIED | next acceptance gap |
+| V1-07 proof packaging | EXECUTED GREEN / CLOSED | Issue #30 / PR #31, proof run `32284300436`, merge `fced9b40b216d710c6c92f29a03a67f78ad944f5` |
+| V1-07 release/tag | WAITING ON HUMAN REVIEW | final release/proof gate |
 
 ---
 
@@ -245,4 +277,4 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 
 Known limits: citation resolvability ≠ semantic entailment; current V1-07 deterministic evaluation is pipeline evidence, not model semantic-quality proof; OCR intentionally unsupported; Korean parser supports bounded patterns; comparison quality is retrieval quality, **not legal similarity**; human review records local reviewer judgement and does not certify legal correctness.
 
-V1-06 is **CLOSED**. v1.0 closes only when it is **usable, trustable, and showable**: V1-07 proof README/visuals/screenshots/demo/limitations are current and evidence-backed; release/tag freezes that state; and the resulting candidate reaches explicit **IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED** before final FREEZE.
+V1-06 is **CLOSED**. All implementation, operational hardening, deterministic validation, and proof packaging required before final review are complete. The current state is **IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED**. No new implementation Issue should be created before Human Review. On explicit approval, create the v1.0 proof release/tag from the reviewed main state and reconcile v1.0 to **CLOSED / FREEZE**. On rejection, open exactly one bounded Issue for the concrete review gap.
