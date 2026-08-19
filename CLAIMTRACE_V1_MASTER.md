@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-04 — Claim Element Decomposition  
-**Current batch state:** **IN PROGRESS — PR #12 persistence/idempotency exact-head verification pending**
+**Current batch state:** **IN PROGRESS — persistence/idempotency slice merged; public decomposition API is the next acceptance gap**
 
 ---
 
@@ -45,9 +45,9 @@ Golden-path state:
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | IN PROGRESS | deterministic boundary merged; persistence/idempotency in PR #12 |
+| 13 element decomposition | IN PROGRESS | deterministic boundary + persistence/idempotency merged; public API remains |
 | 14 persisted human review | MISSING | V1-05 |
-| 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition persistence is source-span based |
+| 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition source spans persisted; public element API still pending |
 
 **Do not rebuild stages 1–12.**
 
@@ -94,13 +94,13 @@ Goal: decompose a persisted claim into individually reviewable elements/limitati
 
 Acceptance:
 
-- [ ] element domain/schema exists with stable identifiers and ordered elements;
-- [ ] every element is represented as a sub-span of the canonical persisted claim source;
-- [ ] decomposition run is versioned and idempotent/re-runnable without ambiguous duplication;
-- [ ] resistant/unsupported claim shapes produce explicit warnings or bounded failure instead of invented structure;
+- [x] element domain/schema exists with stable identifiers and ordered elements;
+- [x] every persisted element is represented as a sub-span of the canonical persisted claim source;
+- [x] decomposition run is versioned and idempotent/re-runnable without ambiguous duplication;
+- [x] resistant/unsupported claim shapes produce explicit warnings or bounded failure instead of invented structure;
 - [ ] API exposes decomposition result without legal-conclusion fields;
-- [ ] focused tests cover ordering, source-span containment, idempotency, and resistant-claim behavior;
-- [ ] exact-head executable checks are GREEN before ordinary bounded PR merge.
+- [x] focused tests cover ordering, source-span containment, idempotency, resistant-claim behavior, and same-version conflict recovery;
+- [x] merged bounded slices had exact-head executable checks GREEN before ordinary merge.
 
 Completed bounded slice — PR #11:
 
@@ -116,27 +116,28 @@ Completed bounded slice — PR #11:
 - review thread resolved;
 - merged with expected-head guard as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`.
 
-Current bounded slice — PR #12:
+Completed bounded slice — PR #12:
 
 - branch `v1-04-element-persistence`;
 - versioned `ElementDecompositionRun`, ordered `ClaimElement`, and ordered `ClaimElementSpan` persistence;
 - DB uniqueness on `(claim_id, parser_name, parser_version)`;
 - Alembic revision `0005`;
 - idempotent `ClaimElementService` returning the existing same-version run;
+- graceful same-version unique-conflict recovery via rollback + winning-run re-query;
 - future parser version can coexist without overwriting prior provenance;
-- focused PostgreSQL tests prove same-version idempotency, ordered elements, exact source resolution, and version coexistence;
-- public API/UI/human-review state remain out of scope for this slice.
+- Alembic environment explicitly registers `element_models` before reading `Base.metadata`;
+- focused PostgreSQL tests prove same-version idempotency, ordered elements, exact source resolution, version coexistence, conflict recovery, and metadata registration path;
+- public API/UI/human-review state remained out of scope for this slice;
+- first execution exposed only formatting issues, then two P2 review findings were fixed in-scope;
+- an over-broad Alembic `command.check` test was replaced after executed evidence showed unrelated pre-existing retrieval custom indexes would create false-positive drift;
+- final exact head `c6a6bee05e54bed647f82c436d427149f2c30f4f`;
+- V1-02 regression run `32259126922` → **success**;
+- V1-03 regression/browser run `32259126863` → **success**;
+- V1-04 run `32259126905` → **success**;
+- all PR #12 review threads resolved;
+- merged with expected-head guard to `main` as `1cf8cf6a1660cd2a814dc86274179108bed148cf`.
 
-First PR #12 exact-head execution (`9d3b163e968e934f7a6896805b002b52a5c09d1f`):
-
-- API image build → **PASS**;
-- focused parser tests → **6 PASS**;
-- PostgreSQL readiness → **PASS**;
-- persistence integration → **2 PASS / 0 skipped**;
-- Ruff lint → **FAIL**, nine concrete style/type-annotation findings only;
-- Ruff format was skipped because lint failed.
-
-The nine executed Ruff findings were fixed only: import formatting, one migration line wrap, one unused import, two missing `Settings` annotations, and three overlong test expressions. Current PR #12 exact head is `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c`; new exact-head workflows are pending.
+Next bounded acceptance gap: public decomposition API only. Issue-first lifecycle applies before any new implementation because the grandfathered PRs are now resolved.
 
 Non-goals:
 
@@ -175,6 +176,15 @@ PR lifecycle:
 4. update this MASTER on `main` with concrete evidence and main SHA;
 5. continue to the next smallest step in the earliest unfinished batch.
 
+Issue-first lifecycle for every new implementation gap after the grandfathered PRs:
+
+1. search for one exact open implementation Issue representing the current MASTER gap;
+2. reuse it only when it is clearly the same bounded work item;
+3. otherwise create exactly one Issue before branch/commit/implementation;
+4. Issue requires `Goal`, `Scope`, `Acceptance Criteria`, `Verification`, `Non-goals`, and `Evidence Required`;
+5. keep one active implementation Issue at a time; concrete failures discovered inside it stay in the same work item;
+6. merge/Issue closure requires executed verification and accepted PR merge, then reconcile this MASTER before selecting another gap.
+
 Any SHA/run ID written here is historical evidence only. **Current repository/PR state always wins.** Missing push status is not evidence; prefer PR-visible exact-head workflow evidence. Agent self-report is not proof.
 
 ---
@@ -183,43 +193,44 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 
 ### What changed
 
-- diagnosed and fixed PR #11 exact-head format failure and a concrete parser review bug, then merged PR #11 after all required current-head checks were GREEN;
-- created PR #12 from current `main` for persistence/idempotency only;
-- added decomposition-run, ordered element, and ordered source-span persistence models;
-- added Alembic revision `0005`;
-- added an idempotent persistence service keyed by claim/parser name/version;
-- added focused PostgreSQL integration tests;
-- extended V1-04 verification to require PostgreSQL persistence tests with no skips;
-- inspected the first PR #12 failure and fixed only its nine Ruff findings.
+- PR #11 deterministic element boundary was verified and merged;
+- PR #12 added versioned decomposition-run, ordered element, and ordered source-span persistence plus Alembic revision `0005`;
+- PR #12 added same-version idempotency and parser-version coexistence;
+- executed review identified missing Alembic model registration and concurrent same-version conflict handling; both were fixed in PR #12;
+- Alembic environment now registers element models before `Base.metadata` is consumed;
+- duplicate same-version commit conflicts now rollback and return the winning run with `created=False`;
+- integration coverage now exercises the conflict recovery path and keeps metadata registration guarded without expanding into unrelated legacy index drift;
+- PR #12 exact-head verification was brought GREEN and the PR merged.
 
 ### What was actually executed
 
 - PR #11 final current-head V1-02/V1-03/V1-04 workflows all **success** and expected-head merge succeeded as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`;
-- existing `ClaimParseResult`, `ClaimIndexRun`, migrations, session factory, and PostgreSQL fixture patterns inspected before persistence implementation;
-- PR #12 first exact-head V1-04 run `32253941336` executed real checkout, Compose validation, API build, parser tests, PostgreSQL, migration-from-empty through integration fixture, persistence tests, and Ruff;
-- parser tests **6 PASS**;
-- persistence integration tests **2 PASS / 0 skipped**;
-- first run failed only at Ruff lint with nine enumerated findings;
-- those nine findings were fixed on PR #12; current exact head `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c` has new workflows queued;
-- PR #12 review threads checked: none at PR creation.
+- PR #12 first V1-04 execution built the API image, ran parser **6 PASS**, PostgreSQL persistence **2 PASS / 0 skipped**, then exposed nine Ruff findings;
+- after formatting correction, executed review produced two P2 findings: Alembic metadata registration and concurrent idempotency conflict recovery;
+- both review findings were fixed and both review threads resolved;
+- current-head V1-04 run `32258885843` exposed one concrete test-design failure: global Alembic `command.check` detected three unrelated pre-existing custom retrieval indexes, not an element-schema mismatch;
+- that over-broad test was narrowed to assert the exact element-model registration path and required element tables only;
+- final PR #12 exact head `c6a6bee05e54bed647f82c436d427149f2c30f4f` executed V1-02 `32259126922` **success**, V1-03 `32259126863` **success**, and V1-04 `32259126905` **success**;
+- PR #12 merged with expected-head guard as `1cf8cf6a1660cd2a814dc86274179108bed148cf`.
 
 ### What was not verified
 
-- current exact-head PR #12 Ruff lint/format have not yet produced GREEN evidence;
-- V1-02/V1-03 regressions on current PR #12 exact head are still pending;
-- public decomposition API/UI are not implemented;
-- human review remains intentionally unimplemented until V1-05.
+- public decomposition API is not implemented or verified;
+- decomposition UI is not implemented;
+- human review remains intentionally unimplemented until V1-05;
+- the three pre-existing retrieval custom-index autogenerate diffs are outside this V1-04 slice and were not altered.
 
 ### Remaining risks
 
-- current exact-head formatting may still require `ruff format` output even after lint findings were fixed;
-- persistence source containment is currently guaranteed by parser/service behavior and executed integration assertions, not a cross-table SQL CHECK constraint;
-- concurrent same-version requests are DB-unique but have not yet been stress-tested for graceful conflict handling;
+- persistence source containment is enforced by deterministic parser/service behavior plus integration assertions, not a cross-table SQL CHECK constraint;
+- the conflict-recovery test deterministically exercises the unique-conflict recovery path but is not a high-load concurrency stress test;
+- existing retrieval custom indexes are intentionally outside this slice and mean repository-wide Alembic `command.check` is not currently a clean generic gate;
+- public API response contracts must preserve element/source provenance and exclude legal-conclusion fields;
 - human review must remain separate from machine decomposition in V1-05.
 
 ### Exact next action
 
-**Fetch PR #12 CURRENT exact head and CURRENT exact-head PR-visible V1-02/V1-03/V1-04 workflows. If any required check is RED, inspect the first concrete failing step/log and fix only that executed failure. If all are GREEN, inspect current changed-file/review scope and merge PR #12 with expected-head guard. Then update this MASTER with merge evidence and proceed to the smallest public decomposition API slice; do not add UI or human review before the API slice is GREEN and merged.**
+**Issue-first: search open Issues for an exact V1-04 public decomposition API work item. If none exists, create exactly one bounded Issue before any new branch/commit/implementation. The Issue must cover only a public decomposition API that exposes persisted machine decomposition with source spans, explicit warnings/errors, idempotent behavior, no legal-conclusion fields, focused API/PostgreSQL tests, and exact-head V1-02/V1-03/V1-04 verification. Do not add UI or human review in that work item.**
 
 ---
 
@@ -235,8 +246,8 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9 |
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292` |
-| V1-04 persistence first execution | FUNCTIONAL TESTS GREEN / LINT RED | PR #12 run `32253941336`: parser 6 PASS, PostgreSQL persistence 2 PASS, Ruff 9 findings |
-| V1-04 persistence current exact head | PENDING | PR #12 head `516e5d4ae37c1b0f725ee7e53af0aaf3231a137c` |
+| V1-04 persistence/idempotency | EXECUTED GREEN / MERGED | PR #12 head `c6a6bee...`, runs `32259126922` / `32259126863` / `32259126905`, merge `1cf8cf6...` |
+| V1-04 public decomposition API | NOT IMPLEMENTED | next Issue-first work item |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
