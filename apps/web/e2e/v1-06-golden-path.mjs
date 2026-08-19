@@ -44,7 +44,7 @@ try {
   // Ask: grounded answer must expose persisted evidence, or an explicit
   // insufficient-evidence limitation if the deterministic provider refuses.
   await page.goto(`${baseUrl}/grounded?document=${targetDocumentId}`, { waitUntil: "networkidle" });
-  await page.getByLabel("Question").fill("통신부는 어떤 모듈을 포함하는가?");
+  await page.getByRole("textbox", { name: "Question" }).fill("통신부는 어떤 모듈을 포함하는가?");
   await page.getByLabel("Mode").selectOption("hybrid");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await page.getByRole("heading", { name: "Answer", exact: true }).waitFor();
