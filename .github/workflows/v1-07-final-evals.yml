@@ -25,6 +25,9 @@ jobs:
       - name: Initialize committed defaults
         run: cp .env.example .env
 
+      - name: Allow container to write evaluation results
+        run: chmod -R a+rwX apps/api/evals/results
+
       - name: Validate Compose configuration
         run: docker compose config --quiet
 
