@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-04 — Claim Element Decomposition  
-**Current batch state:** **IN PROGRESS — PR #11 exact-head verification pending**
+**Current batch state:** **IN PROGRESS — deterministic boundary merged; persistence/idempotency slice next**
 
 ---
 
@@ -45,9 +45,9 @@ Golden-path state:
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | IN PROGRESS | first deterministic boundary in PR #11 |
+| 13 element decomposition | IN PROGRESS | deterministic provenance boundary merged; persistence/API remain |
 | 14 persisted human review | MISSING | V1-05 |
-| 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition must inherit guarantee |
+| 15 source verification everywhere | PARTIAL | comparison source-linked; element boundary preserves source sub-spans |
 
 **Do not rebuild stages 1–12.**
 
@@ -103,18 +103,30 @@ Acceptance:
 - [ ] focused tests cover ordering, source-span containment, idempotency, and resistant-claim behavior;
 - [ ] exact-head executable checks are GREEN before ordinary bounded PR merge.
 
-Current bounded slice — PR #11:
+Completed bounded slice — PR #11:
 
-- branch `v1-04-element-boundary`;
-- current exact head at creation `7da399405ff7332143ea3376f701a48a4c70defd` (historical handoff only; fetch current head before acting);
-- pure `DeterministicElementParser` boundary only;
-- conservative explicit semicolon splitting;
+- deterministic `DeterministicElementParser` boundary;
+- conservative explicit-semicolon splitting;
 - exact page-relative source sub-span mapping, including cross-page claims;
-- no-delimiter claim stays one element with `no_structural_delimiter` warning;
+- no-delimiter claim remains one element with explicit `no_structural_delimiter` warning;
 - provenance mismatch raises instead of approximating;
-- focused unit tests cover ordering, source containment, cross-page source mapping, resistant/no-delimiter behavior, and provenance mismatch;
-- PR-visible `V1-04 Claim Element Verification` workflow added;
-- no persistence/API/UI/human-review changes in this slice.
+- leading/consecutive semicolon empty segments are ignored with `EMPTY_SEGMENT` rather than becoming punctuation-only elements;
+- focused tests cover ordering, source containment, cross-page mapping, resistant/no-delimiter behavior, empty segments, and provenance mismatch;
+- final exact head `7a2d39a7cdde4d62fec563ddf8d7887f17a8f409`;
+- V1-02 regression run `32252992179` → **success**;
+- V1-03 regression/browser run `32252992260` → **success**;
+- V1-04 Claim Element Verification run `32252992292` → **success**;
+- review thread for punctuation-only segments resolved;
+- merged with expected-head guard to `main` as `0bb31d7151df85c43c5e8621acd25c8220b2f87f`.
+
+Next bounded slice:
+
+- persistence/schema only for decomposition runs, ordered elements, and exact source spans;
+- parser name/version participates in idempotency identity;
+- rerunning the same parser version must not duplicate ambiguous element sets;
+- a later parser version may coexist without overwriting older provenance;
+- focused PostgreSQL tests must prove idempotency, ordering, and source-span containment;
+- no public API/UI/human-review state in this slice.
 
 Non-goals:
 
@@ -161,44 +173,47 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 
 ### What changed
 
-- reconciled and closed V1-03 from current PR #10 exact-head GREEN evidence;
-- merged PR #10 with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`;
-- activated V1-04;
-- created branch `v1-04-element-boundary` from current `main`;
-- added `apps/api/src/claimtrace_api/parsing/elements.py` with a pure deterministic, provenance-preserving decomposition boundary;
-- added focused tests in `apps/api/tests/test_claim_element_parser.py`;
-- added `.github/workflows/v1-04-verify.yml` to execute the new tests plus Ruff on the PR exact head;
-- opened bounded PR #11;
-- no persistence/API/UI/human-review scope was added.
+- inspected PR #11 current exact-head RED runs instead of relying on historical handoff;
+- proved both V1-04 and V1-02 failures converged on the same PR-introduced Ruff-format mismatch after their functional tests passed;
+- formatted the focused element test;
+- inspected the remaining unresolved review thread and fixed the concrete leading/consecutive-semicolon bug;
+- added focused regression coverage proving empty semicolon segments warn without creating punctuation-only elements;
+- resolved the review thread;
+- merged PR #11 after all current-head required workflows became GREEN;
+- reconciled V1-04 to the next persistence/idempotency slice.
 
 ### What was actually executed
 
-- PR #10 current exact head and workflows fetched before merge;
-- run `32242502338` → **success**;
-- run `32242502306` → **success**;
-- browser golden-path execution step → **success**;
-- PR #10 changed-file scope and review threads inspected; all review threads resolved;
-- expected-head guarded merge of PR #10 → **success**;
-- existing claim ORM, parser contracts, parsing service, `PAGE_SPAN_SEPARATOR`, and V1-02 verification conventions inspected before V1-04 implementation;
-- PR #11 created and current review threads checked: none at creation;
-- PR #11 workflow lookup immediately after creation returned no runs yet; therefore no executable V1-04 PASS is claimed.
+- PR #11 current head/workflows fetched before action;
+- failed V1-04 job/log inspected: element tests **4 PASS**, Ruff lint **PASS**, Ruff format **FAIL** on one new test file;
+- failed V1-02 job/log inspected: comparison tests **26 PASS**, PostgreSQL **3 PASS**, Ruff lint **PASS**, same Ruff format failure;
+- after formatting, exact-head V1-02 run `32252680254` → **success**;
+- after formatting, exact-head V1-03 run `32252680249` → **success**;
+- after formatting, exact-head V1-04 run `32252680278` → **success**;
+- current review threads fetched; one parser correctness blocker found and fixed;
+- final exact-head `7a2d39a7cdde4d62fec563ddf8d7887f17a8f409` workflows: V1-02 `32252992179` **success**, V1-03 `32252992260` **success**, V1-04 `32252992292` **success**;
+- PR changed-file scope checked: only V1-04 workflow, parser boundary, and focused parser tests;
+- review thread rechecked resolved/outdated;
+- expected-head guarded merge → **success**, main merge SHA `0bb31d7151df85c43c5e8621acd25c8220b2f87f`;
+- existing `ClaimParseResult` and `ClaimIndexRun` idempotency patterns inspected to constrain the persistence design.
 
 ### What was not verified
 
-- PR #11 current exact-head `V1-04 Claim Element Verification` has not yet produced accepted GREEN evidence;
-- focused element tests have not yet been accepted from GitHub Actions;
-- persistence, API, idempotent decomposition runs, and human review are not implemented in this slice.
+- decomposition persistence/schema does not exist yet;
+- idempotent persisted decomposition runs have not yet been executed against PostgreSQL;
+- decomposition API/UI are not implemented;
+- human review remains intentionally unimplemented until V1-05.
 
 ### Remaining risks
 
-- first exact-head run may expose concrete implementation/format/type failures;
-- semicolon-only decomposition is deliberately conservative and may under-segment claims without explicit delimiters; that case is surfaced as a warning rather than silently inferred;
-- element persistence still needs a versioned/idempotent design after this pure boundary proves stable;
-- human review must remain separate in V1-05.
+- semicolon-only decomposition is deliberately conservative and may under-segment claims without explicit delimiters; this is surfaced as a warning rather than silently inferred;
+- the persistence identity must bind a claim to parser name/version without allowing duplicate same-version element sets;
+- element source spans must remain canonical claim-contained page-relative spans after persistence;
+- human review must remain separate from machine decomposition in V1-05.
 
 ### Exact next action
 
-**Fetch PR #11 CURRENT head and CURRENT exact-head PR-visible workflows. If any required check is RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED, inspect the first concrete failing step/log and fix only that failure. If checks are GREEN, inspect current scope/review/security state and merge with expected-head guard. Then update this MASTER with the actual merge SHA/evidence and continue V1-04 to the smallest persistence/idempotency slice. Do not add API/UI/review until preceding slices are GREEN.**
+**Create the smallest V1-04 persistence/idempotency slice from current `main`: add versioned decomposition-run/element/source-span persistence plus migration and focused PostgreSQL tests. Prove same-version rerun idempotency, ordering, and source containment. Do not add public API, UI, or human-review state until that slice is exact-head GREEN and merged.**
 
 ---
 
@@ -214,7 +229,8 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9 |
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-03 regression | EXECUTED GREEN | PR #10, run `32242502338` |
-| V1-04 element boundary | PR OPEN / NOT YET VERIFIED | PR #11 |
+| V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292`, merge `0bb31d7151df85c43c5e8621acd25c8220b2f87f` |
+| V1-04 persistence/idempotency | NOT IMPLEMENTED | next bounded slice |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
