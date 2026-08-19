@@ -27,6 +27,12 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}"
 export LLM_PROVIDER=ollama
 export LLM_OLLAMA_BASE_URL=http://ollama:11434
 export LLM_OLLAMA_MODEL="$MODEL"
+# The buyer-facing HERO needs two concise supported statements, not a long
+# generation. Keep enough room for the fixed JSON schema while bounding slow or
+# pathological local generations. One corrective attempt remains available.
+export GROUNDED_MAX_OUTPUT_TOKENS="${GROUNDED_MAX_OUTPUT_TOKENS:-384}"
+export GROUNDED_TIMEOUT_SECONDS="${GROUNDED_TIMEOUT_SECONDS:-150}"
+export GROUNDED_REPAIR_MAX_ATTEMPTS="${GROUNDED_REPAIR_MAX_ATTEMPTS:-1}"
 
 compose() {
   docker compose -p "$COMPOSE_PROJECT" --profile llm "$@"
@@ -35,6 +41,8 @@ compose() {
 printf '[PROOF] ClaimTrace runtime: project=%s web=%s api=%s postgres=%s ollama=%s\n' \
   "$COMPOSE_PROJECT" "$WEB_PORT" "$API_PORT" "$POSTGRES_PORT" "$OLLAMA_PORT"
 printf '[PROOF] Models: embedding=%s llm=%s\n' "$EMBEDDING_MODEL" "$MODEL"
+printf '[PROOF] Grounded bounds: max_output=%s timeout=%ss repairs=%s\n' \
+  "$GROUNDED_MAX_OUTPUT_TOKENS" "$GROUNDED_TIMEOUT_SECONDS" "$GROUNDED_REPAIR_MAX_ATTEMPTS"
 
 # Earlier Proof iterations used the repository's default Compose project name.
 # Stop those containers only to release the dedicated Proof ports. Volumes are
