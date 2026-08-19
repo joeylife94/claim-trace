@@ -90,6 +90,8 @@ def _seed_reviewable_run(engine: Engine) -> tuple[uuid.UUID, uuid.UUID, uuid.UUI
                 end_char=len(text),
             )
         )
+        session.commit()
+
         session.add(
             ElementDecompositionRun(
                 id=run_id,
@@ -101,6 +103,7 @@ def _seed_reviewable_run(engine: Engine) -> tuple[uuid.UUID, uuid.UUID, uuid.UUI
                 warnings=[],
             )
         )
+        session.commit()
         session.add(
             ClaimElement(
                 id=element_id,
@@ -109,6 +112,7 @@ def _seed_reviewable_run(engine: Engine) -> tuple[uuid.UUID, uuid.UUID, uuid.UUI
                 text="센서부;",
             )
         )
+        session.commit()
         session.add(
             ClaimElementSpan(
                 id=uuid.uuid4(),
