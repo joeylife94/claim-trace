@@ -8,9 +8,12 @@ const referenceFilename = "synthetic-battery-thermal.pdf";
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 
-async function assertExactSource(href, label) {
+async function assertExactSource(href, label, expectedDocumentHref = null) {
   assert.ok(href?.startsWith("/documents/"), `${label} source href is invalid: ${href}`);
   assert.match(href ?? "", /\?page=\d+&start=\d+&end=\d+$/);
+  if (expectedDocumentHref !== null) {
+    assert.equal(href?.split("?")[0], expectedDocumentHref, `${label} escaped document scope`);
+  }
   await page.goto(new URL(href, baseUrl).toString(), { waitUntil: "networkidle" });
   await page.locator("mark.span-highlight").waitFor();
 }
@@ -32,6 +35,8 @@ try {
 
   // Retrieve: document-scoped hybrid claim search with exact source navigation.
   await page.goto(`${baseUrl}/search?document=${targetDocumentId}`, { waitUntil: "networkidle" });
+  const searchDocument = page.getByRole("combobox", { name: "Document", exact: true });
+  assert.equal((await searchDocument.locator("option:checked").textContent())?.trim(), targetFilename);
   await page.getByLabel("Query").fill("센서 데이터를 수집하는 통신 장치");
   await page.getByLabel("Mode").selectOption("hybrid");
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -39,11 +44,13 @@ try {
   const searchSource = page.getByTitle("Open this span in the document's page text").first();
   await searchSource.waitFor();
   const searchSourceHref = await searchSource.getAttribute("href");
-  await assertExactSource(searchSourceHref, "search");
+  await assertExactSource(searchSourceHref, "search", targetHref);
 
   // Ask: grounded answer must expose persisted evidence, or an explicit
   // insufficient-evidence limitation if the deterministic provider refuses.
   await page.goto(`${baseUrl}/grounded?document=${targetDocumentId}`, { waitUntil: "networkidle" });
+  const groundedDocument = page.getByRole("combobox", { name: "Document", exact: true });
+  assert.equal((await groundedDocument.locator("option:checked").textContent())?.trim(), targetFilename);
   await page.getByRole("textbox", { name: "Question" }).fill("통신부는 어떤 모듈을 포함하는가?");
   await page.getByLabel("Mode").selectOption("hybrid");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
@@ -52,7 +59,7 @@ try {
   const groundedSources = page.getByTitle("Open this span in the document's page text");
   if ((await groundedSources.count()) > 0) {
     const groundedHref = await groundedSources.first().getAttribute("href");
-    await assertExactSource(groundedHref, "grounded answer");
+    await assertExactSource(groundedHref, "grounded answer", targetHref);
   } else {
     await page.locator(".grounded-limitation").waitFor();
   }
@@ -78,8 +85,8 @@ try {
   const compareTargetHref = await compareSources.nth(0).getAttribute("href");
   const compareReferenceHref = await compareSources.nth(1).getAttribute("href");
   assert.notEqual(compareTargetHref?.split("?")[0], compareReferenceHref?.split("?")[0]);
-  await assertExactSource(compareTargetHref, "comparison target");
-  await assertExactSource(compareReferenceHref, "comparison reference");
+  await assertExactSource(compareTargetHref, "comparison target", targetHref);
+  await assertExactSource(compareReferenceHref, "comparison reference", referenceHref);
 
   // Decompose/review: machine output stays separate from append-only human review.
   await page.goto(new URL(targetHref, baseUrl).toString(), { waitUntil: "networkidle" });
@@ -99,7 +106,7 @@ try {
   await page.getByText("Accepted", { exact: true }).last().waitFor();
 
   // Final source verification closes the frozen workflow.
-  await assertExactSource(reviewedSourceHref, "human review");
+  await assertExactSource(reviewedSourceHref, "human review", targetHref);
 
   console.log("V1-06 whole-product golden path: PASS");
 } finally {
