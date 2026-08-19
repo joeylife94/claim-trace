@@ -14,7 +14,7 @@ from claimtrace_api.db.element_models import (
     ClaimElementSpan,
     ElementDecompositionRun,
 )
-from claimtrace_api.db.models import Claim, ClaimParseResult, ClaimSpan, DocumentPage
+from claimtrace_api.db.models import Claim, ClaimParseResult, DocumentPage
 from claimtrace_api.parsing.claims.base import ClaimTextSpan, ParsedClaim, SourcePage
 from claimtrace_api.parsing.elements import DeterministicElementParser
 
