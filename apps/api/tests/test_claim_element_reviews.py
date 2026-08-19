@@ -174,9 +174,7 @@ def test_review_history_is_append_only_source_backed_and_survives_new_run(
     before = _machine_snapshot(sync_engine, run_id)
 
     accepted = integration_client.post(_url(run_id), json={"status": "accepted"})
-    correction = integration_client.post(
-        _url(run_id), json={"status": "needs_correction"}
-    )
+    correction = integration_client.post(_url(run_id), json={"status": "needs_correction"})
 
     assert accepted.status_code == 201, accepted.text
     assert correction.status_code == 201, correction.text
