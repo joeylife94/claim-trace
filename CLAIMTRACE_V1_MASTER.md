@@ -98,7 +98,7 @@ These remain historical/committed evidence until rerun for the v1 candidate.
 **Status:** CLOSED
 
 ### V1-02 — Claim Comparison Backend
-**Status:** **IN PROGRESS**
+**Status:** **IN PROGRESS — VERIFICATION GATE OPEN**
 
 Goal: smallest source-backed two-document claim comparison capability.
 
@@ -114,24 +114,19 @@ Acceptance:
 - [x] target and reference results carry canonical source spans;
 - [x] each comparison claim response requires at least one source span and every span belongs to that claim's document;
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
-- [x] API contract explicitly preserves distinct `reference_not_indexed` and `no_matches` no-correspondence reasons;
 - [x] API response has no legal-conclusion field;
 - [x] response model enforces coherent scope/count/no-correspondence state;
 - [x] database-free service/API/edge/schema tests exist;
 - [x] PostgreSQL-backed integration tests exist for strict reference scope and source-span resolution;
-- [x] a single focused closure command exists: `make verify-v1-02`;
-- [x] closure command safely initializes `.env` when missing and preserves existing `.env`;
-- [x] closure command performs `docker compose config --quiet` preflight;
-- [x] closure command explicitly builds the API Docker image;
-- [x] closure command explicitly starts PostgreSQL and waits for `pg_isready`;
-- [x] closure command rejects skipped comparison integration tests;
-- [x] closure command does not hardcode integration test count;
-- [ ] `make verify-v1-02` actually executes successfully in a real checkout with Docker;
+- [x] focused closure command exists: `make verify-v1-02`;
+- [x] closure command initializes `.env` safely, validates Compose config, rebuilds API, starts/waits for PostgreSQL, rejects skipped integration tests, runs Ruff lint and format-check;
+- [x] bounded repository-native GitHub Actions workflow exists to execute the closure command on a real checkout;
+- [ ] GitHub Actions / equivalent real-checkout `make verify-v1-02` run succeeds;
 - [ ] comparison pytest tests actually execute successfully;
 - [ ] Ruff/format checks actually execute successfully;
 - [ ] live PostgreSQL-backed scoped retrieval actually executes successfully.
 
-**Do not close V1-02 until executed verification exists.**
+**Do not close V1-02 until executed verification exists. Do not add more comparison behavior unless a concrete failing execution proves it is needed.**
 
 ### V1-03 — Comparison UI + Flow Stitching
 **Status:** PLANNED
@@ -168,7 +163,7 @@ Acceptance:
 - empty-DB migration;
 - deterministic demo data;
 - golden-path procedure;
-- CI backend/integration/lint/frontend gates;
+- general CI backend/integration/lint/frontend gates;
 - failure-state validation.
 
 ### V1-07 — Final Validation + Wishket Proof
@@ -202,6 +197,9 @@ Anything not executed.
 ### Remaining risks
 Known uncertainty or follow-up work.
 
+### Exact next action
+One smallest non-redundant action that advances the active batch.
+
 **Implementation-agent self-report is not final verification. `Tests should pass` is not evidence.**
 
 ---
@@ -210,7 +208,7 @@ Known uncertainty or follow-up work.
 
 ### What changed
 
-The V1-02 backend currently contains:
+The implemented comparison slice already contains:
 
 - comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
 - persisted target claim text as comparison query;
@@ -221,64 +219,67 @@ The V1-02 backend currently contains:
 - completed-target-parse lifecycle enforcement;
 - database-free service/API/edge/schema tests;
 - PostgreSQL-backed strict-scope/provenance integration tests;
-- API contract tests now explicitly assert that `no_matches` and `reference_not_indexed` remain distinct HTTP no-correspondence reasons.
+- focused Docker closure command `make verify-v1-02`.
 
-Verification-path hardening includes:
+Verification-path hardening already present:
 
-- `make verify-v1-02` depends on idempotent `init`;
-- missing `.env` is created from committed safe defaults; existing `.env` is preserved;
-- `docker compose config --quiet` runs before build/start to fail fast on invalid Compose/env interpolation;
-- API Docker image is explicitly rebuilt;
-- PostgreSQL is explicitly started and polled with bounded `pg_isready` before tests;
-- database-free comparison tests run first;
-- PostgreSQL comparison integration runs separately;
-- integration output must contain passing tests and must not contain skipped tests;
-- Ruff lint and Ruff format-check are mandatory;
-- persistent CI remains intentionally deferred to V1-06.
+- idempotent `.env` initialization;
+- `docker compose config --quiet` preflight;
+- explicit API image rebuild;
+- explicit PostgreSQL start + bounded `pg_isready` wait;
+- separate database-free and PostgreSQL-backed comparison test execution;
+- integration output must contain passing tests and zero skipped tests;
+- mandatory Ruff lint + Ruff format-check.
+
+**This run added one bounded verification-only workflow:**
+
+- `.github/workflows/v1-02-verify.yml`;
+- triggers only on `main` changes relevant to V1-02 plus `workflow_dispatch`;
+- uses `actions/checkout@v4` on a real GitHub runner checkout;
+- records Docker / Docker Compose versions;
+- executes the existing `make verify-v1-02` closure command unchanged;
+- captures PostgreSQL Compose state/logs on failure;
+- always cleans Docker volumes/orphans;
+- has read-only repository permissions and a 30-minute timeout.
+
+This is a **temporary/bounded V1-02 verification path**, not the general CI system planned for V1-06.
 
 ### What was actually executed
 
 Current run:
 
-- read this MASTER first and confirmed V1-02 remains the earliest unfinished batch;
-- inspected the current `Makefile`, `docker-compose.yml`, comparison PostgreSQL integration test, shared PostgreSQL fixtures, API Dockerfile, and comparison API tests through the GitHub connector;
-- confirmed the integration fixture creates/upgrades a dedicated test database and the comparison integration tests exercise strict two-document reference scoping plus exact persisted source-span resolution;
-- added HTTP contract coverage for distinct `no_matches` and `reference_not_indexed` response reasons in commit `8f783ec6d413b24f6f694b88afba12e3d3822996`;
-- fetched the committed API test file back from GitHub and confirmed the two new contract tests are present;
-- reconstructed the changed API test source locally and executed `python -m py_compile`: **PASS**;
-- measured the reconstructed changed source maximum line length: **99**, within the repository Ruff line-length convention of 100.
+- read this MASTER first and confirmed V1-02 is the earliest unfinished batch;
+- inspected `Makefile` and `docker-compose.yml` through the GitHub connector;
+- confirmed `.github/workflows` was absent before this run;
+- created `.github/workflows/v1-02-verify.yml` on `main` in commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`;
+- fetched the committed workflow back from GitHub and confirmed its exact contents are present;
+- queried commit status for `5adbc8d400b95254f8f795871d8ca3b163dc5572`; no GitHub-visible status/check result was returned at inspection time.
 
 Retained earlier V1-02 execution evidence:
 
 - locally reconstructed comparison source passed syntax-level `python -m py_compile` checks;
 - isolated response-validator execution passed for one coherent response and rejected contradictory responses as intended;
-- `.github/workflows` is absent and `main` has no required status checks;
 - integration guard simulations accepted pass-only output and rejected mixed/all-skipped output;
 - PostgreSQL readiness loop passed `sh -n` syntax validation;
-- prior Make dry-runs passed command-construction inspection.
+- Make dry-runs passed command-construction inspection.
 
 ### What was not verified
 
-- `make verify-v1-02` itself was **not actually executed** against a real repository checkout;
-- `docker compose config --quiet` was not executed against the real checkout;
-- API Docker image build was not actually executed;
-- PostgreSQL startup/readiness was not executed against Docker Compose;
-- repository comparison pytest tests, including the two new API contract tests, were not actually run against the real package checkout;
-- Ruff/format checks were not run with Ruff itself;
-- FastAPI startup was not run;
-- no live comparison HTTP request was executed;
-- PostgreSQL-backed scoped retrieval was not executed;
-- Docker Compose was not executed.
+- the newly added GitHub Actions job has not yet produced visible success/failure evidence in the inspected connector state;
+- `make verify-v1-02` has not yet been observed completing successfully on a real checkout;
+- comparison pytest, Ruff, and live PostgreSQL scoped retrieval are therefore still not closure evidence;
+- FastAPI startup and live comparison HTTP request remain unverified.
 
 ### Remaining risks
 
-- comparison code/tests remain runtime-unverified until `make verify-v1-02` succeeds in a real checkout;
-- first real Compose config/build may expose environment interpolation, dependency, or Dockerfile defects despite the preflight/hardening;
-- PostgreSQL integration may expose import/runtime/database defects on first execution;
-- provenance invariants may reveal mapper/fixture assumptions under real pytest;
-- the remaining V1-02 gate is executed pytest/Ruff/PostgreSQL verification, **not additional feature scope**;
-- comparison is textual correspondence only and must never be represented as legal equivalence or infringement analysis;
-- persistent CI remains intentionally deferred to V1-06.
+- the first real GitHub runner execution may expose Docker Compose, build, dependency, migration, or PostgreSQL integration failures;
+- if Actions are disabled or restricted for this repository, the workflow may not start until repository Actions permissions are enabled;
+- comparison remains textual correspondence only and must never be represented as legal equivalence or infringement analysis;
+- **no additional comparison feature/test hardening is justified until a concrete runtime result identifies a failure.**
+
+### Exact next action
+
+**Inspect the first `V1-02 Claim Comparison Verification` GitHub Actions run for commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`. If green, record the executed pytest/Ruff/PostgreSQL evidence and close V1-02. If red, fix only the concrete failing step and rerun. If no run exists, the single external prerequisite is to enable GitHub Actions execution for this repository.**
 
 ---
 
@@ -293,14 +294,12 @@ Retained earlier V1-02 execution evidence:
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
 | Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
-| Comparison tests | WRITTEN, NOT PYTEST-EXECUTED | database-free + PostgreSQL integration + HTTP no-correspondence reasons |
+| Comparison tests | WRITTEN, NOT YET REAL-RUN VERIFIED | database-free + PostgreSQL integration |
 | Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
-| New comparison API test source | SYNTAX EXECUTION PASS | `py_compile`; max line length 99 |
-| V1-02 closure command | IMPLEMENTED + HARDENED + MAKE DRY-RUN PASS | env init, Compose config preflight, API build, PostgreSQL readiness, no-skip guard |
-| PostgreSQL readiness shell | SYNTAX EXECUTION PASS | Docker execution still required |
-| Integration guard simulations | EXECUTED PASS | pass-only accepted; mixed/all-skipped rejected |
+| V1-02 closure command | IMPLEMENTED + HARDENED | real execution required |
+| Bounded V1-02 GitHub Actions workflow | COMMITTED | commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`; run result not yet visible |
 | Real Docker V1-02 closure run | NOT VERIFIED | required closure gate |
-| Current CI green | NOT PRESENT | intentionally V1-06 |
+| General CI green | NOT YET APPLICABLE | V1-06 scope |
 | Clean checkout reproduction | NOT VERIFIED | V1-06 |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
@@ -334,7 +333,7 @@ ClaimTrace v1.0 is **CLOSED** only when all three are true:
 ### Done enough to trust
 
 - clean checkout + migrations reproduced;
-- CI green;
+- general CI green by release hardening;
 - automated tests pass;
 - retrieval/grounding evaluations reproducible;
 - comparison/decomposition provenance checks pass;
