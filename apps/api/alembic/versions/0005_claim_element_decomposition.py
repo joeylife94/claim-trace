@@ -53,7 +53,11 @@ def upgrade() -> None:
         sa.CheckConstraint("element_count >= 0", name="ck_element_runs_element_count"),
         sa.CheckConstraint("warning_count >= 0", name="ck_element_runs_warning_count"),
     )
-    op.create_index("ix_element_decomposition_runs_claim_id", "element_decomposition_runs", ["claim_id"])
+    op.create_index(
+        "ix_element_decomposition_runs_claim_id",
+        "element_decomposition_runs",
+        ["claim_id"],
+    )
 
     op.create_table(
         "claim_elements",
