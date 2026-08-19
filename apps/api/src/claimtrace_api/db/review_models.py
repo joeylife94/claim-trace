@@ -5,11 +5,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from claimtrace_api.db.base import Base
+
+if TYPE_CHECKING:
+    from claimtrace_api.db.element_models import ElementDecompositionRun
 
 
 class DecompositionReviewStatus(StrEnum):
@@ -42,7 +46,4 @@ class ElementDecompositionReview(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    run: Mapped["ElementDecompositionRun"] = relationship()
-
-
-from claimtrace_api.db.element_models import ElementDecompositionRun  # noqa: E402
+    run: Mapped[ElementDecompositionRun] = relationship()
