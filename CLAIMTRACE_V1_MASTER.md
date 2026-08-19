@@ -6,8 +6,8 @@
 
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-02 — Claim Comparison Backend  
-**Current batch state:** **BLOCKED — GitHub Actions execution prerequisite**
+**Current active batch:** V1-03 — Comparison UI + Flow Stitching  
+**Current batch state:** **IN PROGRESS**
 
 ---
 
@@ -80,11 +80,11 @@ These remain historical/committed evidence until rerun for the v1 candidate.
 | Stage | Status | v1 delta |
 | --- | --- | --- |
 | 1–10: ingest through grounded Q&A | READY | Runtime re-verification only |
-| 11: target/reference selection | PARTIAL | Backend contract exists; UI is V1-03 |
-| 12: claim comparison | PARTIAL / BLOCKED ON EXECUTED VERIFICATION | Backend exists; runtime closure evidence missing |
+| 11: target/reference selection | PARTIAL | Backend contract ready; UI is V1-03 |
+| 12: claim comparison | BACKEND CLOSED | Executed V1-02 verification GREEN |
 | 13: element decomposition | MISSING | V1-04 |
 | 14: persisted human review | MISSING | V1-05 |
-| 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A ready; new surfaces must inherit guarantee |
+| 15: source verification on all analytical surfaces | PARTIAL | Search/Q&A + comparison backend provenance ready; UI/decomposition must inherit guarantee |
 
 **Do not rebuild stages 1–10.**
 
@@ -99,7 +99,7 @@ These remain historical/committed evidence until rerun for the v1 candidate.
 **Status:** CLOSED
 
 ### V1-02 — Claim Comparison Backend
-**Status:** **BLOCKED — VERIFICATION GATE OPEN**
+**Status:** **CLOSED**
 
 Goal: smallest source-backed two-document claim comparison capability.
 
@@ -117,26 +117,60 @@ Acceptance:
 - [x] `reference_not_indexed` and `no_matches` are distinguishable;
 - [x] API response has no legal-conclusion field;
 - [x] response model enforces coherent scope/count/no-correspondence state;
-- [x] database-free service/API/edge/schema tests exist;
-- [x] PostgreSQL-backed integration tests exist for strict reference scope and source-span resolution;
+- [x] database-free service/API/edge/schema tests exist and executed successfully;
+- [x] PostgreSQL-backed integration tests exist and executed successfully for strict reference scope and source-span resolution;
 - [x] focused closure command exists: `make verify-v1-02`;
-- [x] closure command initializes `.env` safely, validates Compose config, rebuilds API, starts/waits for PostgreSQL, rejects skipped integration tests, runs Ruff lint and format-check;
-- [x] bounded repository-native GitHub Actions workflow exists to execute the closure command on a real checkout;
-- [ ] GitHub Actions / equivalent real-checkout `make verify-v1-02` run succeeds;
-- [ ] comparison pytest tests actually execute successfully;
-- [ ] Ruff/format checks actually execute successfully;
-- [ ] live PostgreSQL-backed scoped retrieval actually executes successfully.
+- [x] exact-head GitHub Actions verification succeeded;
+- [x] comparison pytest tests executed successfully;
+- [x] Ruff lint/format checks executed successfully;
+- [x] live PostgreSQL-backed scoped retrieval executed successfully.
 
-**Do not close V1-02 until executed verification exists. Do not add more comparison behavior unless a concrete failing execution proves it is needed.**
+Executed closure evidence:
+
+- verification PR: **#7** `ci: expose V1-02 verification on pull requests`;
+- PR exact head: `f62b8847ec3bfd6df4ecf1750b6a0e5d90202f6c`;
+- final PR-head workflow run: **32225430081** — `success`;
+- database-free comparison tests: **26 PASS**;
+- PostgreSQL-backed comparison integration tests: **3 PASS, 0 skipped**;
+- Ruff lint: **All checks passed**;
+- Ruff format: **141 files already formatted**;
+- Docker API build and PostgreSQL readiness succeeded;
+- fixes inside PR #7 were limited to concrete executed failures: PR-visible trigger, `reference_not_indexed` fixture count, pytest summary guard, writable Ruff cache, one unused import, and Ruff formatting;
+- PR #7 merged to `main` as `db5e39d2118e42527a3794a32173e08535f18cec`.
 
 ### V1-03 — Comparison UI + Flow Stitching
-**Status:** PLANNED
+**Status:** **IN PROGRESS**
+
+Goal: make the closed comparison backend usable from the web UI and connect it to the existing document workflow.
+
+Scope:
 
 - `/compare` workspace;
-- target/reference selectors and target-claim selector;
-- side-by-side results with direct source navigation;
-- no-match/error/loading states;
-- contextual links from document detail to search, grounded Q&A, comparison.
+- target/reference document selectors;
+- target-claim selector;
+- side-by-side source-backed results;
+- direct source navigation;
+- explicit no-match/error/loading states;
+- contextual links from document detail to search, grounded Q&A, and comparison.
+
+Acceptance:
+
+- [ ] user can choose two distinct documents and one target claim in the web UI;
+- [ ] UI calls the existing `POST /api/v1/compare/claims` contract without inventing a parallel comparison path;
+- [ ] target and reference results render separately and preserve document identity;
+- [ ] every rendered comparison result can navigate to exact source text;
+- [ ] `reference_not_indexed` and `no_matches` are explicit user-visible states;
+- [ ] loading and API error states are explicit;
+- [ ] document detail exposes contextual navigation to search, grounded Q&A, and comparison where valid;
+- [ ] focused frontend checks for changed V1-03 surfaces execute successfully on exact PR head.
+
+Non-goals:
+
+- no comparison backend re-hardening unless a concrete V1-03 execution failure proves it is required;
+- no claim element decomposition;
+- no human review persistence;
+- no legal semantic judgement;
+- no redesign of unrelated pages.
 
 ### V1-04 — Claim Element Decomposition
 **Status:** PLANNED
@@ -203,78 +237,52 @@ One smallest non-redundant action that advances the active batch.
 
 **Implementation-agent self-report is not final verification. `Tests should pass` is not evidence.**
 
+PR lifecycle for focused batch work:
+
+1. inspect active focused PR and its exact-head pull-request-visible workflows first;
+2. RED → inspect first failing job/step/log and fix only the executed failure;
+3. GREEN + in scope + no unresolved review/security/human-decision blocker → merge with expected-head guard;
+4. update this MASTER on `main` with concrete executed evidence and main SHA;
+5. continue to the next smallest batch step.
+
+Human Review is the final release/proof gate, not a requirement for ordinary bounded intermediate PR merges.
+
 ---
 
-## 6. Current Batch Record — V1-02
+## 6. Current Batch Record — V1-03
 
 ### What changed
 
-Implemented comparison slice:
-
-- comparison schema/service/dependency/API router and `POST /api/v1/compare/claims`;
-- persisted target claim text as comparison query;
-- strict `[reference_document_id]` retrieval plus defensive scope-leak rejection;
-- canonical target/reference source spans;
-- explicit `reference_not_indexed` vs `no_matches`;
-- response invariants for document separation, reference scope, match count, no-correspondence state, and source-span ownership;
-- completed-target-parse lifecycle enforcement;
-- database-free service/API/edge/schema tests;
-- PostgreSQL-backed strict-scope/provenance integration tests;
-- focused Docker closure command `make verify-v1-02`.
-
-Verification path already present:
-
-- idempotent `.env` initialization;
-- `docker compose config --quiet` preflight;
-- explicit API image rebuild;
-- explicit PostgreSQL start + bounded `pg_isready` wait;
-- separate database-free and PostgreSQL-backed comparison test execution;
-- integration output must contain passing tests and zero skipped tests;
-- mandatory Ruff lint + Ruff format-check;
-- bounded `.github/workflows/v1-02-verify.yml` executing `make verify-v1-02` on a real GitHub checkout.
-
-**No comparison source/test/Makefile behavior was added in this run.** The authoritative state changed only because the verification path was inspected and confirmed not to be executing.
+- synchronized stale V1-02 BLOCKED state to the executed PR #7 GREEN evidence;
+- closed V1-02 because every listed V1-02 acceptance criterion is now covered by executed evidence;
+- advanced the active batch to V1-03;
+- no V1-03 source behavior has been merged yet.
 
 ### What was actually executed
 
-Current run:
-
-- read this MASTER first and confirmed V1-02 is the earliest unfinished batch;
-- confirmed `main` HEAD is `10064439b28a046009c77834445f8790d2e7ce15` and its parent is workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`;
-- queried the current `main` commit combined status: **zero statuses/checks returned**;
-- queried workflow runs associated with workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572`: **zero workflow runs returned**;
-- confirmed branch protection is disabled and no required status checks are configured;
-- made no comparison implementation change because there is no concrete runtime failure to fix.
-
-Retained earlier V1-02 execution evidence:
-
-- locally reconstructed comparison source passed syntax-level `python -m py_compile` checks;
-- isolated response-validator execution passed for one coherent response and rejected contradictory responses as intended;
-- integration guard simulations accepted pass-only output and rejected mixed/all-skipped output;
-- PostgreSQL readiness loop passed `sh -n` syntax validation;
-- Make dry-runs passed command-construction inspection.
+- read this MASTER before implementation;
+- inspected open PRs and confirmed there is no active focused V1-03 PR;
+- verified PR #7 is merged;
+- verified PR #7 exact head `f62b8847ec3bfd6df4ecf1750b6a0e5d90202f6c`;
+- verified workflow run `32225430081` is completed with conclusion `success`;
+- verified `main` points to merge commit `db5e39d2118e42527a3794a32173e08535f18cec` before this MASTER synchronization;
+- inspected the existing comparison backend contract and current frontend library/page structure to prepare the smallest V1-03 PR.
 
 ### What was not verified
 
-- no GitHub Actions job has produced executable V1-02 evidence;
-- `make verify-v1-02` has not been observed completing successfully on a real checkout;
-- comparison pytest, Ruff, and live PostgreSQL scoped retrieval are therefore still not closure evidence;
-- FastAPI startup and live comparison HTTP request remain unverified.
+- no V1-03 frontend implementation has executed yet;
+- no `/compare` browser flow exists yet;
+- no V1-03 frontend lint/typecheck evidence exists yet.
 
 ### Remaining risks
 
-- GitHub Actions execution appears disabled, restricted, or otherwise not starting for this repository/workflow;
-- once Actions execution is available, the first runner execution may expose Docker Compose, build, dependency, migration, PostgreSQL integration, pytest, or Ruff failures;
-- comparison remains textual correspondence only and must never be represented as legal equivalence or infringement analysis;
-- **no additional comparison feature/test hardening is justified until a concrete runtime result identifies a failure.**
-
-### Blocker
-
-**V1-02 cannot advance safely from repository code alone. The single external prerequisite is: enable/allow GitHub Actions execution for this repository so `.github/workflows/v1-02-verify.yml` can produce a real run.**
+- V1-03 must reuse the existing backend contract exactly rather than creating a parallel client-side comparison model;
+- source links must preserve exact document/page/character identity;
+- the unrelated draft proof PR #6 is outside this active batch and must not be mixed into V1-03.
 
 ### Exact next action
 
-**Enable GitHub Actions for `joeylife94/claim-trace`, then execute or allow the `V1-02 Claim Comparison Verification` workflow to run on `main`. Inspect that first real run: green closes V1-02; red authorizes fixing only the concrete failing step.**
+**Create the smallest bounded V1-03 PR that adds the typed web comparison client + `/compare` workspace with document/claim selection and source-backed result rendering, then use exact-head PR-visible frontend checks to decide whether it is safe to merge.**
 
 ---
 
@@ -283,20 +291,18 @@ Retained earlier V1-02 execution evidence:
 | Evidence | State | Note |
 | --- | --- | --- |
 | Phase 4A-2 engine | VERIFIED BY REPO INSPECTION | existing implementation |
-| Historical backend tests: 876 | HISTORICAL EXECUTED EVIDENCE | rerun required |
+| Historical backend tests: 876 | HISTORICAL EXECUTED EVIDENCE | rerun required before release |
 | Deterministic citation resolution 1.000 | COMMITTED EVALUATION | pre-v1 baseline |
 | Ollama citation resolution 1.000 | COMMITTED EVALUATION | synthetic corpus |
 | Forbidden scoped citations 0 | COMMITTED EVALUATION | grounded baseline |
 | Existing stages 1–10 | VERIFIED BY STATIC INSPECTION | V1-01 |
-| Comparison contract/service/API | IMPLEMENTED, NOT FULLY RUNTIME-VERIFIED | V1-02 |
-| Comparison tests | WRITTEN, NOT YET REAL-RUN VERIFIED | database-free + PostgreSQL integration |
-| Comparison response invariant logic | ISOLATED EXECUTION PASS | prior V1-02 run |
-| V1-02 closure command | IMPLEMENTED + HARDENED | real execution required |
-| Bounded V1-02 GitHub Actions workflow | COMMITTED, NO RUN OBSERVED | workflow commit `5adbc8d400b95254f8f795871d8ca3b163dc5572` |
-| Current `main` status/checks | NONE OBSERVED | HEAD `10064439b28a046009c77834445f8790d2e7ce15` |
-| Real Docker V1-02 closure run | NOT VERIFIED | required closure gate |
-| General CI green | NOT YET APPLICABLE | V1-06 scope |
-| Clean checkout reproduction | NOT VERIFIED | V1-06 |
+| V1-02 comparison backend | **EXECUTED GREEN / CLOSED** | PR #7, run `32225430081` |
+| V1-02 database-free tests | **26 PASS** | exact PR head |
+| V1-02 PostgreSQL integration | **3 PASS / 0 skipped** | exact PR head |
+| V1-02 Ruff lint | **PASS** | `All checks passed` |
+| V1-02 Ruff format | **PASS** | `141 files already formatted` |
+| V1-02 merged main | **VERIFIED** | `db5e39d2118e42527a3794a32173e08535f18cec` |
+| V1-03 comparison UI | NOT IMPLEMENTED | active batch |
 | Element decomposition | NOT IMPLEMENTED | V1-04 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
