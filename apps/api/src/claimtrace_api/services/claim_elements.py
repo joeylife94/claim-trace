@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -98,7 +99,15 @@ class ClaimElementService:
                     )
                 )
 
-        await self._session.commit()
+        try:
+            await self._session.commit()
+        except IntegrityError:
+            await self._session.rollback()
+            winner = await self._find_run(claim_id)
+            if winner is None:
+                raise
+            return ElementDecompositionOutcome(run=winner, created=False)
+
         return ElementDecompositionOutcome(
             run=await self._require_loaded_run(run.id),
             created=True,
