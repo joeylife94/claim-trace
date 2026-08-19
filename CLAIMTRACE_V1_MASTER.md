@@ -4,8 +4,8 @@
 
 **Last execution update:** 2026-08-20  
 **Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-06 — Operational Hardening  
-**Current batch state:** **IN PROGRESS — clean start, empty-DB migration, deterministic whole-product reproducibility, and general CI are executed GREEN; final expected unsupported/failure-state validation remains**
+**Current active batch:** V1-07 — Final Validation + Wishket Proof  
+**Current batch state:** **NEXT — V1-06 Operational Hardening is CLOSED; final current-head validation/evaluation rerun is the first V1-07 acceptance gap before proof packaging**
 
 ---
 
@@ -36,7 +36,9 @@ Human Review is the **final release/proof gate**, not a requirement for ordinary
 
 Existing engine: FastAPI + Next.js, PostgreSQL + pgvector/pg_trgm, PDF persistence/provenance, deterministic Korean claim parsing, dense/lexical/RRF retrieval, exact source links, local/self-hosted LLM boundary, grounded Q&A with server-issued evidence IDs, citation resolution, explicit insufficient evidence, deterministic/real-local-model evaluation tiers, hostile-evidence guards, Docker Compose.
 
-Historical evidence retained until final V1-07 rerun: 876 backend tests after Phase 4A-2; deterministic grounded citation resolution `1.000`; `qwen2.5:1.5b` citation resolution `1.000`; statement citation coverage `1.000`; forbidden cross-document citations `0`.
+Historical evaluation evidence retained until V1-07 rerun: deterministic grounded citation resolution `1.000`; `qwen2.5:1.5b` citation resolution `1.000`; statement citation coverage `1.000`; forbidden cross-document citations `0`.
+
+Current operational evidence supersedes the older 876-test checkpoint: V1-06 General CI exact-head execution proved **785 database-free PASS + 135 PostgreSQL integration PASS / 0 skipped**, with Ruff and frontend lint/typecheck GREEN.
 
 Golden-path state:
 
@@ -84,9 +86,7 @@ PR #11 run `32252992292` success; PR #12 run `32259126905` success; Issue #13 / 
 - Issue #19 was created from a stale snapshot and immediately closed as duplicate; no implementation attached.
 
 ### V1-06 — Operational Hardening
-**IN PROGRESS**
-
-Goal: prove the supported product is reproducible and operationally repeatable, not merely implemented on isolated feature PRs.
+**CLOSED**
 
 Acceptance areas:
 
@@ -95,28 +95,18 @@ Acceptance areas:
 - [x] deterministic demo/sample material sufficient for the full supported golden path;
 - [x] one repeatable whole-product golden-path procedure;
 - [x] general CI backend/integration/lint/frontend gates;
-- [ ] expected unsupported/failure-state validation.
+- [x] expected unsupported/failure-state validation.
 
 #### Closed — Issue #20 / PR #21: clean checkout + empty DB
-
-**Changed**
-- isolated Compose verifier `scripts/verify-v1-06-clean-start.sh`;
-- PR-visible `.github/workflows/v1-06-clean-start.yml`;
-- safe `.env` initialization, empty isolated PostgreSQL state, full migration chain, API health/readiness.
 
 **Actually Executed / Verified**
 - final exact head `5030fb023e34b9a58b1c3a2c4d8d3d2ed9d978ea`;
 - run `32275712641`, job `96142528344` → **SUCCESS**;
 - Alembic `0001 → 0006 (head)` from empty DB;
 - `/health` = `ok`; `/ready` = PostgreSQL `ok`;
-- merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1`; Issue #20 auto-closed.
+- expected-head merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1`; Issue #20 auto-closed.
 
 #### Closed — Issue #22 / PR #23: deterministic whole-product golden path
-
-**Changed**
-- `scripts/verify-v1-06-golden-path.sh` using committed synthetic corpus + real ingest/parse/index seed path;
-- `apps/web/e2e/v1-06-golden-path.mjs` covering Search → Grounded → Compare → Decompose/Review → exact source highlight;
-- `.github/workflows/v1-06-golden-path.yml` exact-head browser + frontend gate.
 
 **Actually Executed / Verified**
 - final exact head `a1490d9154cb871adbe6f84de85e8efd24273ede`;
@@ -124,47 +114,75 @@ Acceptance areas:
 - V1-03 regression `32277157837` → **SUCCESS**;
 - V1-05 regression `32277157902` → **SUCCESS**;
 - empty PostgreSQL + Alembic `0001 → 0006`, deterministic two-document seed, healthy API/Web, full frozen golden path, persisted human review, document-scoped exact source navigation → **PASS**;
-- merge `b7f3326f35d47537a9415845ab26f3b3ce0b024e`; Issue #22 auto-closed.
+- expected-head merge `b7f3326f35d47537a9415845ab26f3b3ce0b024e`; Issue #22 auto-closed.
 
 #### Closed — Issue #24 / PR #25: general repository CI
 
 **Changed**
-- added `.github/workflows/ci.yml` as one PR-visible general quality gate for ordinary backend/frontend/shared-config changes;
-- backend gate performs exact-head checkout, committed-default Compose validation, API test-image build, live PostgreSQL readiness, database-free tests, non-skipping integration tier, Ruff lint, and Ruff format check;
-- frontend gate performs exact-head checkout, Node 22 `npm ci`, ESLint, and TypeScript typecheck;
-- backend/frontend/shared config and workflow paths trigger the general gate.
+- `.github/workflows/ci.yml` provides one PR-visible general quality gate for ordinary backend/frontend/shared-config changes;
+- backend gate uses exact-head checkout, committed-default Compose validation, API build, live PostgreSQL, database-free + non-skipping integration tiers, Ruff lint/format;
+- frontend gate uses exact-head checkout, `npm ci`, ESLint, TypeScript typecheck.
+
+**Actually Executed / Verified**
+- exact head `da49dc8bd18b97a731ab2a2d469225c58dd9bef5`;
+- General CI run `32278344808` → **SUCCESS**;
+- database-free backend **785 PASS / 135 deselected**;
+- PostgreSQL integration **135 PASS / 0 skipped / 785 deselected**;
+- Ruff `All checks passed`; format `157 files already formatted`;
+- frontend `npm ci` + ESLint + TypeScript typecheck → **SUCCESS**;
+- no unresolved review threads;
+- expected-head merge `664ad95675b51356c42d5f98ec14d80bf6b56ed2`; Issue #24 auto-closed.
+
+#### Closed — Issue #26 / PR #27: final expected unsupported/failure states
+
+**Changed**
+- added `.github/workflows/v1-06-failure-states.yml` as a proof-only exact-head gate;
+- reused existing HTTP contract tests; **no product code or behavior changed**.
 
 **Actually Executed**
-- exact PR head `da49dc8bd18b97a731ab2a2d469225c58dd9bef5`;
-- PR-visible General CI run `32278344808` → **SUCCESS**;
-- backend job `96150941645` → **SUCCESS**;
-- database-free backend tier: **785 PASS / 135 deselected**;
-- PostgreSQL integration tier: **135 PASS / 0 skipped / 785 deselected**;
-- Ruff lint: **All checks passed**;
-- Ruff format: **157 files already formatted**;
-- frontend job `96150941220` → **SUCCESS**, including `npm ci`, ESLint, and TypeScript typecheck;
+- exact PR head `431c85ad9d4b0aa8745600300c083b3adf5a8a99`;
+- `V1-06 Expected Failure States` run `32278992050`, job `96153015153` → **SUCCESS**;
+- focused representative failure-state tier: **5 PASS**;
+- exact-head General CI regression run `32278991988` → **SUCCESS**;
 - no unresolved review threads;
-- expected-head squash merge `664ad95675b51356c42d5f98ec14d80bf6b56ed2`;
-- Issue #24 auto-closed `completed`.
+- expected-head squash merge `1bc636985ba85754a0e99e3743b7ca5794c5d357`;
+- Issue #26 auto-closed `completed`.
 
 **Verified**
-- general PR changes now receive a current exact-head repository quality gate;
-- PostgreSQL integration coverage executes against a live DB and cannot succeed through the integration-skip fallback;
-- backend database-free tests + integration tests + Ruff and frontend lint/typecheck all executed GREEN on the implementation PR.
+- non-PDF bytes renamed as PDF are rejected with HTTP `415` / `unsupported_file_type`;
+- image-only/no-text-layer PDF is rejected with HTTP `422` / `no_extractable_text`, preserving the explicit **no OCR** boundary;
+- no retrieved grounded evidence returns HTTP `200` with `insufficient_evidence=true`, `no_retrieved_evidence`, no generation, and no fabricated statement;
+- comparison with no correspondence returns explicit `no_matches`;
+- unindexed reference comparison returns distinct explicit `reference_not_indexed`;
+- current-head general regression remained GREEN.
 
-**Not Verified / Remaining Risks**
-- the final V1-06 set of deliberately unsupported/expected failure states under a clean current-head run remains unverified;
-- V1-07 final retrieval/grounding evaluation reruns and proof packaging remain;
-- GitHub-hosted npm install output has reported dependency audit findings historically; dependency remediation remains out of scope unless a required V1-06/V1-07 gate concretely requires it.
+**Not Verified / Remaining Risks after V1-06**
+- V1-07 final retrieval/grounding evaluation reruns and external proof packaging remain;
+- citation resolvability still does not prove semantic entailment;
+- dependency audit findings reported by hosted npm install are not silently treated as resolved and remain out of scope absent a concrete V1-07 gate requiring remediation.
+
+### V1-07 — Final Validation + Wishket Proof
+**NEXT**
+
+Acceptance areas:
+
+- [ ] final current-head automated validation/evaluation rerun;
+- [ ] retrieval evaluation reproduced;
+- [ ] grounded deterministic evaluation reproduced;
+- [ ] real local model validation rerun or explicitly and visibly marked not rerun;
+- [ ] README communicates problem → solution → demo → evidence before deep implementation detail;
+- [ ] architecture visual exists and matches current v1 boundaries;
+- [ ] at least four useful product screenshots exist;
+- [ ] concise golden-path demo asset exists;
+- [ ] CI state/evidence is externally visible;
+- [ ] proof metrics link to reproducible evidence;
+- [ ] known limitations are visible;
+- [ ] v1.0 proof release/tag exists;
+- [ ] final Human Review / FREEZE decision.
 
 **Exact Next Action**
 
-**Re-evaluate V1-06 closure, then search current open Issues for one that exactly represents the sole remaining V1-06 gap: a bounded clean current-head verification set for expected unsupported/failure states. Reuse only an exact active Issue; otherwise create exactly one Issue before implementation. Do not expand into OCR/auth/security/dependency campaigns or V1-07 proof work.**
-
-### V1-07 — Final Validation + Wishket Proof
-**PLANNED**
-
-Final test/evaluation rerun; README; architecture visual; ≥4 screenshots; demo asset; limitations; release/tag. Human Review remains the final release/proof gate before proof freeze.
+**Before proof packaging, search current open Issues for one that exactly represents the first V1-07 gap: final current-head automated validation plus retrieval/grounded evaluation rerun. Reuse only an exact active Issue; otherwise create exactly one bounded Issue before branch/implementation. Keep real-local-model validation separate only if execution evidence shows it requires a materially different runtime.**
 
 ---
 
@@ -192,10 +210,12 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-04 decomposition | EXECUTED GREEN / CLOSED | PR #11/#12/#14 |
 | V1-05 review persistence/API + UI/source | EXECUTED GREEN / CLOSED | Issues #15/#17, PRs #16/#18 |
-| V1-06 clean checkout + empty DB migration | EXECUTED GREEN / CLOSED | Issue #20 / PR #21, run `32275712641`, merge `380abc91...` |
-| V1-06 deterministic whole-product reproducibility | EXECUTED GREEN / CLOSED | Issue #22 / PR #23, run `32277157847`, merge `b7f3326f...` |
-| V1-06 general CI | EXECUTED GREEN / CLOSED | Issue #24 / PR #25, run `32278344808`, DB-free **785 PASS**, PostgreSQL **135 PASS / 0 skipped**, Ruff + frontend gates PASS, merge `664ad956...` |
-| V1-06 final expected failure-state set | NOT VERIFIED | sole remaining V1-06 acceptance gap |
+| V1-06 clean checkout + empty DB migration | EXECUTED GREEN / CLOSED | Issue #20 / PR #21, run `32275712641` |
+| V1-06 deterministic whole-product reproducibility | EXECUTED GREEN / CLOSED | Issue #22 / PR #23, run `32277157847` |
+| V1-06 general CI | EXECUTED GREEN / CLOSED | Issue #24 / PR #25, run `32278344808`, DB-free **785 PASS**, PostgreSQL **135 PASS / 0 skipped**, Ruff + frontend PASS |
+| V1-06 final expected failure-state set | EXECUTED GREEN / CLOSED | Issue #26 / PR #27, run `32278992050`, focused **5 PASS**, General CI `32278991988` GREEN |
+| V1-06 batch | **CLOSED** | every V1-06 acceptance area has current executed evidence |
+| V1-07 final evaluations/proof | NOT VERIFIED | next batch |
 
 ---
 
@@ -203,4 +223,4 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 
 Known limits: citation resolvability ≠ semantic entailment; current real-model evidence uses a small model and synthetic data; OCR intentionally unsupported; Korean parser supports bounded patterns; comparison quality is retrieval quality, **not legal similarity**; human review records local reviewer judgement and does not certify legal correctness.
 
-V1-06 closes when the final expected unsupported/failure-state verification is executed GREEN and reconciled. v1.0 closes only when it is **usable, trustable, and showable**: full frozen workflow usable; expected failures explicit; source verification present; comparison + decomposition/review usable; clean checkout/migrations reproduced; general CI green; automated tests/evaluations reproducible; proof README/visuals/screenshots/demo/limitations/release tag complete.
+V1-06 is **CLOSED**. v1.0 closes only when it is **usable, trustable, and showable**: V1-07 validation/evaluations are current and reproducible; proof README/visuals/screenshots/demo/limitations/release tag are complete; and the resulting proof candidate reaches explicit **HUMAN REVIEW / FREEZE** rather than silently declaring itself final.
