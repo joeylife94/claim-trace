@@ -4,8 +4,8 @@
 
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-03 — Comparison UI + Flow Stitching  
-**Current batch state:** **IN PROGRESS — browser validation rerun active**
+**Current active batch:** V1-04 — Claim Element Decomposition  
+**Current batch state:** **IN PROGRESS — first bounded implementation slice pending**
 
 ---
 
@@ -43,13 +43,13 @@ Golden-path state:
 | Stage | Status | v1 delta |
 | --- | --- | --- |
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
-| 11 target/reference selection | IMPLEMENTED | browser validation rerun active |
-| 12 claim comparison | BACKEND + UI IMPLEMENTED | browser validation rerun active |
-| 13 element decomposition | MISSING | V1-04 |
+| 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
+| 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
+| 13 element decomposition | MISSING | V1-04 active |
 | 14 persisted human review | MISSING | V1-05 |
-| 15 source verification everywhere | PARTIAL | comparison UI source-linked; decomposition must inherit guarantee |
+| 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition must inherit guarantee |
 
-**Do not rebuild stages 1–10.**
+**Do not rebuild stages 1–12.**
 
 ---
 
@@ -75,76 +75,59 @@ Executed closure evidence:
 - merged to `main` as `db5e39d2118e42527a3794a32173e08535f18cec`.
 
 ### V1-03 — Comparison UI + Flow Stitching
-**IN PROGRESS — browser validation rerun active**
+**CLOSED**
 
-Goal: make the closed comparison backend usable from web UI and connect it to the existing document flow.
-
-Acceptance:
-
-- [x] user-facing controls exist for two distinct documents and one target claim;
-- [x] UI uses existing `POST /api/v1/compare/claims` contract only;
-- [x] target/reference results render separately with preserved document identity;
-- [x] comparison source spans use existing exact-source deep links;
-- [x] `reference_not_indexed` and `no_matches` have explicit user-visible states;
-- [x] loading and API error states are explicit;
-- [x] document detail exposes contextual Search, Grounded Q&A, and Compare navigation when indexed;
-- [x] `/compare?target=<document-id>` honors a valid contextual target;
-- [x] target-claim selector resets when the target document changes;
-- [x] exact-head frontend lint/typecheck checks pass for both V1-03 PR slices;
-- [ ] browser-level golden-path interaction has actually completed GREEN on the current PR exact head.
-
-Executed V1-03 evidence:
+Executed closure evidence:
 
 #### PR #8 — comparison workspace
 
 - exact head `eed3222d117de5d79f2ab3a28c32c4c732b1ec2f`;
 - workflow run `32228257540` → **success**;
-- `npm ci` **PASS**;
-- ESLint **PASS**;
-- TypeScript `tsc --noEmit` **PASS**;
-- no unresolved review threads;
-- merged with expected-head guard to `main` as `3a12c6601da8ece8c71ea5233c77100d2229bbb9`.
-
-Merged scope: typed comparison client, server action, `/compare` workspace, target/reference + target-claim selection, explicit no-match/error/loading states, source-backed target/reference result links, PR-visible frontend verification workflow.
+- `npm ci`, ESLint, TypeScript → **PASS**;
+- merged to `main` as `3a12c6601da8ece8c71ea5233c77100d2229bbb9`.
 
 #### PR #9 — contextual flow stitching
 
 - exact head `302d813a1eb12190275646c1327a430587ce94e8`;
 - workflow run `32228493202` → **success**;
-- dependency install **PASS**;
-- ESLint **PASS**;
-- TypeScript typecheck **PASS**;
+- dependency install, ESLint, TypeScript → **PASS**;
+- merged to `main` as `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
+
+#### PR #10 — browser golden-path closure
+
+- final exact head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
+- V1-02 regression run `32242502338` → **success**;
+- V1-03 run `32242502306` → **success**;
+- `web-checks`: install, ESLint, TypeScript → **PASS**;
+- `browser-golden-path`: exact-head checkout, deterministic runtime config, API/Web image build, PostgreSQL migration, deterministic two-document seed, API/Web startup, Chromium install, and browser golden-path execution → **PASS**;
 - no unresolved review threads;
-- merged with expected-head guard to `main` as `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
+- changed files were bounded to `.github/workflows/v1-03-verify.yml`, `apps/api/tests/v1_03_browser_seed.py`, and `apps/web/e2e/v1-03-golden-path.mjs`;
+- merged with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`.
 
-Merged scope: document-detail links to Search/Grounded/Compare, `/compare?target=` preselection, and target-claim selector reset on target change.
+V1-03 acceptance is fully met. The older cancelled run on `53c4abc...` is retained only as history and is not authoritative over the final exact-head GREEN evidence.
 
-#### PR #10 — browser golden-path verification
+### V1-04 — Claim Element Decomposition
+**IN PROGRESS**
 
-- previous exact head `53c4abc492fa36389cf44bc5ec101f67151ffc8a`;
-- comparison-backend workflow run `32235034753` → **success**;
-- V1-03 workflow run `32235034754` → **cancelled**;
-- cancelled job `browser-golden-path` completed build, PostgreSQL migration, deterministic seed, API/web startup, and Node setup successfully;
-- concrete cancellation point: `Install Chromium browser runner`;
-- job logs show `npx playwright install --with-deps chromium` entered apt dependency installation, Ubuntu/Azure mirror package retrieval stalled, and the job was cancelled at the 30-minute timeout before the browser script ever executed;
-- this is workflow/infrastructure installation behavior, **not a product/test hang**;
-- smallest repair committed on PR #10: removed `--with-deps` and now install Playwright Chromium only;
-- current exact head after repair: `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
-- exact-head rerun `32242502306` is currently active; V1-02 regression run `32242502338` is also active;
-- no unresolved review threads.
+Goal: decompose a persisted claim into individually reviewable elements/limitations while preserving canonical source provenance and keeping machine output explicitly non-authoritative.
+
+Acceptance:
+
+- [ ] element domain/schema exists with stable identifiers and ordered elements;
+- [ ] every element is represented as a sub-span of the canonical persisted claim source;
+- [ ] decomposition run is versioned and idempotent/re-runnable without ambiguous duplication;
+- [ ] resistant/unsupported claim shapes produce explicit warnings or bounded failure instead of invented structure;
+- [ ] API exposes decomposition result without legal-conclusion fields;
+- [ ] focused tests cover ordering, source-span containment, idempotency, and resistant-claim behavior;
+- [ ] exact-head executable checks are GREEN before ordinary bounded PR merge.
 
 Non-goals:
 
-- no comparison backend re-hardening without executed failure;
-- no element decomposition;
-- no human review persistence;
-- no legal semantic judgement;
-- no unrelated redesign.
-
-### V1-04 — Claim Element Decomposition
-**PLANNED**
-
-Element schema/persistence; deterministic decomposition boundary; source sub-spans; versioned/idempotent run; warnings for resistant claims; API + tests.
+- no human-review persistence yet (V1-05);
+- no claim comparison changes;
+- no LLM-based legal interpretation;
+- no OCR/auth/cloud/Kubernetes work;
+- no unrelated UI redesign.
 
 ### V1-05 — Human Review Boundary
 **PLANNED**
@@ -159,7 +142,7 @@ Clean clone/start; empty-DB migration; deterministic demo data; golden-path proc
 ### V1-07 — Final Validation + Wishket Proof
 **PLANNED**
 
-Final test/evaluation; README; architecture visual; ≥4 screenshots; demo asset; limitations; release/tag.
+Final test/evaluation; README; architecture visual; ≥4 screenshots; demo asset; limitations; release/tag. **Human Review remains the final release/proof gate.**
 
 ---
 
@@ -169,61 +152,52 @@ Every batch defines **Goal / Scope / Acceptance / Non-goals** and records **What
 
 PR lifecycle:
 
-1. inspect active focused PR and exact-head pull-request-visible workflows first;
+1. inspect current active focused PR and current exact-head pull-request-visible workflows first;
 2. RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED/stale IN_PROGRESS → inspect first concrete job/step/log; fix only that executed failure;
 3. GREEN + in scope + no unresolved review/security/human-decision blocker → merge with expected-head guard;
 4. update this MASTER on `main` with concrete evidence and main SHA;
 5. continue to the next smallest step in the earliest unfinished batch.
 
-Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent self-report is not proof.
+Any SHA/run ID written here is historical evidence only. **Current repository/PR state always wins.** Missing push status is not evidence; prefer PR-visible exact-head workflow evidence. Agent self-report is not proof.
 
 ---
 
-## 5. Current Batch Record — V1-03
+## 5. Current Batch Record — V1-04
 
 ### What changed
 
-- closed V1-02 from exact-head executed evidence;
-- implemented and merged the comparison workspace via PR #8;
-- implemented and merged contextual document-analysis navigation via PR #9;
-- `/compare` now accepts contextual target preselection;
-- target-claim selection resets when target document changes;
-- opened PR #10 to execute the browser golden path against a real PostgreSQL/API/Web runtime;
-- after cancelled run `32235034754`, changed only the failing workflow install step from `npx playwright install --with-deps chromium` to `npx playwright install chromium`;
-- no product/decomposition/review scope expansion occurred.
+- reconciled stale V1-03 MASTER state with current PR #10 exact-head evidence;
+- verified PR #10 exact head `1f093cbc...` had both required PR-visible workflows GREEN;
+- confirmed PR #10 was mergeable, non-draft, scope-bounded, and had no unresolved review threads;
+- merged PR #10 with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`;
+- closed V1-03 and activated V1-04;
+- no decomposition implementation has been merged yet.
 
 ### What was actually executed
 
-- PR #8 run `32228257540`: dependency install, ESLint, TypeScript → **PASS**;
-- PR #9 run `32228493202`: dependency install, ESLint, TypeScript → **PASS**;
-- PR #10 previous head `53c4abc...`:
-  - V1-02 regression `32235034753` → **SUCCESS**;
-  - V1-03 run `32235034754` → **CANCELLED**;
-  - Docker API/Web build → **PASS**;
-  - PostgreSQL startup + migrations → **PASS**;
-  - deterministic two-document upload/parse/index seed → **PASS**;
-  - API/Web runtime readiness → **PASS**;
-  - web-checks job → **PASS**;
-  - browser install step → **CANCELLED after apt mirror stall**;
-  - browser golden-path script → **NOT EXECUTED**;
-- PR #10 current head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c` triggered exact-head reruns `32242502306` and `32242502338`;
-- PR #10 review threads: none unresolved.
+- current PR #10 metadata fetched from GitHub;
+- exact-head workflow lookup for `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
+- run `32242502338` → **success**;
+- run `32242502306` → **success**;
+- browser job step evidence confirmed `Execute V1-03 browser golden path` → **success**;
+- PR changed-file scope inspected;
+- PR review threads inspected: all resolved;
+- expected-head guarded merge executed successfully.
 
 ### What was not verified
 
-- current exact-head browser workflow `32242502306` has not yet completed GREEN;
-- therefore the browser script has not yet been accepted as closure evidence;
-- PR #10 is not mergeable by process until that exact-head browser gate completes GREEN.
+- V1-04 decomposition implementation has not yet been executed or tested;
+- no claim-element persistence/API exists yet on `main` at this checkpoint.
 
 ### Remaining risks
 
-- current rerun may expose a concrete browser/runtime failure once Chromium installation completes;
-- if it does, fix only that executed failure;
-- unrelated draft proof PR #6 remains outside the active batch.
+- element boundaries must remain strictly inside canonical claim provenance;
+- deterministic splitting rules can over-segment or under-segment Korean claim syntax, so resistant shapes need explicit warnings rather than silent authority;
+- human review state must remain a separate later concern and must not be embedded into machine decomposition records.
 
 ### Exact next action
 
-**Inspect exact-head run `32242502306`. If the browser-golden-path job completes GREEN, confirm no unresolved blockers, merge PR #10 with expected head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`, update this MASTER with the merge SHA and executed browser evidence, close V1-03, and advance to V1-04. If the run fails/cancels/times out, inspect the first concrete failing step/log and fix only that failure.**
+**Inspect the existing claim persistence/parser/service patterns, then implement the smallest V1-04 slice: a deterministic in-memory/domain decomposition boundary with ordered element source sub-spans and focused unit tests. Do not add review persistence or UI in this slice. Open a bounded PR and use current exact-head executable evidence before merge.**
 
 ---
 
@@ -237,12 +211,9 @@ Missing push status is not evidence. Prefer PR-visible workflow evidence. Agent 
 | V1-02 PostgreSQL | 3 PASS / 0 skipped | exact PR head |
 | V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8, run `32228257540` |
 | V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9, run `32228493202` |
-| V1-03 frontend lint | PASS | PR #8/#9 and PR #10 previous web-checks |
-| V1-03 TypeScript | PASS | PR #8/#9 and PR #10 previous web-checks |
-| V1-03 browser runtime setup | PARTIAL EXECUTED | PR #10 run `32235034754`: build/migrate/seed/start PASS |
-| V1-03 browser runner install | REPAIRED / RERUN ACTIVE | previous `--with-deps` apt stall removed |
-| V1-03 browser golden path | NOT YET GREEN | exact-head run `32242502306` active |
-| Element decomposition | NOT IMPLEMENTED | V1-04 |
+| V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
+| V1-03 regression | EXECUTED GREEN | PR #10, run `32242502338` |
+| Element decomposition | NOT IMPLEMENTED | V1-04 active |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
