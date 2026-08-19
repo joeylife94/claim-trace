@@ -1,0 +1,41 @@
+name: V1-06 Expected Failure States
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - ".env.example"
+      - "docker-compose.yml"
+      - ".github/workflows/v1-06-failure-states.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  expected-failure-states:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Initialize committed defaults
+        run: cp .env.example .env
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build API test image
+        run: docker compose build api
+
+      - name: Execute representative expected failure states
+        run: |
+          docker compose run --rm --no-deps api pytest \
+            tests/test_documents_upload.py::test_non_pdf_content_renamed_as_pdf_is_rejected \
+            tests/test_documents_upload.py::test_pdf_without_extractable_text_is_rejected \
+            tests/test_grounded_api.py::TestInsufficientEvidence::test_retrieving_nothing_is_a_200_with_no_generation \
+            tests/test_claim_comparison_api.py::test_no_matches_is_explicit_in_http_response \
+            tests/test_claim_comparison_api.py::test_reference_not_indexed_is_distinct_in_http_response
