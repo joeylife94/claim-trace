@@ -7,14 +7,20 @@ provider so the browser gate stays offline and reproducible.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from claimtrace_api.core.config import Settings
-from claimtrace_api.main import create_app
-from evals.dataset import load_documents
-from tests.claim_fixtures import build_korean_claims_pdf
+# Executing this file directly sets sys.path[0] to /app/tests. Add the API root
+# so the sibling ``evals`` and ``tests`` namespace packages remain importable in
+# the same Docker image layout used by the application verification workflow.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from claimtrace_api.core.config import Settings  # noqa: E402
+from claimtrace_api.main import create_app  # noqa: E402
+from evals.dataset import load_documents  # noqa: E402
+from tests.claim_fixtures import build_korean_claims_pdf  # noqa: E402
 
 
 def main() -> None:
