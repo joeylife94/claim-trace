@@ -35,6 +35,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
+      - name: Install Korean proof font
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          fc-match :lang=ko
+
       - name: Install browser runner
         working-directory: apps/web
         run: |
