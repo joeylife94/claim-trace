@@ -60,9 +60,7 @@ async def compare_claims(
     return _comparison_response(outcome, rrf_k=settings.rrf_k)
 
 
-def _comparison_response(
-    outcome: ClaimComparisonOutcome, *, rrf_k: int
-) -> ClaimComparisonResponse:
+def _comparison_response(outcome: ClaimComparisonOutcome, *, rrf_k: int) -> ClaimComparisonResponse:
     profile = outcome.profile
     target = outcome.target
     return ClaimComparisonResponse(
