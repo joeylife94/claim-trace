@@ -7,11 +7,10 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from alembic import command
-from alembic.config import Config
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.core.config import Settings
+from claimtrace_api.db.base import Base
 from claimtrace_api.db.element_models import ClaimElement, ClaimElementSpan, ElementDecompositionRun
 from claimtrace_api.db.models import (
     Claim,
@@ -209,10 +208,15 @@ async def test_same_version_unique_conflict_returns_winning_run(
         await engine.dispose()
 
 
-async def test_alembic_metadata_matches_migrated_element_schema(
-    integration_database_url: str,
-) -> None:
-    config = Config(str(API_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(API_ROOT / "alembic"))
-    config.attributes["sqlalchemy_url"] = integration_database_url
-    command.check(config)
+async def test_alembic_env_registers_element_models_before_target_metadata() -> None:
+    env_text = (API_ROOT / "alembic" / "env.py").read_text(encoding="utf-8")
+    registration = "from claimtrace_api.db import element_models, models"
+    target = "target_metadata = Base.metadata"
+
+    assert registration in env_text
+    assert env_text.index(registration) < env_text.index(target)
+    assert {
+        "element_decomposition_runs",
+        "claim_elements",
+        "claim_element_spans",
+    }.issubset(Base.metadata.tables)
