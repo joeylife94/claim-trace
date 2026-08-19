@@ -53,8 +53,12 @@ jobs:
 
       - name: Run element persistence integration tests
         run: |
-          output=$(docker compose run --rm api pytest --disable-warnings tests/test_claim_element_persistence.py)
+          set +e
+          output=$(docker compose run --rm api pytest --disable-warnings tests/test_claim_element_persistence.py 2>&1)
+          status=$?
+          set -e
           printf '%s\n' "$output"
+          test "$status" -eq 0
           printf '%s\n' "$output" | grep -Eq '[0-9]+ passed'
           ! printf '%s\n' "$output" | grep -Eq '[0-9]+ skipped'
 
