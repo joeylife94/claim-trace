@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { parseClaimsAction } from "@/app/documents/[id]/actions";
+import { decomposeAndReviewAction } from "@/app/documents/[id]/review-actions";
 import type { PageHighlight } from "@/components/PageViewer";
 import { INITIAL_PARSE_STATE, type ParseClaimsState } from "@/lib/action-state";
 import {
@@ -78,7 +79,11 @@ export function ClaimsPanel({
       )}
 
       {state.status !== "idle" && (
-        <p className="notice" data-tone={state.status === "error" ? "error" : "success"} role="status">
+        <p
+          className="notice"
+          data-tone={state.status === "error" ? "error" : "success"}
+          role="status"
+        >
           {state.message}
         </p>
       )}
@@ -86,21 +91,26 @@ export function ClaimsPanel({
       {claimSet === null ? (
         <p className="meta">This document has not been parsed for claims yet.</p>
       ) : (
-        <ClaimSetBody claimSet={claimSet} onOpenSpan={onOpenSpan} activeSpan={activeSpan} />
+        <ClaimSetBody
+          documentId={documentId}
+          claimSet={claimSet}
+          onOpenSpan={onOpenSpan}
+          activeSpan={activeSpan}
+        />
       )}
     </section>
   );
 }
 
 function ClaimSetBody({
+  documentId,
   claimSet,
   onOpenSpan,
   activeSpan,
 }: {
+  documentId: string;
   claimSet: ClaimSet;
   onOpenSpan: (span: ClaimSpan) => void;
-  // Compared by coordinates only, so a highlight seeded from a search-result
-  // deep link marks the matching span exactly as a clicked one does.
   activeSpan: PageHighlight | null;
 }) {
   const { result, claims } = claimSet;
@@ -148,6 +158,7 @@ function ClaimSetBody({
           {claims.map((claim) => (
             <ClaimItem
               key={claim.claim_number}
+              documentId={documentId}
               claim={claim}
               onOpenSpan={onOpenSpan}
               activeSpan={activeSpan}
@@ -160,14 +171,14 @@ function ClaimSetBody({
 }
 
 function ClaimItem({
+  documentId,
   claim,
   onOpenSpan,
   activeSpan,
 }: {
+  documentId: string;
   claim: Claim;
   onOpenSpan: (span: ClaimSpan) => void;
-  // Compared by coordinates only, so a highlight seeded from a search-result
-  // deep link marks the matching span exactly as a clicked one does.
   activeSpan: PageHighlight | null;
 }) {
   const dependencies = dependencyLabel(claim.depends_on);
@@ -209,6 +220,13 @@ function ClaimItem({
           );
         })}
       </div>
+
+      <form action={decomposeAndReviewAction} className="upload-form">
+        <input type="hidden" name="documentId" value={documentId} />
+        <input type="hidden" name="claimNumber" value={claim.claim_number} />
+        <button type="submit">Decompose &amp; review</button>
+        <span className="meta">Machine decomposition remains unchanged by review.</span>
+      </form>
     </li>
   );
 }

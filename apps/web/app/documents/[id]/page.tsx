@@ -19,17 +19,21 @@ export default async function DocumentDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  /** `?page=&start=&end=` — a source span opened from a search result. */
-  searchParams: Promise<{ page?: string; start?: string; end?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    start?: string;
+    end?: string;
+    review_error?: string;
+  }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const document = await getDocument(id);
 
   if (document === null) {
     notFound();
   }
 
-  // A failed document has no pages; asking for them anyway would be a wasted call.
   const completed = document.status === "completed";
   const [pages, claimSet, indexRun] = completed
     ? await Promise.all([
@@ -39,7 +43,7 @@ export default async function DocumentDetailPage({
       ])
     : [[], null, null];
 
-  const highlight = parseHighlight(await searchParams);
+  const highlight = parseHighlight(query);
   const indexed = indexRun?.status === "completed";
 
   return (
@@ -49,6 +53,12 @@ export default async function DocumentDetailPage({
           <Link href="/documents">Documents</Link> · Detail
         </p>
         <h1 className="document-title">{document.original_filename}</h1>
+
+        {query.review_error && (
+          <p className="notice" data-tone="error" role="status">
+            {query.review_error}
+          </p>
+        )}
 
         <section className="panel" aria-labelledby="ingestion-heading">
           <div className="panel-header">
@@ -120,14 +130,6 @@ export default async function DocumentDetailPage({
   );
 }
 
-/**
- * Read a source span out of the query string.
- *
- * Every field must be a valid number and the range must be non-empty, matching
- * the half-open `[start_char, end_char)` semantics the API uses. A malformed
- * link renders the page with no highlight rather than an approximate one: a
- * highlight over the wrong characters would be a false citation.
- */
 function parseHighlight(query: {
   page?: string;
   start?: string;
