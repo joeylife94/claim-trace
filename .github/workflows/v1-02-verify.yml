@@ -10,6 +10,15 @@ on:
       - ".env.example"
       - "apps/api/**"
       - "infra/postgres/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v1-02-verify.yml"
+      - "Makefile"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "apps/api/**"
+      - "infra/postgres/**"
   workflow_dispatch:
 
 permissions:

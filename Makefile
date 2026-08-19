@@ -93,12 +93,12 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 		tests/test_claim_comparison_schema.py \
 		tests/test_claim_comparison_api.py
 	$(COMPOSE) run --rm api sh -ec '\
-		output=$$(pytest -q --disable-warnings tests/test_claim_comparison_integration.py); \
+		output=$$(pytest --disable-warnings tests/test_claim_comparison_integration.py); \
 		printf "%s\n" "$$output"; \
 		printf "%s\n" "$$output" | grep -Eq "[0-9]+ passed"; \
 		! printf "%s\n" "$$output" | grep -Eq "[0-9]+ skipped"'
-	$(COMPOSE) run --rm api ruff check .
-	$(COMPOSE) run --rm api ruff format --check .
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
 
 lint: ## Lint the backend (ruff)
 	cd $(API_DIR) && uv run ruff check .

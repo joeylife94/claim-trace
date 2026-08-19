@@ -10,7 +10,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from claimtrace_api.api.deps import get_claim_comparison_service, get_postgres_ready
-from claimtrace_api.core.config import Settings
 from claimtrace_api.db.models import ClaimSpan, ClaimType
 from claimtrace_api.indexing.profile import IndexProfile
 from claimtrace_api.retrieval.base import RetrievalMode
@@ -92,6 +91,8 @@ def _outcome(
     if not with_match and reason is None:
         reason = "no_matches"
 
+    searched_index_run_count = 0 if reason == "reference_not_indexed" else 1
+
     return ClaimComparisonOutcome(
         target=ComparisonTarget(
             document_id=TARGET_DOCUMENT,
@@ -104,7 +105,7 @@ def _outcome(
         reference_document_id=REFERENCE_DOCUMENT,
         mode=RetrievalMode.HYBRID,
         profile=_profile(),
-        searched_index_run_count=1,
+        searched_index_run_count=searched_index_run_count,
         no_correspondence_reason=reason,
         matches=matches,
     )
