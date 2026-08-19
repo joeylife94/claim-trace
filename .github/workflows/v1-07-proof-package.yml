@@ -18,9 +18,6 @@ on:
 permissions:
   contents: write
 
-env:
-  V1_07_CAPTURE_DIR: ${{ runner.temp }}/claimtrace-v1-07-proof
-
 jobs:
   proof-package:
     runs-on: ubuntu-latest
@@ -52,13 +49,14 @@ jobs:
           npx playwright install chromium
 
       - name: Capture deterministic proof package
-        run: V1_07_PROOF_DIR="${V1_07_CAPTURE_DIR}" sh scripts/capture-v1-07-proof.sh
+        run: V1_07_PROOF_DIR="${RUNNER_TEMP}/claimtrace-v1-07-proof" sh scripts/capture-v1-07-proof.sh
 
       - name: Verify captured proof inventory
         run: |
+          CAPTURE_DIR="${RUNNER_TEMP}/claimtrace-v1-07-proof"
           test -s docs/proof/architecture-v1.svg
-          test "$(find "${V1_07_CAPTURE_DIR}/screenshots" -type f -name '*.png' | wc -l)" -ge 4
-          test -s "${V1_07_CAPTURE_DIR}/demo/claimtrace-golden-path.webm"
+          test "$(find "${CAPTURE_DIR}/screenshots" -type f -name '*.png' | wc -l)" -ge 4
+          test -s "${CAPTURE_DIR}/demo/claimtrace-golden-path.webm"
 
       - name: Commit first executed proof capture to PR branch
         env:
@@ -70,9 +68,10 @@ jobs:
             exit 0
           fi
 
+          CAPTURE_DIR="${RUNNER_TEMP}/claimtrace-v1-07-proof"
           mkdir -p docs/proof/screenshots docs/proof/demo
-          cp "${V1_07_CAPTURE_DIR}"/screenshots/*.png docs/proof/screenshots/
-          cp "${V1_07_CAPTURE_DIR}"/demo/claimtrace-golden-path.webm docs/proof/demo/
+          cp "${CAPTURE_DIR}"/screenshots/*.png docs/proof/screenshots/
+          cp "${CAPTURE_DIR}"/demo/claimtrace-golden-path.webm docs/proof/demo/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/proof/screenshots docs/proof/demo
@@ -92,8 +91,8 @@ jobs:
           name: v1-07-proof-package-${{ github.event.pull_request.head.sha }}
           path: |
             docs/proof/architecture-v1.svg
-            ${{ env.V1_07_CAPTURE_DIR }}/screenshots/*.png
-            ${{ env.V1_07_CAPTURE_DIR }}/demo/claimtrace-golden-path.webm
+            ${{ runner.temp }}/claimtrace-v1-07-proof/screenshots/*.png
+            ${{ runner.temp }}/claimtrace-v1-07-proof/demo/claimtrace-golden-path.webm
           if-no-files-found: error
           retention-days: 14
 
