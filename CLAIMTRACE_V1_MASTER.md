@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-20  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-06 — Operational Hardening  
-**Current batch state:** **IN PROGRESS — Issue #20 / PR #21 clean-checkout + empty-DB migration verification; exact-head run `32270376815` currently in progress**
+**Current batch state:** **IN PROGRESS — clean checkout + empty-DB migration acceptance closed via Issue #20 / PR #21; next bounded V1-06 acceptance gap must be selected Issue-first**
 
 ---
 
@@ -115,48 +115,62 @@ Acceptance areas:
 - general CI backend/integration/lint/frontend gates;
 - expected unsupported/failure-state validation.
 
-Current bounded work item — Issue #20 / PR #21:
+#### Closed work item — Issue #20 / PR #21
 
 **Goal:** prove clean checkout + empty PostgreSQL migration + API readiness without developer-local state.
 
 **Changed:**
 
-- Issue #20 created before implementation under Issue-first lifecycle;
-- branch `issue-20-v1-06-clean-start` created from current `main`;
-- `scripts/verify-v1-06-clean-start.sh` added;
-- verifier uses isolated Compose project `claimtrace-v1-06-clean-start`, runs existing safe `make init`, removes only isolated volumes, builds API, starts PostgreSQL, requires `pg_isready`, applies `alembic upgrade head`, starts API, and requires `/health` + `/ready` with PostgreSQL ready;
-- `.github/workflows/v1-06-clean-start.yml` added as bounded PR-visible exact-head verification;
-- PR #21 opened with `Closes #20`.
+- `scripts/verify-v1-06-clean-start.sh` adds an isolated Compose-project verifier;
+- `.github/workflows/v1-06-clean-start.yml` adds PR-visible verification;
+- exact PR head checkout is explicit via `github.event.pull_request.head.sha`;
+- workflow path coverage includes `Makefile` and `infra/postgres/init/**` in addition to Compose/env/API/verifier inputs;
+- verification publishes PostgreSQL/API on ephemeral host ports and performs health/readiness checks from inside the API container, so the verifier can coexist with the ordinary developer stack;
+- PR #21 retained `Closes #20` and remained bounded to Issue #20.
 
 **Actually Executed:**
 
-- current repository/MASTER reconciliation before Issue selection;
-- open-Issue search returned no exact V1-06 work item;
-- shell syntax check on the verifier shape via `sh -n` → PASS;
-- PR #21 current exact head `ffc8a559d5ac0dbe77f6c72a08343a370890020d`;
-- PR-visible run `32270376815` is currently `in_progress`;
-- PR #21 review-thread lookup currently shows no threads.
+- first PR-visible clean-start run `32270376815` completed successfully on historical head but review identified three correctness gaps;
+- review findings were repaired in the same Issue/PR: synthetic merge checkout, incomplete workflow path coverage, and ordinary-stack host-port collisions;
+- final PR #21 exact head `5030fb023e34b9a58b1c3a2c4d8d3d2ed9d978ea`;
+- final exact-head run `32275712641`, job `96142528344` → **SUCCESS**;
+- exact SHA checkout confirmed in workflow logs;
+- committed example config created `.env` via existing safe `make init`;
+- isolated API image built successfully;
+- isolated PostgreSQL volume created from empty state and became healthy;
+- Alembic executed the full chain `0001 → 0002 → 0003 → 0004 → 0005 → 0006`; `alembic current` reported `0006 (head)`;
+- API started against that migrated database;
+- `/health` returned `{"status":"ok"}`;
+- `/ready` returned `{"status":"ready","dependencies":{"postgres":"ok"}}`;
+- all three review threads were resolved after the repairs;
+- PR #21 merged with expected-head guard as squash merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1`;
+- Issue #20 auto-closed as `completed`.
 
 **Verified:**
 
-- scope is limited to the first V1-06 clean-start/empty-DB acceptance gap;
-- verifier uses an isolated Compose project and does not target the ordinary developer project's volumes.
+- fresh GitHub-hosted checkout can create local configuration from committed defaults without overwriting an existing `.env`;
+- isolated empty PostgreSQL state reaches current migration head;
+- API reaches documented health/readiness against the migrated database;
+- verification is exact-head PR-visible and fails instead of intentionally skipping the database/startup path;
+- verification isolation covers Compose project resources and host-port collisions with the ordinary developer stack.
 
 **Not Verified:**
 
-- Docker build/start on the exact PR head;
-- actual empty-DB full Alembic migration;
-- API `/health` and `/ready` against that migrated database;
-- all three remain pending until run `32270376815` completes successfully.
+- deterministic full demo/sample material sufficient for the whole frozen workflow;
+- one whole-product repeatable browser/golden-path procedure from clean state;
+- general consolidated CI coverage for backend/integration/lint/frontend outside prior bounded workflows;
+- final expected unsupported/failure-state validation set;
+- V1-07 final evaluation/proof packaging.
 
 **Remaining Risks:**
 
-- the runner may expose a concrete Docker/startup/config assumption that requires a small evidence-driven repair;
-- this work item intentionally does not cover full demo data, whole-product browser procedure, general CI consolidation, or V1-07 proof packaging.
+- clean-start evidence proves migration/readiness only; it does not yet prove the complete user workflow from deterministic sample material;
+- existing quality evidence is distributed across bounded historical workflows rather than one final general V1-06 gate;
+- final proof still requires V1-07 reruns/assets/release after V1-06 closes.
 
 **Exact Next Action:**
 
-**Re-read PR #21 current exact head and run `32270376815`. If RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED, inspect the first concrete failing job/step and repair only that failure inside Issue #20. If GREEN, confirm scope/review state, merge with expected-head guard, confirm Issue #20 closes, then reconcile this MASTER on resulting `main` before selecting the next V1-06 Issue.**
+**Search current open Issues for one that exactly represents the next V1-06 acceptance gap: deterministic demo/sample material + one repeatable whole-product golden-path procedure. Reuse only an exact active Issue; otherwise create exactly one bounded Issue before implementation, then follow Issue → branch → PR → exact-head verification → merge → MASTER reconciliation.**
 
 ### V1-07 — Final Validation + Wishket Proof
 **PLANNED**
@@ -190,8 +204,9 @@ Any SHA/run ID here is historical evidence only; **current repository/PR state a
 | V1-04 decomposition | EXECUTED GREEN / CLOSED | PR #11/#12/#14 |
 | V1-05 review persistence/API | EXECUTED GREEN / CLOSED | Issue #15 / PR #16 |
 | V1-05 review UI/source navigation | EXECUTED GREEN / CLOSED | Issue #17 / PR #18, run `32265797594` |
-| V1-06 clean checkout + empty DB migration | IN PROGRESS | Issue #20 / PR #21, run `32270376815` |
-| V1-06 full whole-product reproducibility | NOT VERIFIED | later bounded work |
+| V1-06 clean checkout + empty DB migration | EXECUTED GREEN / CLOSED | Issue #20 / PR #21, exact-head run `32275712641`, merge `380abc91ad703c3cf3d01e2466dc494d0a2ac6a1` |
+| V1-06 full whole-product reproducibility | NOT VERIFIED | deterministic demo + repeatable full golden path remains |
+| V1-06 general CI/failure-state hardening | NOT VERIFIED | later bounded work |
 
 ---
 
