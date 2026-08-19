@@ -17,6 +17,7 @@ if [ ! -f .env ]; then
 fi
 
 test -f .env
+test -s docs/proof/architecture-v1.svg
 
 export EMBEDDING_PROVIDER=fake
 export EMBEDDING_MODEL=deterministic-hash
@@ -69,5 +70,4 @@ V1_07_WEB_URL="${V1_07_WEB_URL}" V1_07_PROOF_DIR="${PROOF_DIR}" \
 count=$(find "${PROOF_DIR}/screenshots" -type f -name '*.png' | wc -l | tr -d ' ')
 [ "${count}" -ge 4 ]
 test -s "${PROOF_DIR}/demo/claimtrace-golden-path.webm"
-test -s "${PROOF_DIR}/architecture-v1.svg"
-printf 'V1-07 proof capture passed: %s screenshots + demo + architecture.\n' "${count}"
+printf 'V1-07 proof capture passed: %s screenshots + demo; architecture is repository-tracked.\n' "${count}"
