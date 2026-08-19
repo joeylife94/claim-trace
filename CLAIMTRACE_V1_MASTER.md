@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-04 — Claim Element Decomposition  
-**Current batch state:** **IN PROGRESS — first bounded implementation slice pending**
+**Current batch state:** **IN PROGRESS — PR #11 exact-head verification pending**
 
 ---
 
@@ -45,7 +45,7 @@ Golden-path state:
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | MISSING | V1-04 active |
+| 13 element decomposition | IN PROGRESS | first deterministic boundary in PR #11 |
 | 14 persisted human review | MISSING | V1-05 |
 | 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition must inherit guarantee |
 
@@ -79,32 +79,14 @@ Executed closure evidence:
 
 Executed closure evidence:
 
-#### PR #8 — comparison workspace
-
-- exact head `eed3222d117de5d79f2ab3a28c32c4c732b1ec2f`;
-- workflow run `32228257540` → **success**;
-- `npm ci`, ESLint, TypeScript → **PASS**;
-- merged to `main` as `3a12c6601da8ece8c71ea5233c77100d2229bbb9`.
-
-#### PR #9 — contextual flow stitching
-
-- exact head `302d813a1eb12190275646c1327a430587ce94e8`;
-- workflow run `32228493202` → **success**;
-- dependency install, ESLint, TypeScript → **PASS**;
-- merged to `main` as `6088fbbfbc4abad2e0983b03e464a74919b8124d`.
-
-#### PR #10 — browser golden-path closure
-
-- final exact head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
+- PR #8 workspace → run `32228257540` **success**, merged `3a12c6601da8ece8c71ea5233c77100d2229bbb9`;
+- PR #9 flow stitching → run `32228493202` **success**, merged `6088fbbfbc4abad2e0983b03e464a74919b8124d`;
+- PR #10 final exact head `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
 - V1-02 regression run `32242502338` → **success**;
 - V1-03 run `32242502306` → **success**;
-- `web-checks`: install, ESLint, TypeScript → **PASS**;
-- `browser-golden-path`: exact-head checkout, deterministic runtime config, API/Web image build, PostgreSQL migration, deterministic two-document seed, API/Web startup, Chromium install, and browser golden-path execution → **PASS**;
+- browser job completed exact-head checkout, deterministic runtime config, API/Web image build, PostgreSQL migration, deterministic two-document seed, API/Web startup, Chromium install, and browser golden-path execution → **PASS**;
 - no unresolved review threads;
-- changed files were bounded to `.github/workflows/v1-03-verify.yml`, `apps/api/tests/v1_03_browser_seed.py`, and `apps/web/e2e/v1-03-golden-path.mjs`;
 - merged with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`.
-
-V1-03 acceptance is fully met. The older cancelled run on `53c4abc...` is retained only as history and is not authoritative over the final exact-head GREEN evidence.
 
 ### V1-04 — Claim Element Decomposition
 **IN PROGRESS**
@@ -120,6 +102,19 @@ Acceptance:
 - [ ] API exposes decomposition result without legal-conclusion fields;
 - [ ] focused tests cover ordering, source-span containment, idempotency, and resistant-claim behavior;
 - [ ] exact-head executable checks are GREEN before ordinary bounded PR merge.
+
+Current bounded slice — PR #11:
+
+- branch `v1-04-element-boundary`;
+- current exact head at creation `7da399405ff7332143ea3376f701a48a4c70defd` (historical handoff only; fetch current head before acting);
+- pure `DeterministicElementParser` boundary only;
+- conservative explicit semicolon splitting;
+- exact page-relative source sub-span mapping, including cross-page claims;
+- no-delimiter claim stays one element with `no_structural_delimiter` warning;
+- provenance mismatch raises instead of approximating;
+- focused unit tests cover ordering, source containment, cross-page source mapping, resistant/no-delimiter behavior, and provenance mismatch;
+- PR-visible `V1-04 Claim Element Verification` workflow added;
+- no persistence/API/UI/human-review changes in this slice.
 
 Non-goals:
 
@@ -166,38 +161,44 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 
 ### What changed
 
-- reconciled stale V1-03 MASTER state with current PR #10 exact-head evidence;
-- verified PR #10 exact head `1f093cbc...` had both required PR-visible workflows GREEN;
-- confirmed PR #10 was mergeable, non-draft, scope-bounded, and had no unresolved review threads;
+- reconciled and closed V1-03 from current PR #10 exact-head GREEN evidence;
 - merged PR #10 with expected-head guard to `main` as `6de5a391715ace893189378710f8852b4542dfaa`;
-- closed V1-03 and activated V1-04;
-- no decomposition implementation has been merged yet.
+- activated V1-04;
+- created branch `v1-04-element-boundary` from current `main`;
+- added `apps/api/src/claimtrace_api/parsing/elements.py` with a pure deterministic, provenance-preserving decomposition boundary;
+- added focused tests in `apps/api/tests/test_claim_element_parser.py`;
+- added `.github/workflows/v1-04-verify.yml` to execute the new tests plus Ruff on the PR exact head;
+- opened bounded PR #11;
+- no persistence/API/UI/human-review scope was added.
 
 ### What was actually executed
 
-- current PR #10 metadata fetched from GitHub;
-- exact-head workflow lookup for `1f093cbc6d611ef1aaedbea1ed934ff1f88d860c`;
+- PR #10 current exact head and workflows fetched before merge;
 - run `32242502338` → **success**;
 - run `32242502306` → **success**;
-- browser job step evidence confirmed `Execute V1-03 browser golden path` → **success**;
-- PR changed-file scope inspected;
-- PR review threads inspected: all resolved;
-- expected-head guarded merge executed successfully.
+- browser golden-path execution step → **success**;
+- PR #10 changed-file scope and review threads inspected; all review threads resolved;
+- expected-head guarded merge of PR #10 → **success**;
+- existing claim ORM, parser contracts, parsing service, `PAGE_SPAN_SEPARATOR`, and V1-02 verification conventions inspected before V1-04 implementation;
+- PR #11 created and current review threads checked: none at creation;
+- PR #11 workflow lookup immediately after creation returned no runs yet; therefore no executable V1-04 PASS is claimed.
 
 ### What was not verified
 
-- V1-04 decomposition implementation has not yet been executed or tested;
-- no claim-element persistence/API exists yet on `main` at this checkpoint.
+- PR #11 current exact-head `V1-04 Claim Element Verification` has not yet produced accepted GREEN evidence;
+- focused element tests have not yet been accepted from GitHub Actions;
+- persistence, API, idempotent decomposition runs, and human review are not implemented in this slice.
 
 ### Remaining risks
 
-- element boundaries must remain strictly inside canonical claim provenance;
-- deterministic splitting rules can over-segment or under-segment Korean claim syntax, so resistant shapes need explicit warnings rather than silent authority;
-- human review state must remain a separate later concern and must not be embedded into machine decomposition records.
+- first exact-head run may expose concrete implementation/format/type failures;
+- semicolon-only decomposition is deliberately conservative and may under-segment claims without explicit delimiters; that case is surfaced as a warning rather than silently inferred;
+- element persistence still needs a versioned/idempotent design after this pure boundary proves stable;
+- human review must remain separate in V1-05.
 
 ### Exact next action
 
-**Inspect the existing claim persistence/parser/service patterns, then implement the smallest V1-04 slice: a deterministic in-memory/domain decomposition boundary with ordered element source sub-spans and focused unit tests. Do not add review persistence or UI in this slice. Open a bounded PR and use current exact-head executable evidence before merge.**
+**Fetch PR #11 CURRENT head and CURRENT exact-head PR-visible workflows. If any required check is RED/CANCELLED/TIMED_OUT/ACTION_REQUIRED, inspect the first concrete failing step/log and fix only that failure. If checks are GREEN, inspect current scope/review/security state and merge with expected-head guard. Then update this MASTER with the actual merge SHA/evidence and continue V1-04 to the smallest persistence/idempotency slice. Do not add API/UI/review until preceding slices are GREEN.**
 
 ---
 
@@ -209,11 +210,11 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-02 comparison backend | EXECUTED GREEN / CLOSED | PR #7, run `32225430081` |
 | V1-02 DB-free tests | 26 PASS | exact PR head |
 | V1-02 PostgreSQL | 3 PASS / 0 skipped | exact PR head |
-| V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8, run `32228257540` |
-| V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9, run `32228493202` |
+| V1-03 workspace slice | EXECUTED GREEN / MERGED | PR #8 |
+| V1-03 contextual links | EXECUTED GREEN / MERGED | PR #9 |
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-03 regression | EXECUTED GREEN | PR #10, run `32242502338` |
-| Element decomposition | NOT IMPLEMENTED | V1-04 active |
+| V1-04 element boundary | PR OPEN / NOT YET VERIFIED | PR #11 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
