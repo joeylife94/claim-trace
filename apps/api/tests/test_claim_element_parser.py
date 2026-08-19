@@ -98,12 +98,14 @@ def test_cross_page_element_omits_synthetic_separator_from_source_evidence() -> 
     first_element = result.elements[0]
     assert first_element.text == first_piece + PAGE_SPAN_SEPARATOR + "수신기를 포함함;"
     assert len(first_element.spans) == 2
-    assert first_page[
-        first_element.spans[0].start_char : first_element.spans[0].end_char
-    ] == first_piece
-    assert second_page[
-        first_element.spans[1].start_char : first_element.spans[1].end_char
-    ] == "수신기를 포함함;"
+    assert (
+        first_page[first_element.spans[0].start_char : first_element.spans[0].end_char]
+        == first_piece
+    )
+    assert (
+        second_page[first_element.spans[1].start_char : first_element.spans[1].end_char]
+        == "수신기를 포함함;"
+    )
 
 
 def test_claim_without_explicit_delimiter_is_kept_whole_with_warning() -> None:
