@@ -22,7 +22,6 @@ router = APIRouter(prefix="/element-decomposition-runs/{run_id}/reviews", tags=[
 
 _ERROR_RESPONSES: dict[int | str, dict[str, object]] = {
     HTTPStatus.NOT_FOUND: {"model": ApiErrorResponse},
-    HTTPStatus.UNPROCESSABLE_ENTITY: {"model": ApiErrorResponse},
 }
 
 
