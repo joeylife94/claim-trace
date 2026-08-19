@@ -45,6 +45,28 @@ export type SearchClaimsState = {
   topK: number;
 };
 
+export type ClaimComparisonState = {
+  status: "idle" | "results" | "error";
+  message: string;
+  response: import("@/lib/comparison").ClaimComparisonResponse | null;
+  targetDocumentId: string;
+  targetClaimNumber: number;
+  referenceDocumentId: string;
+  mode: import("@/lib/search").RetrievalMode;
+  topK: number;
+};
+
+export const INITIAL_COMPARISON_STATE: ClaimComparisonState = {
+  status: "idle",
+  message: "",
+  response: null,
+  targetDocumentId: "",
+  targetClaimNumber: 1,
+  referenceDocumentId: "",
+  mode: "hybrid",
+  topK: 5,
+};
+
 export type LLMGenerateState = {
   status: "idle" | "generated" | "error";
   message: string;
