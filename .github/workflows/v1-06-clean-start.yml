@@ -1,0 +1,35 @@
+name: V1-06 Clean Start Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/verify-v1-06-clean-start.sh"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "apps/api/**"
+      - ".github/workflows/v1-06-clean-start.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  clean-start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+
+      - name: Run isolated clean-start verification
+        run: sh scripts/verify-v1-06-clean-start.sh
+
+      - name: Show Compose state on failure
+        if: failure()
+        run: |
+          docker compose -p claimtrace-v1-06-clean-start ps || true
+          docker compose -p claimtrace-v1-06-clean-start logs api postgres || true
+
+      - name: Cleanup isolated verification runtime
+        if: always()
+        run: docker compose -p claimtrace-v1-06-clean-start down -v --remove-orphans || true
