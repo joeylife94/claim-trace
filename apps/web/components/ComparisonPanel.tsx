@@ -38,8 +38,19 @@ function CompareButton() {
   );
 }
 
-export function ComparisonPanel({ documents }: { documents: ComparisonDocument[] }) {
-  const initialTarget = documents.find((entry) => entry.claims.length > 0)?.document.id ?? "";
+export function ComparisonPanel({
+  documents,
+  initialTargetDocumentId = "",
+}: {
+  documents: ComparisonDocument[];
+  initialTargetDocumentId?: string;
+}) {
+  const contextualTarget = documents.find(
+    (entry) =>
+      entry.document.id === initialTargetDocumentId && entry.claims.length > 0,
+  )?.document.id;
+  const initialTarget =
+    contextualTarget ?? documents.find((entry) => entry.claims.length > 0)?.document.id ?? "";
   const initialReference =
     documents.find((entry) => entry.document.id !== initialTarget)?.document.id ?? "";
   const [targetDocumentId, setTargetDocumentId] = useState(initialTarget);
@@ -97,7 +108,12 @@ export function ComparisonPanel({ documents }: { documents: ComparisonDocument[]
 
             <label className="search-field">
               <span>Target claim</span>
-              <select name="targetClaimNumber" defaultValue={targetClaims[0]?.claim_number ?? 1} required>
+              <select
+                key={targetDocumentId}
+                name="targetClaimNumber"
+                defaultValue={targetClaims[0]?.claim_number ?? 1}
+                required
+              >
                 {targetClaims.length === 0 ? (
                   <option value="">No parsed claims</option>
                 ) : (

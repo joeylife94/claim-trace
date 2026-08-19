@@ -40,6 +40,7 @@ export default async function DocumentDetailPage({
     : [[], null, null];
 
   const highlight = parseHighlight(await searchParams);
+  const indexed = indexRun?.status === "completed";
 
   return (
     <>
@@ -88,6 +89,19 @@ export default async function DocumentDetailPage({
           canIndex={claimSet?.result.status === "completed"}
           indexRun={indexRun}
         />
+
+        {indexed && (
+          <section className="panel" aria-labelledby="analysis-actions-heading">
+            <div className="panel-header">
+              <h2 id="analysis-actions-heading">Analyze this document</h2>
+            </div>
+            <div className="search-controls">
+              <Link href={`/search?document=${id}`}>Search claims →</Link>
+              <Link href={`/grounded?document=${id}`}>Ask grounded question →</Link>
+              <Link href={`/compare?target=${id}`}>Compare against another document →</Link>
+            </div>
+          </section>
+        )}
 
         <ClaimWorkspace
           documentId={id}
