@@ -1,0 +1,51 @@
+name: V1-04 Claim Element Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/v1-04-verify.yml"
+      - ".env.example"
+      - "docker-compose.yml"
+      - "apps/api/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-04-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  element-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Configure repository environment
+        run: make init
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build API image
+        run: docker compose build api
+
+      - name: Run focused element parser tests
+        run: docker compose run --rm api pytest tests/test_claim_element_parser.py
+
+      - name: Ruff lint
+        run: docker compose run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
+
+      - name: Ruff format check
+        run: docker compose run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v --remove-orphans || true
