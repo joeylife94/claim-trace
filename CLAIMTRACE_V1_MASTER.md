@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-05 — Human Review Boundary  
-**Current batch state:** **IN PROGRESS — Issue #15 review persistence/API foundation is the single active implementation work item**
+**Current batch state:** **IN PROGRESS — review persistence/API foundation merged; review UI + direct source navigation remains the next bounded acceptance gap**
 
 ---
 
@@ -46,8 +46,8 @@ Golden-path state:
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
 | 13 element decomposition | EXECUTED GREEN | V1-04 closed |
-| 14 persisted human review | IN PROGRESS | Issue #15 persistence/API foundation active |
-| 15 source verification everywhere | PARTIAL | comparison/decomposition source-backed; review source navigation pending |
+| 14 persisted human review | PARTIAL / EXECUTED GREEN | persistence/API foundation merged; UI/source navigation pending |
+| 15 source verification everywhere | PARTIAL | comparison/decomposition source-backed; review UI direct source navigation pending |
 
 **Do not rebuild stages 1–13.**
 
@@ -105,8 +105,6 @@ Closure evidence:
 - PR #11 deterministic element boundary → V1-04 run `32252992292` **success**, merge `0bb31d7151df85c43c5e8621acd25c8220b2f87f`;
 - PR #12 persistence/idempotency → V1-04 run `32259126905` **success**, merge `1cf8cf6a1660cd2a814dc86274179108bed148cf`;
 - Issue #13 / PR #14 public decomposition API;
-- PR #14 first exact-head execution: parser **6 PASS**, PostgreSQL persistence/API **7 PASS / 0 skipped**, then four Ruff `ANN001` failures only;
-- only those executed lint failures were fixed by annotating the SQLAlchemy `Engine` test fixture;
 - PR #14 final exact head `548e28637a2167f0ccfe09b836807a70c6e76c05`;
 - V1-02 run `32260927179` → **success**;
 - V1-03 run `32260927196` → **success**;
@@ -123,30 +121,34 @@ Goal: persist reviewer judgement separately from machine decomposition and make 
 
 Acceptance:
 
-- [ ] review record is separate from `ElementDecompositionRun` / machine element rows;
-- [ ] minimum review states are `accepted` and `needs_correction`;
-- [ ] review references the exact decomposition run/version it judged;
-- [ ] re-running decomposition does not silently delete or rewrite prior review history;
+- [x] review record is separate from `ElementDecompositionRun` / machine element rows;
+- [x] minimum review states are `accepted` and `needs_correction`;
+- [x] review references the exact decomposition run/version it judged;
+- [x] re-running decomposition does not silently delete or rewrite prior review history;
 - [ ] review API/UI exposes the reviewed element/source evidence and direct source navigation;
-- [ ] focused persistence/API/UI tests prove review-state survival and provenance;
-- [ ] no review field represents infringement, validity, novelty, equivalence, inventive step, or patentability.
+- [ ] focused persistence/API/UI tests prove review-state survival and provenance end to end;
+- [x] no review field represents infringement, validity, novelty, equivalence, inventive step, or patentability.
 
-Active bounded acceptance gap — Issue #15:
+Completed bounded acceptance gap — Issue #15 / PR #16:
 
-- `V1-05: Persist human review state for claim decomposition`;
-- created only after Issue #13 closed, PR #14 merged, V1-04 was reconciled/closed, and open-Issue search found no exact V1-05 work item;
-- Issue-linked branch `issue-15-v1-05-review-persistence` created from current `main`;
-- scope is separate review persistence + bounded create/read API + exact decomposition-run linkage + survival across later parser-version runs + PostgreSQL verification;
-- review UI is explicitly excluded from Issue #15 and must remain a later bounded V1-05 work item;
-- Issue closure requires executed evidence and merged `Closes #15` PR.
+- Issue #15 `V1-05: Persist human review state for claim decomposition` → **closed/completed** after merge;
+- PR #16 final exact head `b4f3d3bef2817909b81afae5bfede89be127d425`;
+- separate append-only `ElementDecompositionReview` persistence, `accepted` / `needs_correction`, exact run linkage, bounded create/read API, migration `0006`, and source-backed review snapshots;
+- invalid review state now truthfully exposes FastAPI `HTTPValidationError` in OpenAPI instead of incompatible `ApiErrorResponse` metadata;
+- focused PostgreSQL review persistence/API tests **2 PASS / 0 skipped**;
+- V1-02 run `32264262101` → **success**;
+- V1-03 run `32264262064` → **success**, including browser golden path;
+- V1-04 run `32264262002` → **success**;
+- V1-05 run `32264262027` → **success**;
+- Ruff lint + format **PASS**;
+- no unresolved review threads;
+- PR #16 merged with expected-head guard as `bf8623b0bdeb12c6b037bc538cea597ec0ecc50d`;
+- Issue #15 auto-closed as `completed` after merge.
 
-Non-goals for Issue #15:
+Remaining V1-05 acceptance gap:
 
-- no review UI yet;
-- no mutation of machine decomposition text/spans;
-- no legal decision/conclusion fields;
-- no comparison changes;
-- no OCR/auth/cloud/Kubernetes/billing/unrelated redesign.
+- review UI that lets the local reviewer inspect one exact decomposition run, see its elements/source evidence, submit `accepted` or `needs_correction`, see persisted history, and navigate directly to the exact source span;
+- browser-level proof that review actions and source navigation work without mutating machine output.
 
 ### V1-06 — Operational Hardening
 **PLANNED**
@@ -189,37 +191,45 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 
 ### What changed
 
-- Issue #13 / PR #14 completed the last V1-04 acceptance gap and V1-04 is CLOSED;
-- Issue #13 closure was explicitly confirmed as `closed/completed` after PR #14 merge;
-- open Issue search found no exact V1-05 human-review persistence work item;
-- Issue #15 was created before implementation with Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required;
-- branch `issue-15-v1-05-review-persistence` was created from current `main`.
+- Issue #15 / PR #16 implemented and merged the review persistence/API foundation;
+- human review rows are separate from machine decomposition rows and append-only;
+- review records are limited to `accepted` / `needs_correction` and point to one exact decomposition run;
+- API responses include exact parser version plus source-backed reviewed elements;
+- FastAPI validation-error OpenAPI metadata was corrected after an executed review finding;
+- Issue #15 is `closed/completed` and PR #16 is merged to `main` as `bf8623b0bdeb12c6b037bc538cea597ec0ecc50d`.
 
 ### What was actually executed
 
-- PR #14 exact head `548e28637a2167f0ccfe09b836807a70c6e76c05` executed V1-02 `32260927179` **success**, V1-03 `32260927196` **success**, V1-04 `32260927368` **success**;
-- V1-04 run proved parser **6 PASS**, PostgreSQL persistence/API **7 PASS / 0 skipped**, Ruff lint **PASS**, Ruff format **PASS**;
-- PR #14 merged with expected-head guard as `875e29529963fb28bd3d5efa44e98bee7848c689`;
-- Issue #13 was re-read after merge and confirmed `closed/completed`;
-- repository Issue search for V1-05 / human review / review persistence returned no exact active work item before Issue #15 creation.
+Current PR #16 exact head `b4f3d3bef2817909b81afae5bfede89be127d425`:
+
+- V1-02 `32264262101` → **success**;
+- V1-03 `32264262064` → **success**, including browser golden path;
+- V1-04 `32264262002` → **success**;
+- V1-05 `32264262027` → **success**;
+- focused PostgreSQL review persistence/API tests → **2 PASS / 0 skipped**;
+- Ruff lint → **PASS**;
+- Ruff format → **PASS**;
+- review OpenAPI/runtime invalid-state contract test → **PASS**;
+- PR #16 merged with expected-head guard;
+- Issue #15 re-read after merge and confirmed `closed/completed`.
 
 ### What was not verified
 
-- Issue #15 implementation has not yet been committed or executed;
-- no V1-05 review persistence/API tests have run yet;
-- review UI/source navigation remains intentionally deferred beyond Issue #15;
+- no human-review UI has been implemented yet;
+- no browser test has executed `accepted` / `needs_correction` through a review UI;
+- direct review-result → original source navigation has not been browser-verified;
 - final clean-checkout/general-CI/proof rerun remains V1-06/V1-07 work.
 
 ### Remaining risks
 
-- V1-05 must preserve prior human review history across later decomposition parser versions;
-- the review API must identify the exact machine run judged and must not mutate machine output;
-- authentication/identity is out of scope, so v1.0 review provenance is a single-user local reviewer action, not a multi-user identity/audit system;
-- Human Review remains the final release/proof gate and must be browser/source-navigation verified before v1.0 proof freeze.
+- V1-05 is not closed until review UI and source navigation are executable and browser-verified;
+- authentication/identity is out of scope, so review provenance is a single-user local action, not a multi-user identity/audit system;
+- review history is append-only by design and does not assert semantic/legal correctness;
+- Human Review remains the final release/proof gate before v1.0 proof freeze.
 
 ### Exact next action
 
-**ACTIVE ISSUE #15 FIRST. Implement only the smallest review persistence/API foundation on `issue-15-v1-05-review-persistence`: separate review model/table + migration, `accepted` / `needs_correction` states, exact `ElementDecompositionRun` reference, bounded create/read service/API, and PostgreSQL tests proving prior review survives a later parser-version decomposition run while machine rows/source spans remain unchanged. Open one PR with `Closes #15`; do not add UI in this Issue.**
+**MASTER RECONCILED AFTER ISSUE #15 / PR #16. Before any new implementation, search open Issues for an exact V1-05 review UI + direct source-navigation work item. Reuse only if it exactly matches this remaining acceptance gap; otherwise create exactly one bounded Issue with Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required before branch/commit/implementation. Do not start V1-06 while V1-05 review UI/source navigation remains unfinished.**
 
 ---
 
@@ -235,8 +245,9 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292` |
 | V1-04 persistence/idempotency | EXECUTED GREEN / MERGED | PR #12, run `32259126905` |
 | V1-04 public decomposition API | EXECUTED GREEN / CLOSED | Issue #13, PR #14, run `32260927368`, merge `875e295...` |
-| V1-05 review persistence/API | ACTIVE ISSUE / NOT IMPLEMENTED | Issue #15 |
-| V1-05 review UI/source navigation | NOT IMPLEMENTED | later V1-05 work item |
+| V1-05 review persistence/API | EXECUTED GREEN / MERGED | Issue #15, PR #16, run `32264262027`, merge `bf8623b...` |
+| V1-05 review persistence/API tests | 2 PASS / 0 skipped | PR #16 exact head |
+| V1-05 review UI/source navigation | NOT IMPLEMENTED | next bounded V1-05 work item |
 
 ---
 
