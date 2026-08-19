@@ -5,7 +5,7 @@
 **Last execution update:** 2026-08-19  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-04 — Claim Element Decomposition  
-**Current batch state:** **IN PROGRESS — persistence/idempotency slice merged; public decomposition API is the next acceptance gap**
+**Current batch state:** **IN PROGRESS — Issue #13 public decomposition API is the single active implementation work item**
 
 ---
 
@@ -45,7 +45,7 @@ Golden-path state:
 | 1–10 ingest → grounded Q&A | READY | final runtime re-verification only |
 | 11 target/reference selection | EXECUTED GREEN | V1-03 closed |
 | 12 claim comparison | EXECUTED GREEN | V1-02/V1-03 closed |
-| 13 element decomposition | IN PROGRESS | deterministic boundary + persistence/idempotency merged; public API remains |
+| 13 element decomposition | IN PROGRESS | deterministic boundary + persistence/idempotency merged; Issue #13 public API active |
 | 14 persisted human review | MISSING | V1-05 |
 | 15 source verification everywhere | PARTIAL | comparison source-linked; decomposition source spans persisted; public element API still pending |
 
@@ -137,7 +137,13 @@ Completed bounded slice — PR #12:
 - all PR #12 review threads resolved;
 - merged with expected-head guard to `main` as `1cf8cf6a1660cd2a814dc86274179108bed148cf`.
 
-Next bounded acceptance gap: public decomposition API only. Issue-first lifecycle applies before any new implementation because the grandfathered PRs are now resolved.
+Active bounded acceptance gap — Issue #13:
+
+- `V1-04: Expose persisted claim element decomposition API`;
+- created only after PR #12 merge and MASTER reconciliation under the Issue-first lifecycle;
+- scope is public persisted decomposition API + warnings/errors + provenance + idempotency + focused API/PostgreSQL verification only;
+- UI and human review are explicitly excluded;
+- Issue closure requires executed acceptance evidence and merged `Closes #13` PR.
 
 Non-goals:
 
@@ -200,7 +206,8 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 - Alembic environment now registers element models before `Base.metadata` is consumed;
 - duplicate same-version commit conflicts now rollback and return the winning run with `created=False`;
 - integration coverage now exercises the conflict recovery path and keeps metadata registration guarded without expanding into unrelated legacy index drift;
-- PR #12 exact-head verification was brought GREEN and the PR merged.
+- PR #12 exact-head verification was brought GREEN and the PR merged;
+- searched open Issues for the next exact V1-04 API gap; none existed, so Issue #13 was created before any new implementation.
 
 ### What was actually executed
 
@@ -211,11 +218,13 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 - current-head V1-04 run `32258885843` exposed one concrete test-design failure: global Alembic `command.check` detected three unrelated pre-existing custom retrieval indexes, not an element-schema mismatch;
 - that over-broad test was narrowed to assert the exact element-model registration path and required element tables only;
 - final PR #12 exact head `c6a6bee05e54bed647f82c436d427149f2c30f4f` executed V1-02 `32259126922` **success**, V1-03 `32259126863` **success**, and V1-04 `32259126905` **success**;
-- PR #12 merged with expected-head guard as `1cf8cf6a1660cd2a814dc86274179108bed148cf`.
+- PR #12 merged with expected-head guard as `1cf8cf6a1660cd2a814dc86274179108bed148cf`;
+- open Issue search for `public decomposition API` / `claim element API` / `V1-04` returned no exact active implementation Issue;
+- Issue #13 was created with Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required before implementation.
 
 ### What was not verified
 
-- public decomposition API is not implemented or verified;
+- Issue #13 public decomposition API is not yet implemented or verified;
 - decomposition UI is not implemented;
 - human review remains intentionally unimplemented until V1-05;
 - the three pre-existing retrieval custom-index autogenerate diffs are outside this V1-04 slice and were not altered.
@@ -225,12 +234,12 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 - persistence source containment is enforced by deterministic parser/service behavior plus integration assertions, not a cross-table SQL CHECK constraint;
 - the conflict-recovery test deterministically exercises the unique-conflict recovery path but is not a high-load concurrency stress test;
 - existing retrieval custom indexes are intentionally outside this slice and mean repository-wide Alembic `command.check` is not currently a clean generic gate;
-- public API response contracts must preserve element/source provenance and exclude legal-conclusion fields;
+- Issue #13 public API response contracts must preserve element/source provenance and exclude legal-conclusion fields;
 - human review must remain separate from machine decomposition in V1-05.
 
 ### Exact next action
 
-**Issue-first: search open Issues for an exact V1-04 public decomposition API work item. If none exists, create exactly one bounded Issue before any new branch/commit/implementation. The Issue must cover only a public decomposition API that exposes persisted machine decomposition with source spans, explicit warnings/errors, idempotent behavior, no legal-conclusion fields, focused API/PostgreSQL tests, and exact-head V1-02/V1-03/V1-04 verification. Do not add UI or human review in that work item.**
+**ACTIVE IMPLEMENTATION ISSUE #13 FIRST. Re-read Issue #13 and current `main`, then create an Issue-linked branch and implement only the smallest public decomposition API slice authorized there. Open one PR with `Closes #13` and evidence sections for Changed / Actually Executed / Verified / Not Verified / Remaining Risks. Do not add UI or human review. Merge only after current exact-head V1-02/V1-03/V1-04 PR-visible checks are GREEN and review blockers are resolved.**
 
 ---
 
@@ -247,7 +256,7 @@ Any SHA/run ID written here is historical evidence only. **Current repository/PR
 | V1-03 browser golden path | EXECUTED GREEN / CLOSED | PR #10, run `32242502306` |
 | V1-04 deterministic element boundary | EXECUTED GREEN / MERGED | PR #11, run `32252992292` |
 | V1-04 persistence/idempotency | EXECUTED GREEN / MERGED | PR #12 head `c6a6bee...`, runs `32259126922` / `32259126863` / `32259126905`, merge `1cf8cf6...` |
-| V1-04 public decomposition API | NOT IMPLEMENTED | next Issue-first work item |
+| V1-04 public decomposition API | ACTIVE ISSUE / NOT IMPLEMENTED | Issue #13 |
 | Persisted human review | NOT IMPLEMENTED | V1-05 |
 
 ---
