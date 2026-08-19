@@ -100,7 +100,7 @@ jobs:
         run: |
           npm ci
           npm install --no-save --package-lock=false playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Execute V1-03 browser golden path
         working-directory: apps/web
