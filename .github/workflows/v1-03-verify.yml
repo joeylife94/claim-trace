@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/web/**"
+      - "apps/api/tests/v1_03_browser_seed.py"
       - ".github/workflows/v1-03-verify.yml"
 
 permissions:
@@ -36,3 +37,79 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+  browser-golden-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+
+      - name: Configure deterministic browser runtime
+        run: |
+          cp .env.example .env
+          sed -i 's/^EMBEDDING_PROVIDER=.*/EMBEDDING_PROVIDER=fake/' .env
+          sed -i 's|^EMBEDDING_MODEL=.*|EMBEDDING_MODEL=deterministic-hash|' .env
+          docker compose config --quiet
+
+      - name: Build API and web images
+        run: docker compose build api web
+
+      - name: Start PostgreSQL and apply migrations
+        run: |
+          docker compose up -d postgres
+          for attempt in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U claimtrace -d claimtrace >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "PostgreSQL did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          docker compose run --rm api alembic upgrade head
+
+      - name: Seed two parsed and indexed documents
+        run: docker compose run --rm api python tests/v1_03_browser_seed.py
+
+      - name: Start API and web
+        run: |
+          docker compose up -d api web
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/ready >/dev/null && \
+               curl --fail --silent http://127.0.0.1:3000/documents >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ClaimTrace web runtime did not become ready" >&2
+          exit 1
+
+      - name: Set up Node.js for browser validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install Chromium browser runner
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Execute V1-03 browser golden path
+        working-directory: apps/web
+        run: node e2e/v1-03-golden-path.mjs
+
+      - name: Capture runtime diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color postgres api web
+
+      - name: Tear down browser runtime
+        if: always()
+        run: docker compose down -v --remove-orphans
