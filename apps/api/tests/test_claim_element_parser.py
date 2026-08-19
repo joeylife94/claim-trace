@@ -130,6 +130,25 @@ def test_claim_without_explicit_delimiter_is_kept_whole_with_warning() -> None:
     ]
 
 
+@pytest.mark.parametrize("page_text", ["; 센서부", "센서부;; 통신부"])
+def test_empty_semicolon_segments_warn_without_creating_punctuation_elements(
+    page_text: str,
+) -> None:
+    document_id = uuid.uuid4()
+    claim = _claim(
+        text=page_text,
+        spans=(ClaimTextSpan(0, 1, 0, len(page_text)),),
+    )
+
+    result = DeterministicElementParser().parse(
+        claim=claim,
+        pages=(SourcePage(document_id=document_id, page_number=1, text=page_text),),
+    )
+
+    assert all(element.text.strip(" ;") for element in result.elements)
+    assert [warning.code for warning in result.warnings] == [ElementWarningCode.EMPTY_SEGMENT]
+
+
 def test_provenance_mismatch_is_rejected_instead_of_approximated() -> None:
     document_id = uuid.uuid4()
     page_text = "센서부; 통신부"
