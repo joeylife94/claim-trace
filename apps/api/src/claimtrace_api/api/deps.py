@@ -19,7 +19,9 @@ from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
 from claimtrace_api.llm.base import LLMProvider
 from claimtrace_api.parsing.base import DocumentParser
 from claimtrace_api.parsing.claims.base import ClaimParser
+from claimtrace_api.parsing.elements import DeterministicElementParser
 from claimtrace_api.services.claim_comparison import ClaimComparisonService
+from claimtrace_api.services.claim_elements import ClaimElementService
 from claimtrace_api.services.claim_indexing import ClaimIndexingService
 from claimtrace_api.services.claim_parsing import ClaimParsingService
 from claimtrace_api.services.claim_search import ClaimSearchService
@@ -128,6 +130,14 @@ def get_claim_parsing_service(session: SessionDep, parser: ClaimParserDep) -> Cl
 
 
 ClaimParsingServiceDep = Annotated[ClaimParsingService, Depends(get_claim_parsing_service)]
+
+
+def get_claim_element_service(session: SessionDep) -> ClaimElementService:
+    """Assemble deterministic claim-element decomposition for one request."""
+    return ClaimElementService(session=session, parser=DeterministicElementParser())
+
+
+ClaimElementServiceDep = Annotated[ClaimElementService, Depends(get_claim_element_service)]
 
 
 def get_claim_indexing_service(
