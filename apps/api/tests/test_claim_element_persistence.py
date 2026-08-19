@@ -8,6 +8,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from claimtrace_api.core.config import Settings
 from claimtrace_api.db.element_models import ClaimElement, ClaimElementSpan, ElementDecompositionRun
 from claimtrace_api.db.models import (
     Claim,
@@ -89,7 +90,7 @@ async def _seed_claim(session: AsyncSession) -> tuple[uuid.UUID, str]:
 
 
 async def test_same_parser_version_is_idempotent_and_preserves_source(
-    integration_settings,
+    integration_settings: Settings,
     clean_database: None,
 ) -> None:
     engine = create_engine(integration_settings)
@@ -114,8 +115,12 @@ async def test_same_parser_version_is_idempotent_and_preserves_source(
             run_count = await session.scalar(
                 sa.select(sa.func.count()).select_from(ElementDecompositionRun)
             )
-            element_count = await session.scalar(sa.select(sa.func.count()).select_from(ClaimElement))
-            span_count = await session.scalar(sa.select(sa.func.count()).select_from(ClaimElementSpan))
+            element_count = await session.scalar(
+                sa.select(sa.func.count()).select_from(ClaimElement)
+            )
+            span_count = await session.scalar(
+                sa.select(sa.func.count()).select_from(ClaimElementSpan)
+            )
             assert run_count == 1
             assert element_count == 2
             assert span_count == 2
@@ -126,13 +131,16 @@ async def test_same_parser_version_is_idempotent_and_preserves_source(
                     source_text[span.start_char : span.end_char] for span in element.spans
                 )
                 assert resolved == element.text
-                assert all(0 <= span.start_char < span.end_char <= len(source_text) for span in element.spans)
+                assert all(
+                    0 <= span.start_char < span.end_char <= len(source_text)
+                    for span in element.spans
+                )
     finally:
         await engine.dispose()
 
 
 async def test_new_parser_version_coexists_without_overwriting_prior_run(
-    integration_settings,
+    integration_settings: Settings,
     clean_database: None,
 ) -> None:
     class VersionTwoParser(DeterministicElementParser):
