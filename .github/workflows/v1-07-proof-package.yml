@@ -1,0 +1,73 @@
+name: V1-07 Proof Package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "README.md"
+      - "docs/proof/**"
+      - "scripts/capture-v1-07-proof.sh"
+      - "apps/web/e2e/v1-07-proof-capture.mjs"
+      - ".github/workflows/v1-07-proof-package.yml"
+      - "apps/api/**"
+      - "apps/web/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "infra/postgres/init/**"
+
+permissions:
+  contents: read
+
+jobs:
+  proof-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install browser runner
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Capture deterministic proof package
+        run: sh scripts/capture-v1-07-proof.sh
+
+      - name: Verify proof inventory
+        run: |
+          test -s docs/proof/architecture-v1.svg
+          test "$(find docs/proof/screenshots -type f -name '*.png' | wc -l)" -ge 4
+          test -s docs/proof/demo/claimtrace-golden-path.webm
+
+      - name: Upload proof package
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1-07-proof-package-${{ github.event.pull_request.head.sha }}
+          path: |
+            docs/proof/architecture-v1.svg
+            docs/proof/screenshots/*.png
+            docs/proof/demo/claimtrace-golden-path.webm
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -p claimtrace-v1-07-proof ps || true
+          docker compose -p claimtrace-v1-07-proof logs --no-color postgres api web || true
+
+      - name: Tear down proof runtime
+        if: always()
+        run: docker compose -p claimtrace-v1-07-proof down -v --remove-orphans || true
