@@ -63,7 +63,9 @@ reason. Do not guess and do not answer from partial support.
 6. Never state a legal conclusion. Do not decide infringement, validity, novelty, inventive step, \
 or patentability, and never give legal advice. Describe only what the claim text says.
 7. Write each statement in the language of the question.
-8. Answer only with the requested JSON value."""
+8. Be concise. Answer only the facts asked for, do not repeat evidence text or explain your \
+reasoning, and use the minimum number of supported statements needed.
+9. Answer only with the requested JSON value."""
 
 
 @dataclass(frozen=True, slots=True)
