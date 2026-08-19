@@ -10,7 +10,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from claimtrace_api.api.deps import get_claim_comparison_service, get_postgres_ready
-from claimtrace_api.core.config import Settings
 from claimtrace_api.db.models import ClaimSpan, ClaimType
 from claimtrace_api.indexing.profile import IndexProfile
 from claimtrace_api.retrieval.base import RetrievalMode
