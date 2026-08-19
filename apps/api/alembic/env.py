@@ -13,7 +13,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from claimtrace_api.core.config import get_settings
-from claimtrace_api.db import models  # noqa: F401  (imported for metadata registration)
+from claimtrace_api.db import element_models, models  # noqa: F401  (metadata registration)
 from claimtrace_api.db.base import Base
 
 config = context.config
