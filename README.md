@@ -213,7 +213,7 @@ claim-trace/
 
 ## Status
 
-ClaimTrace is in **V1-07 Final Validation + Wishket Proof**. Product implementation and deterministic validation are complete; proof packaging, release/tag freeze, and final Human Review remain the release boundary.
+ClaimTrace v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The current Proof is **FREEZE APPROVED** with the documented limitations above. A real repository proof tag/release has not yet been verified as created, so authoritative closure remains **`HUMAN REVIEW PASS / FREEZE APPROVED — RELEASE TAG PENDING`** until that mechanical step is completed.
 
 For the authoritative current state, exact workflow evidence, limitations, and closure decision, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md).
 
