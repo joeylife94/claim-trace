@@ -213,7 +213,9 @@ claim-trace/
 
 ## Status
 
-ClaimTrace v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The current Proof is **FREEZE APPROVED** with the documented limitations above. A real repository proof tag/release has not yet been verified as created, so authoritative closure remains **`HUMAN REVIEW PASS / FREEZE APPROVED — RELEASE TAG PENDING`** until that mechanical step is completed.
+ClaimTrace v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The reviewed Proof is **`CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`**. Remote annotated tag `v1.0-proof` is verified to dereference to reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
+
+The repository remains frozen at the documented v1.0 Proof boundary; later documentation-only closure reconciliation does not alter the tagged product/runtime state.
 
 For the authoritative current state, exact workflow evidence, limitations, and closure decision, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md).
 
