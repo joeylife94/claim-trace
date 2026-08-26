@@ -1,11 +1,13 @@
 # ClaimTrace v1.0 Master
 
-> **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls what v1.0 is finishing now.**
+> **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-08-22  
+**Last execution update:** 2026-08-26  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
-**Current batch state:** **HUMAN REVIEW PASS / FREEZE APPROVED — RELEASE TAG PENDING**
+**Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
+**Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
+**Proof tag:** `v1.0-proof`
 
 ---
 
@@ -27,7 +29,7 @@ Human Review completed on 2026-08-22.
 
 `PASS — FREEZE APPROVED`
 
-The current controlled-pilot Proof candidate was reviewed against current `main`, the public README, committed Proof assets, recent V1-07 PR history, and the documented executed verification boundary.
+The controlled-pilot Proof candidate at reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d` was reviewed against `main`, the public README, committed Proof assets, recent V1-07 PR history, and the documented executed verification boundary.
 
 Human Review accepted the current bounded Proof claims because:
 
@@ -38,7 +40,7 @@ Human Review accepted the current bounded Proof claims because:
 - current real-local-model quality is explicitly `NOT RERUN` / not claimed for V1-07;
 - six committed product screenshots, one architecture visual, and one committed golden-path WebM exist under `docs/proof/`;
 - V1-07 Proof Package and final regression/evaluation work were merged after executed PR-visible evidence;
-- no open implementation PR remains for the reviewed v1.0 boundary.
+- no open implementation PR remained for the reviewed v1.0 boundary.
 
 ## 3. Verified v1.0 Capability Boundary
 
@@ -136,41 +138,62 @@ The following remain outside the approved v1.0 Proof claim boundary:
 
 ## 8. Release / Tag Status
 
-Human Review has approved FREEZE, but a repository release/tag has **not been verified as created in the currently connected GitHub tooling**.
+**CLOSED / FREEZE VERIFIED.**
 
-Therefore the authoritative closure state is intentionally:
+The remote annotated tag `v1.0-proof` exists and dereferences to reviewed commit:
 
-`HUMAN REVIEW PASS / FREEZE APPROVED — RELEASE TAG PENDING`
+`bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`
 
-Do **not** upgrade this to `CLAIMTRACE PROOF v1.0 CLOSED` until a real repository tag/release is created and verified.
+The tag object is annotated with the message `ClaimTrace v1.0 Proof - Human Review PASS` and was created after Human Review approval. At closure reconciliation time, `main` was still exactly the reviewed commit, so no newer product/runtime change invalidated the reviewed boundary.
 
-Recommended proof tag name, if no repository convention conflicts:
+The tag is unsigned; signature verification is therefore **not** claimed. Tag existence and dereference to the reviewed commit are verified.
 
-`v1.0-proof`
+Authoritative closure state:
 
-The tag must point to the reviewed/frozen current main state or to a later documentation-only closure commit that does not alter the reviewed product/runtime behavior.
+`CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`
+
+No new v1.0 feature, evaluation, metric, screenshot, Issue, PR, release, or tag is required for this closure.
 
 ## 9. Closure Ledger
 
-**Changed**
-- Human Review decision recorded;
-- Proof claim boundary and explicit non-claims frozen;
-- automatic v1.0 implementation stopped.
+### Changed
 
-**Actually Executed**
+- Human Review decision retained as `PASS — FREEZE APPROVED`;
+- verified annotated tag `v1.0-proof` recorded;
+- reviewed/tagged SHA `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d` recorded;
+- authoritative state reconciled from tag-pending to `CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`;
+- no product/runtime implementation changed.
+
+### Actually Executed
+
 - V1-00 through V1-07 implementation/verification work already executed through the repository's bounded Issue/PR lifecycle;
-- final Human Review checked current README, committed Proof assets, current main state, and recent V1-07 merged PR evidence.
+- final Human Review checked README, committed Proof assets, reviewed main state, and recent V1-07 merged PR evidence;
+- remote `refs/tags/v1.0-proof` fetched;
+- annotated tag object dereferenced;
+- current `main` fetched and confirmed as the reviewed commit before closure reconciliation.
 
-**Verified**
-- current bounded Proof is suitable for Wishket/freelance demonstration with the limitations stated above;
-- current public README is sufficiently conservative for the approved Proof boundary;
-- Proof asset inventory exists in current main.
+### Verified
 
-**Not Verified**
-- release/tag creation remains mechanically pending;
-- all explicit non-claims in Section 6 remain unverified and must not be promoted to PASS.
+- Human Review: **PASS**;
+- reviewed/frozen commit: `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`;
+- remote annotated tag: `v1.0-proof`;
+- tag dereference target: `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`;
+- existing executed operational, retrieval, grounded, provenance, and proof-package evidence remains the accepted Proof boundary;
+- public Proof remains suitable for Wishket/freelance demonstration only within the limitations and non-claims in Sections 6–7.
 
-**Exact Next Action**
-- `FREEZE` all automatic ClaimTrace v1.0 development.
-- Create/verify the real repository Proof tag/release (`v1.0-proof` recommended if compatible with repository convention).
-- After tag/release verification, update this MASTER once to `CLAIMTRACE PROOF v1.0 CLOSED / FREEZE` and make no further v1.0 implementation changes unless a new paid-delivery or explicit Proof requirement creates a new acceptance gap.
+### Not Verified
+
+- all explicit non-claims in Section 6 remain unverified and must not be promoted to PASS;
+- tag cryptographic signature is not verified because the annotated tag is unsigned;
+- no new evaluation was run for closure because implementation/Proof packaging is frozen.
+
+### Remaining Risks
+
+- all limitations and risks in Sections 6–7 remain in force;
+- closure does not convert regression evidence into legal, semantic, benchmark, security, or production-readiness claims.
+
+### Exact Next Action
+
+`FREEZE / no automatic v1.0 work`
+
+Do not resume automatic ClaimTrace v1.0 development. Any future paid-delivery requirement, explicit new Proof requirement, or post-v1 scope must begin as a separately authorized work item outside this frozen v1.0 closure.
