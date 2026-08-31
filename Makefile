@@ -11,7 +11,7 @@ WEB_DIR := apps/web
 .DEFAULT_GOAL := help
 .PHONY: help init up up-detached down logs ps build restart \
         migrate migration revision psql shell-api \
-        test test-docker test-unit verify-v1-02 lint format fmt-check \
+        test test-docker test-unit verify-v1-02 verify-deterministic-regression lint format fmt-check \
         web-install web-lint web-typecheck check clean \
         eval eval-fake
 
@@ -99,6 +99,23 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 		! printf "%s\n" "$$output" | grep -Eq "[0-9]+ skipped"'
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
+
+verify-deterministic-regression: init ## Re-run and enforce public-safe deterministic regressions
+	$(COMPOSE) config --quiet
+	$(COMPOSE) build api
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) exec -T postgres sh -ec '\
+		for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+			if pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" >/dev/null 2>&1; then exit 0; fi; \
+			sleep 1; \
+		done; \
+		echo "postgres did not become ready" >&2; \
+		exit 1'
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic
+	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/results/results.json").read_text()); assert r["profile"]["embedding_provider"] == "fake"; m=r["metrics"]; assert m["dense"]["recall_at_5"] == 0.7255; assert m["dense"]["mrr_at_10"] == 0.6725; assert m["lexical"]["recall_at_5"] == 0.9118; assert m["lexical"]["mrr_at_10"] == 0.9608; assert m["hybrid"]["recall_at_5"] == 0.8824; assert m["hybrid"]["mrr_at_10"] == 0.8431; g=json.loads(Path("evals/results/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] == 1.0; assert gm["answerability_accuracy"] == 1.0; assert gm["citation_resolution_rate"] == 1.0; assert gm["statement_citation_coverage"] == 1.0; assert gm["selection_recall"] == 0.8333; assert gm["end_to_end_success_rate"] == 0.875; assert gm["forbidden_citation_count"] == 0; assert all(item["refused"] for item in g["guardrails"]); print("deterministic fake-provider regression baseline: PASS")'
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check evals
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check evals
 
 lint: ## Lint the backend (ruff)
 	cd $(API_DIR) && uv run ruff check .
