@@ -7,7 +7,7 @@ on:
       - "Makefile"
       - "apps/api/evals/**"
       - "apps/api/tests/**"
-      - "apps/api/claimtrace_api/**"
+      - "apps/api/src/claimtrace_api/**"
       - ".env.example"
       - "docker-compose.yml"
       - ".github/workflows/progression-deterministic-regression.yml"
