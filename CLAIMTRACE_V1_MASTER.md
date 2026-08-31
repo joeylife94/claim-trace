@@ -2,12 +2,13 @@
 
 > **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-08-26  
+**Last execution update:** 2026-08-31  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
-**Proof tag:** `v1.0-proof`
+**Proof tag:** `v1.0-proof`  
+**Post-v1 progression state:** **ENABLED — latest bounded milestone accepted**
 
 ---
 
@@ -197,3 +198,61 @@ No new v1.0 feature, evaluation, metric, screenshot, Issue, PR, release, or tag 
 `FREEZE / no automatic v1.0 work`
 
 Do not resume automatic ClaimTrace v1.0 development. Any future paid-delivery requirement, explicit new Proof requirement, or post-v1 scope must begin as a separately authorized work item outside this frozen v1.0 closure.
+
+## 10. Post-v1 Progression Ledger
+
+The frozen v1.0 baseline above remains immutable. Progression work is tracked separately and must not rewrite, move, or reinterpret `v1.0-proof`.
+
+### Milestone P1 — Deterministic regression one-command reproducibility
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #33 — `Progression: make deterministic regression verification one-command reproducible`  
+**PR:** #34  
+**Accepted PR exact head:** `58a290d617f072947347462c47c86b9fb0cdf0a1`  
+**Resulting main merge SHA:** `257b30918eaa219956e92ec8740e88f65ce6d469`
+
+#### Changed
+
+- added repository-native `make verify-deterministic-regression`;
+- added PR-visible `Progression Deterministic Regression` workflow;
+- verifier runs the existing public-safe synthetic retrieval evaluation with the deterministic fake embedding provider, the existing deterministic grounded evaluation, hostile grounding guardrails, and Ruff checks;
+- verifier asserts a deterministic fake-provider regression baseline rather than reusing the frozen sentence-transformers quality metrics;
+- no product/runtime capability, corpus, legal claim, model claim, Proof asset, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #34 exact head `58a290d617f072947347462c47c86b9fb0cdf0a1`:
+
+- `Progression Deterministic Regression` run `33391315752`: **GREEN**;
+- `General CI` run `33391315831`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33391315754`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33391315634`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33391315635`: **GREEN**;
+- `V1-07 Proof Package` run `33391315633`: **GREEN**;
+- first progression run on prior head failed because fake-provider execution was incorrectly compared against frozen sentence-transformers metrics; its uploaded artifact was inspected and the correction was limited to that executed mismatch.
+
+#### Verified
+
+- one command now exercises the existing deterministic retrieval/evidence regression path from a clean PR checkout;
+- regression assertions fail on mismatched deterministic results rather than merely generating reports;
+- current fake-provider baseline is explicitly plumbing/reproducibility evidence, not semantic retrieval quality;
+- unresolved PR review threads at merge: `0`;
+- Issue #33 auto-closed as `completed` after PR #34 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- no new benchmark-quality patent retrieval performance is claimed;
+- fake-provider dense/hybrid metrics do not establish semantic model quality;
+- no new real-local-model evaluation was run;
+- no legal, security-certification, OCR, auth, multi-tenant, cloud, or Kubernetes capability was added or verified.
+
+#### Remaining Risks
+
+- deterministic fake-provider regression is sensitive to intentional changes in deterministic retrieval plumbing and will require an evidence-backed baseline update if such a change is deliberately accepted;
+- the synthetic corpora remain small and regression-oriented;
+- citation resolution still proves source resolvability, not entailment or legal correctness.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
