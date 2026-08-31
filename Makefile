@@ -11,7 +11,7 @@ WEB_DIR := apps/web
 .DEFAULT_GOAL := help
 .PHONY: help init up up-detached down logs ps build restart \
         migrate migration revision psql shell-api \
-        test test-docker test-unit verify-v1-02 lint format fmt-check \
+        test test-docker test-unit verify-v1-02 verify-deterministic-regression lint format fmt-check \
         web-install web-lint web-typecheck check clean \
         eval eval-fake
 
@@ -99,6 +99,22 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 		! printf "%s\n" "$$output" | grep -Eq "[0-9]+ skipped"'
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
+
+verify-deterministic-regression: init ## Re-run public-safe retrieval + grounded deterministic regressions
+	$(COMPOSE) config --quiet
+	$(COMPOSE) build api
+	$(COMPOSE) up -d postgres
+	$(COMPOSE) exec -T postgres sh -ec '\
+		for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+			if pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" >/dev/null 2>&1; then exit 0; fi; \
+			sleep 1; \
+		done; \
+		echo "postgres did not become ready" >&2; \
+		exit 1'
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check evals
+	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check evals
 
 lint: ## Lint the backend (ruff)
 	cd $(API_DIR) && uv run ruff check .
