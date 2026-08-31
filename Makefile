@@ -100,7 +100,7 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
 
-verify-deterministic-regression: init ## Re-run public-safe retrieval + grounded deterministic regressions
+verify-deterministic-regression: init ## Re-run and enforce public-safe deterministic regressions
 	$(COMPOSE) config --quiet
 	$(COMPOSE) build api
 	$(COMPOSE) up -d postgres
@@ -113,6 +113,7 @@ verify-deterministic-regression: init ## Re-run public-safe retrieval + grounded
 		exit 1'
 	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake
 	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic
+	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/results/results.json").read_text()); m=r["metrics"]; assert m["dense"]["recall_at_5"] >= 0.9706; assert m["lexical"]["recall_at_5"] >= 0.9118; assert m["hybrid"]["recall_at_5"] >= 0.9412; assert m["hybrid"]["mrr_at_10"] >= 1.0; g=json.loads(Path("evals/results/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] >= 1.0; assert gm["answerability_accuracy"] >= 1.0; assert gm["citation_resolution_rate"] >= 1.0; assert gm["statement_citation_coverage"] >= 1.0; assert gm["selection_recall"] >= 0.9167; assert gm["end_to_end_success_rate"] >= 0.9375; assert gm["forbidden_citation_count"] == 0; assert all(item["refused"] for item in g["guardrails"]); print("deterministic regression thresholds: PASS")'
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check evals
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check evals
 
