@@ -320,3 +320,73 @@ On PR #36 exact head `ebcc642fdc51487edc8127ee674220789f37a2ca`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P3 — Terminalize page-persistence failures during ingestion
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #37 — `Progression: terminalize page-persistence failures during ingestion`  
+**PR:** #38  
+**Accepted PR exact head:** `26adfe4f82ccc724f7e46259a1e00e0ffb073971`  
+**Resulting main merge SHA:** `5fd8ed6471203e831358c56bb0e749593b2fe92e`
+
+#### Changed
+
+- converted a failed page/completion persistence transaction into the existing client-safe `internal_error` ingestion contract after rollback;
+- preserved the atomic guarantee that partial page rows and a false `COMPLETED` state do not survive the failed transaction;
+- routed the registered document through the existing `_mark_failed` path so the terminal state becomes `FAILED` instead of remaining stranded in `PROCESSING`;
+- preserved `document.id` before rollback so SQLAlchemy attribute expiration cannot trigger `MissingGreenlet` while logging the failure before terminalization;
+- added focused deterministic regression coverage for rollback semantics, terminal state, safe error text, and completion-event evidence;
+- aligned the pre-existing page-persistence regression with the new terminal failure contract;
+- no OCR, retry/resume queue, parser semantics, retrieval, ranking, grounding, comparison, review, auth, cloud, legal capability, frozen Proof asset, metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #38 exact head `26adfe4f82ccc724f7e46259a1e00e0ffb073971`:
+
+- `General CI` run `33468745009`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint: **PASS**;
+  - Ruff format check: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33468745036`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33468745033`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33468745015`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33468745002`: **GREEN**;
+- `V1-05 Human Review Verification` run `33468745037`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33468744967`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33468744989`: **GREEN**;
+- `V1-06 Expected Failure States` run `33468745053`: **GREEN**;
+- `V1-07 Final Evaluations` run `33468745001`: **GREEN**;
+- `V1-07 Proof Package` run `33468745011`: **GREEN**;
+- prior head `0cb21d1eb5bd54934b6f6352375c93116c5888b4` exposed a stale database-free test that still expected the old raw `RuntimeError` behavior; that test was corrected inside Issue #37;
+- prior head `57757a4c5cdb61f51415d73094371797d73bf442` passed database-free and PostgreSQL integration tests but failed Ruff on an unused import in the new focused regression; that lint defect was removed before the accepted exact-head run.
+
+#### Verified
+
+- a forced page/completion persistence failure reaches the stable `DocumentIngestionError` / `internal_error` contract rather than leaking the raw database exception;
+- the registered document reaches terminal `FAILED` through the tested service path;
+- the modeled failed transaction leaves no partial `DocumentPage` rows and no false `COMPLETED` state;
+- completion-event coverage checks `status=failed`, the stable error code, and absence of the synthetic database detail;
+- exact-head database-free tests, real PostgreSQL integration, Ruff lint/format, frontend checks, deterministic regression, clean-start, whole-product, expected-failure, evaluation, and proof-package workflows are GREEN;
+- the review P1 about SQLAlchemy rollback attribute expiration was fixed by preserving the document ID before rollback, and the review thread was resolved;
+- unresolved PR review threads at merge: `0`;
+- Issue #37 auto-closed as `completed` after PR #38 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- this milestone does not add or verify automatic retry, resume, or reprocessing after a database outage;
+- `internal_error` remains intentionally generic; no broader database error taxonomy was introduced;
+- the forced failure is synthetic regression coverage and does not prove every PostgreSQL/network outage mode;
+- no new benchmark, real-local-model, legal, OCR, auth, multi-tenant, cloud, Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- recovery after a terminal page-persistence failure remains operator-mediated;
+- future persistence failure modes outside this bounded transaction may require their own evidence-backed contracts;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
