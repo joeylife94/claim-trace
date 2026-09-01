@@ -273,7 +273,8 @@ class DocumentIngestionService:
         except StorageError as exc:
             raise _ParseRejected(
                 ErrorCode.STORAGE_FAILURE,
-                "The stored file could not be read. Try the upload again.",
+                "The stored file could not be read. Check storage availability; "
+                "this failed document requires operator recovery before re-upload.",
             ) from exc
 
         try:
