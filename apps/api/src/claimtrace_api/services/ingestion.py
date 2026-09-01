@@ -39,7 +39,12 @@ from claimtrace_api.storage.local import build_storage_key
 
 logger = logging.getLogger(__name__)
 
+#: Every PDF begins with this marker. Checking it catches a non-PDF renamed to
+#: ``.pdf``, which neither the extension nor the browser-declared type would.
 PDF_MAGIC = b"%PDF-"
+
+#: Digest prefix length used in logs: enough to correlate events, not enough to
+#: assert possession of a document.
 SHA_LOG_PREFIX = 12
 
 
@@ -69,6 +74,8 @@ class IngestionResult:
     """Outcome of an ingest call."""
 
     document: Document
+    #: False when an identical document already existed, which the route maps to
+    #: 200 instead of 201.
     created: bool
 
 
@@ -78,7 +85,14 @@ async def read_upload(
     max_bytes: int,
     chunk_size: int = 1024 * 1024,
 ) -> bytes:
-    """Read an upload stream, refusing to buffer more than ``max_bytes``."""
+    """Read an upload stream, refusing to buffer more than ``max_bytes``.
+
+    Takes a plain async read callable so the size guard stays independent of the
+    web framework's upload type.
+
+    Raises:
+        AppError: the stream exceeds the configured limit.
+    """
     chunks: list[bytes] = []
     total = 0
     while True:
@@ -111,12 +125,21 @@ class DocumentIngestionService:
         self._parser = parser
         self._settings = settings
 
+    # -- public API ---------------------------------------------------------
+
     async def ingest(self, payload: UploadPayload) -> IngestionResult:
-        """Ingest one uploaded file."""
+        """Ingest one uploaded file.
+
+        Raises:
+            AppError: the upload was rejected before storage.
+            DocumentIngestionError: the file was stored but could not be parsed;
+                carries the persisted, failed document record.
+        """
         started = time.perf_counter()
         self._validate(payload)
 
         sha256 = hashlib.sha256(payload.data).hexdigest()
+
         existing = await self._find_by_sha256(sha256)
         if existing is not None:
             return self._duplicate(existing, sha256)
@@ -148,7 +171,10 @@ class DocumentIngestionService:
         )
         return IngestionResult(document=existing, created=False)
 
+    # -- validation ---------------------------------------------------------
+
     def _validate(self, payload: UploadPayload) -> None:
+        """Reject anything that is clearly not an acceptable PDF upload."""
         filename = payload.filename.strip()
         if not filename:
             raise AppError(ErrorCode.UNSUPPORTED_FILE_TYPE, "A filename is required.")
@@ -160,6 +186,7 @@ class DocumentIngestionService:
                 f"Only {', '.join(allowed_extensions)} files are accepted.",
             )
 
+        # Strip any parameters such as "; charset=..." before comparing.
         declared_type = payload.content_type.split(";")[0].strip().lower()
         if declared_type not in self._settings.upload_allowed_content_types:
             raise AppError(
@@ -189,11 +216,14 @@ class DocumentIngestionService:
                 "No parser is available for this file type.",
             )
 
+    # -- persistence steps --------------------------------------------------
+
     async def _find_by_sha256(self, sha256: str) -> Document | None:
         result = await self._session.execute(select(Document).where(Document.sha256 == sha256))
         return result.scalar_one_or_none()
 
     async def _store_and_register(self, payload: UploadPayload, sha256: str) -> Document:
+        """Write the original, then commit an ``uploaded`` record for it."""
         storage_key = build_storage_key(sha256)
         try:
             self._storage.write(storage_key, payload.data)
@@ -217,17 +247,21 @@ class DocumentIngestionService:
         try:
             await self._session.commit()
         except IntegrityError:
+            # Two identical uploads raced. The digest is unique, so the other
+            # request won; return its record rather than storing a second copy.
             await self._session.rollback()
             existing = await self._find_by_sha256(sha256)
-            if existing is None:
+            if existing is None:  # pragma: no cover - only on a non-digest conflict
                 raise
             raise _DuplicateRace(existing) from None
         except BaseException:
+            # The row never landed, so the bytes on disk are unreferenced.
             await self._session.rollback()
             self._storage.delete(storage_key)
             raise
 
         await self._session.refresh(document)
+
         document.status = DocumentStatus.PROCESSING
         await self._session.commit()
         await self._session.refresh(document)
@@ -248,6 +282,7 @@ class DocumentIngestionService:
             raise _ParseRejected(exc.code, exc.message) from exc
 
     async def _persist_pages(self, document: Document, parsed: ParsedDocument) -> None:
+        """Write every page and the terminal status in one transaction."""
         if parsed.character_count < self._settings.min_extracted_characters:
             raise _ParseRejected(
                 ErrorCode.NO_EXTRACTABLE_TEXT,
@@ -276,9 +311,13 @@ class DocumentIngestionService:
         document.error_code = None
         document.error_message = None
 
+        # One commit: pages and "completed" become visible together or not at all.
         try:
             await self._session.commit()
         except Exception:
+            # Explicit rollback so no page rows and no "completed" status survive;
+            # the document stays in "processing", which is a truthful record of
+            # what happened rather than a false success.
             await self._session.rollback()
             document.status = DocumentStatus.PROCESSING
             document.page_count = None
@@ -291,6 +330,7 @@ class DocumentIngestionService:
         await self._session.refresh(document)
 
     async def _mark_failed(self, document: Document, code: ErrorCode, message: str) -> Document:
+        """Record why a stored document could not be ingested."""
         await self._session.rollback()
         document.status = DocumentStatus.FAILED
         document.error_code = code.value
@@ -301,6 +341,8 @@ class DocumentIngestionService:
         await self._session.refresh(document)
         return document
 
+    # -- observability ------------------------------------------------------
+
     def _log_outcome(
         self,
         document: Document,
@@ -308,6 +350,7 @@ class DocumentIngestionService:
         *,
         error_code: ErrorCode | None = None,
     ) -> None:
+        """Emit one structured event per ingestion. Never includes document text."""
         logger.info(
             "document ingestion finished",
             extra={
