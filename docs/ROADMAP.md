@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, 2B, 3A, 4A-1, and 4A-2 complete; Phase 5A is next.**
+Current state: **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, and 5A complete within the accepted controlled-pilot boundary; Phase 3B remains future/unverified.**
 
 Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
 claim graph that 2B already produces, so it could be built and measured
@@ -107,27 +107,29 @@ and every claim resolves exactly to text on a page.
 Explicit non-goals honoured: no element decomposition, no other languages, no
 OCR, no retrieval, no LLM.
 
-### Phase 2C - Claim element decomposition and review boundary (next)
+### Phase 2C - Claim element decomposition and review boundary (complete)
 
 **Goal:** break each claim into individually addressable elements, still
 deterministically, and give a reviewer a way to confirm or correct them.
 
+Delivered within the accepted controlled-pilot boundary:
+
 - Element decomposition schema: elements belong to a claim and carry their own
   page-anchored spans, so an element is a sub-span of its claim rather than a new
   coordinate system.
-- Deterministic splitting of Korean claim bodies on structural markers
-  (`~와/과`, `; `, enumerated limitations, `상기` reference chains), with an explicit
-  confidence or warning when a claim resists splitting.
-- A review boundary: a reviewer can accept a decomposition or mark it wrong, and
-  that judgement is persisted separately from the parser's output so a re-parse
-  never silently discards it.
-- API and UI for reading and reviewing elements, reusing the existing span viewer.
+- Deterministic source-backed decomposition of supported claim structures.
+- A review boundary in which reviewer judgement is persisted separately from
+  machine output and remains append-only.
+- API/UI review surfaces reusing persisted source navigation so generated and
+  reviewed analytical output can be checked against stored source text.
 
-Exit criteria: a claim can be decomposed into elements whose spans resolve exactly,
-and a reviewer's verdict survives a re-parse.
+Exit criteria met within the frozen v1.0 Proof boundary: supported claims can be
+decomposed into source-backed elements and reviewer state remains separate from
+machine output.
 
-Explicit non-goals: retrieval, embeddings, and any LLM generation - Phase 2C
-stops at the deterministic boundary that later phases will build on.
+Explicit non-goals remain: no legal claim construction or determination of
+infringement, validity, novelty, inventive step, equivalence, or patentability;
+universal Korean patent decomposition correctness is not claimed.
 
 ---
 
@@ -167,7 +169,7 @@ measured.
 
 Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
 
-### Phase 3B - Description retrieval and reranking
+### Phase 3B - Description retrieval and reranking (future / unverified)
 
 **Goal:** widen retrieval past claims, and improve precision at the top.
 
@@ -179,6 +181,9 @@ Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
 
 Exit criteria: description passages are retrievable alongside claims, and a
 reranker can be switched on without touching the retrieval or API layers.
+
+This phase is not part of the accepted v1.0 capability boundary and remains
+unverified.
 
 ---
 
@@ -262,21 +267,28 @@ patentability.
 
 ---
 
-## Phase 5A - Claim comparison workspace (next)
+## Phase 5A - Claim comparison workspace (complete within controlled-pilot scope)
 
 **Goal:** two documents, claim to claim, with the same grounding guarantee.
 
-- Select two indexed documents and map claims between them: for a chosen claim,
-  the claims in the other document that the retrieved text corresponds to.
-- Reuse the Phase 4A-2 evidence catalog and citation validator unchanged. A
-  mapping is a pair of resolvable citations plus a described textual
-  correspondence.
-- Explicit "no corresponding claim found" state, on the same footing as
-  `insufficient_evidence`.
-- Still no legal conclusion. There is deliberately no output field that could
-  hold "anticipated", "equivalent", or "infringes": the moment such a field
-  exists, the system is making a determination it is not qualified to make, and
-  the absence of the field is the safeguard.
+Delivered within the accepted v1.0 Proof boundary:
+
+- Select target/reference documents and compare claims under strict reference
+  document scope.
+- Reuse the grounded evidence/citation contract so rendered correspondence is
+  backed by resolvable source evidence.
+- Preserve explicit insufficient/no-supported-correspondence behavior rather than
+  forcing a match.
+- Navigate comparison/review surfaces back to persisted source text.
+- Keep append-only human review separate from machine output.
+
+Exit criteria met within the accepted Proof boundary: target/reference claim
+comparison is source-verifiable and reviewable on the deterministic controlled
+pilot flow.
+
+Standing constraint: output describes textual correspondence only. ClaimTrace
+does not determine infringement, validity, novelty, inventive step, equivalence,
+patentability, or any other legal conclusion.
 
 ---
 
@@ -325,3 +337,7 @@ Authentication, authorisation, multi-tenancy, Kubernetes, CI/CD deployment
 pipelines, cloud infrastructure, and hosted third-party model APIs. These are
 deliberate boundaries for a portfolio project that demonstrates retrieval
 engineering, not platform operations.
+
+The authoritative frozen v1.0 capability, evidence, limitations, and non-claims
+remain defined by `CLAIMTRACE_V1_MASTER.md`; this roadmap must not be read as a
+legal or production-readiness claim.
