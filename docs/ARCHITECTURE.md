@@ -206,7 +206,8 @@ client → route: read_upload() streams the body, aborting past UPLOAD_MAX_BYTES
          4. store       LocalFileStorage.write(<aa>/<sha256>.pdf), atomic rename
          5. register    INSERT documents (status=uploaded) → commit
                         UPDATE status=processing              → commit
-         6. parse       PyMuPDFDocumentParser.parse(bytes) → ordered pages
+         6. parse       LocalFileStorage.read(storage_key)
+                        → PyMuPDFDocumentParser.parse(bytes) → ordered pages
          7. persist     INSERT every page + UPDATE status=completed  → ONE commit
               ↓
          201 Created + DocumentResponse
@@ -216,18 +217,29 @@ Failure branches:
 
 | When | Result |
 | --- | --- |
-| Validation (steps 1) | 4xx, nothing stored, no record |
+| Validation (step 1) | 4xx, nothing stored, no record |
+| `uploaded → processing` commit fails (5) | The session is rolled back and the already-registered document is terminalized as `failed` with `internal_error` when failure-state persistence succeeds; client receives a safe 500 ingestion failure. P4 verified this service contract with deterministic fault injection, not a real PostgreSQL commit fault. |
+| Stored-file read fails after registration (6) | The document is terminalized as `failed` with `storage_failure` when failure-state persistence succeeds; the raw storage exception is not returned to the client. |
 | Parse or no-text (6) | Document marked `failed` with an error code, 422, and the record is returned inside the error envelope |
-| Page write fails (7) | Rollback; no pages, status stays `processing`; 500 |
+| Page/completion persistence fails (7) | The page/completion transaction rolls back, so no partial page set is accepted as `completed`; the document is then terminalized as `failed` with `internal_error` when failure-state persistence succeeds. |
 | Concurrent identical upload | Unique digest violation is caught and resolved to the winner's record, 200 |
 
 Step 7 is deliberately a single commit: a partially written page set must never be
 visible as a `completed` document, because a citation into a half-ingested document
-would be silently wrong.
+would be silently wrong. If that commit fails, the page/completion transaction is
+rolled back before the service attempts to persist the terminal failure state.
 
-Steps 5's two commits are what make failures traceable. The `uploaded` row exists
-before parsing begins, so a crash mid-parse leaves a record pointing at stored bytes
-rather than an orphaned file nobody knows about.
+The terminalization paths above describe failure handling, not automatic recovery.
+Ingestion is synchronous and has no background retry or resume worker. Because
+content-addressed deduplication returns an existing row even when it is `failed`,
+re-uploading identical bytes does not automatically re-run parsing; operator recovery
+beyond the documented request path is not verified here.
+
+Step 5's first commit makes stored bytes traceable before processing begins. The
+second commit records `processing`; accepted P4 handling attempts to persist
+`failed` if that transition commit itself fails. This does not establish crash
+recovery: process termination between commits or during parsing has no automatic
+resume path.
 
 Parsing is synchronous. A 20 MB text PDF parses in well under a second, and a queue
 would add a broker, a worker, and a retry policy to buy nothing at this size. When
@@ -324,6 +336,8 @@ persisted on failed documents. Clients branch on the code, never on the message.
 | `malformed_pdf` | 422 | Unreadable, or repaired into a zero-page document |
 | `encrypted_pdf` | 422 | Password protected |
 | `no_extractable_text` | 422 | Below `MIN_EXTRACTED_CHARACTERS`; scanned or image-only |
+| `storage_failure` | 500 | The stored original cannot be read during an already-registered ingestion |
+| `internal_error` | 500 | A processing-transition or page/completion persistence failure is mapped to a client-safe ingestion failure |
 | `document_not_found` | 404 | Unknown document id |
 
 ---
