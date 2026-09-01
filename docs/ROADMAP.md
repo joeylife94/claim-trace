@@ -4,13 +4,12 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, 2B, 3A, 4A-1, and 4A-2 complete; Phase 5A is next.**
+Current state: **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, 5A, and the bounded Phase 5 controlled-pilot analysis flow are complete. Phase 3B and the remaining Phase 6 expansion items are future/unverified.**
 
-Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
-claim graph that 2B already produces, so it could be built and measured
-immediately; element decomposition (2C) is the harder domain-judgement problem
-and benefits from having a working retrieval and evaluation loop to test
-against.
+Phase 3 was taken before 2C, and split. Claim-level retrieval needed only the
+claim graph that 2B already produced, so it could be built and measured
+immediately; element decomposition and review were completed later against the
+working retrieval and evaluation loop.
 
 ---
 
@@ -38,8 +37,9 @@ Exit criteria: `docker compose up --build` yields a green status panel; `make te
 
 ## Phase 2 - Patent document ingestion and structural parsing
 
-Split in two, because the ingestion boundary is useful and verifiable on its own,
-and because structural parsing is where the domain judgement lives.
+The ingestion boundary, claim structure, deterministic decomposition, and human
+review boundary are independently verifiable steps within the controlled-pilot
+scope.
 
 ### Phase 2A - Ingestion boundary and page provenance (complete)
 
@@ -65,11 +65,11 @@ Delivered:
 - Structured ingestion logging that never records document text.
 
 Exit criteria met: a synthetic PDF can be uploaded, parsed, persisted, listed, and
-read back page by page, with duplicates and every rejection path behaving as
-documented.
+read back page by page, with duplicates and rejection paths behaving within the
+accepted ingestion contract.
 
-Explicit non-goals honoured: no OCR, no section detection, no claim parsing, no
-chunking, no queue.
+Explicit non-goals honoured: no OCR, no section detection, no scanned/image-only
+PDF recovery, no queue.
 
 ### Phase 2B - Deterministic claim structural parsing (complete)
 
@@ -81,60 +81,57 @@ Delivered:
 - `ClaimParser` protocol with `KoreanRuleBasedClaimParser`
   (`korean-rule-based-claims` 0.1.0). Rules only - no model, no embedding, no
   legal reasoning.
-- Claims-region detection, heading detection across the common Korean forms
-  (`청구항 1`, `청구항 제1항`, `[청구항 1]`, `【청구항 1】`, full-width digits) and a
-  minimal line-anchored `Claim 1` fallback.
-- Dependency extraction for `에 있어서` / `에 따른` / `에 기재된` forms, including
-  `또는`, `및`, comma lists, and `내지` ranges, with a required dependency particle
-  so technical numbers never become edges.
+- Claims-region detection and supported Korean claim heading forms.
+- Dependency extraction for supported Korean reference forms, with guards so
+  technical numbers do not become claim edges.
 - Classification into `independent` / `dependent` / `multiple_dependent` /
   `unknown`, with `unknown` used instead of a guess.
-- Dependencies persisted as a graph; self-references, unresolved references, and
-  backwards ranges are refused with warnings, and cycles are detected.
-- Claim source stored as ordered page-relative spans; a page-crossing claim gets
-  one span per page, and claim text is defined as those spans joined by `"\n"`.
-- A parse lifecycle (`processing → completed | no_claims_found | failed`) that is
-  fully separate from document ingestion status.
-- Idempotency per parser version, with in-place retry of a failed attempt.
-- `POST /claims/parse`, `GET /claims`, `GET /claims/{claim_number}`.
-- UI: parse action, claim list with types and dependency lists, source span
-  buttons that open and highlight the exact range in the page viewer.
-- Migration `0003`, and tests covering the parser rules, persistence, and the API.
+- Dependencies persisted as a graph; malformed/self/unresolved dependency cases
+  are refused or warned rather than silently invented.
+- Claim source stored as ordered page-relative spans, preserving canonical page
+  provenance.
+- A parse lifecycle separate from document ingestion status.
+- Idempotency per parser version, with retry of a failed attempt.
+- Claim parsing/read APIs and source-navigation UI.
 
 Exit criteria met: a document's claim set is retrievable with dependencies intact,
-and every claim resolves exactly to text on a page.
+and every supported claim resolves exactly to stored page text.
 
-Explicit non-goals honoured: no element decomposition, no other languages, no
-OCR, no retrieval, no LLM.
+Explicit non-goals honoured: no universal Korean patent parsing correctness, no
+OCR, and no legal interpretation.
 
-### Phase 2C - Claim element decomposition and review boundary (next)
+### Phase 2C - Claim element decomposition and review boundary (complete)
 
-**Goal:** break each claim into individually addressable elements, still
-deterministically, and give a reviewer a way to confirm or correct them.
+**Goal:** break a claim into individually addressable, source-backed elements and
+keep reviewer judgement separate from machine output.
 
-- Element decomposition schema: elements belong to a claim and carry their own
-  page-anchored spans, so an element is a sub-span of its claim rather than a new
-  coordinate system.
-- Deterministic splitting of Korean claim bodies on structural markers
-  (`~와/과`, `; `, enumerated limitations, `상기` reference chains), with an explicit
-  confidence or warning when a claim resists splitting.
-- A review boundary: a reviewer can accept a decomposition or mark it wrong, and
-  that judgement is persisted separately from the parser's output so a re-parse
-  never silently discards it.
-- API and UI for reading and reviewing elements, reusing the existing span viewer.
+Delivered within the frozen controlled-pilot boundary:
 
-Exit criteria: a claim can be decomposed into elements whose spans resolve exactly,
-and a reviewer's verdict survives a re-parse.
+- deterministic source-backed claim-element decomposition;
+- element provenance tied back to persisted source spans rather than a separate
+  citation coordinate system;
+- append-only human review state persisted separately from machine-generated
+  analytical output;
+- review/navigation surfaces that return the reviewer to the persisted source
+  evidence used by the decomposition;
+- deterministic regression coverage for the supported synthetic/public-safe
+  boundary.
 
-Explicit non-goals: retrieval, embeddings, and any LLM generation - Phase 2C
-stops at the deterministic boundary that later phases will build on.
+Exit criteria met within the accepted Proof scope: decomposition output is
+source-verifiable and reviewer state remains distinct from generated/machine
+state.
+
+Explicit non-goals remain: this decomposition is not a legal claim construction
+and does not determine infringement, validity, novelty, inventive step,
+equivalence, or patentability. Universal parser/decomposition correctness is not
+claimed.
 
 ---
 
 ## Phase 3 - Indexing and hybrid retrieval
 
-Split in two: claim-level retrieval is useful and measurable on its own, and it
-is what the rest of the product needs first.
+Split in two: claim-level retrieval is useful and measurable on its own; broader
+description retrieval/reranking remains separate future work.
 
 ### Phase 3A - Claim indexing and hybrid retrieval (complete)
 
@@ -143,42 +140,35 @@ retrieved.
 
 Delivered:
 
-- `EmbeddingProvider` protocol with a real local sentence-transformers
-  implementation (`intfloat/multilingual-e5-small`, 384d, CPU) and a
-  deterministic hash provider that downloads nothing and backs the whole test
-  suite.
+- `EmbeddingProvider` protocol with a local sentence-transformers implementation
+  and a deterministic hash provider used by offline regression.
 - A claim indexing lifecycle separate from ingestion and parsing, with a
   retrieval profile recorded per run and idempotency keyed on it.
-- Migration `0004`: `claim_index_runs`, `claim_search_records`, `pg_trgm`, an
-  HNSW cosine index, and GIN indexes for full-text and trigram matching.
-- Dense retrieval over pgvector; lexical retrieval over PostgreSQL `simple`
-  full-text plus trigram, tuned for Korean compounds and josa attachment.
-- Reciprocal Rank Fusion with configurable `k`, per-channel ranks and scores
-  preserved, and `hybrid` / `dense` / `lexical` modes.
-- `POST /api/v1/search/claims`, indexing endpoints, a `/search` UI, and a
-  retrieval index panel on the document page.
-- A reproducible evaluation over a synthetic Korean corpus reporting
-  Recall@1/3/5 and MRR@10 per mode, including where hybrid loses to a single
-  channel.
+- Dense retrieval over pgvector and lexical retrieval over PostgreSQL full-text
+  plus trigram matching.
+- Reciprocal Rank Fusion with per-channel ranks/scores preserved and
+  `hybrid` / `dense` / `lexical` modes.
+- Claim search/indexing APIs, search UI, and source navigation.
+- Reproducible synthetic regression evaluation reporting Recall@k and MRR.
 
-Exit criteria met: a query returns ranked claims, each carrying spans that
-resolve exactly against stored page text; retrieval quality is measurable and
-measured.
+Exit criteria met: a query returns ranked claims carrying resolvable source spans;
+retrieval behavior is measurable and regression-tested.
 
-Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
+Explicit non-goals honoured: no description retrieval, no reranking, and no
+benchmark-quality general patent retrieval claim.
 
-### Phase 3B - Description retrieval and reranking
+### Phase 3B - Description retrieval and reranking (future / unverified)
 
 **Goal:** widen retrieval past claims, and improve precision at the top.
 
-- Chunking strategy aware of patent structure - description segments are not
-  chunked like claims.
-- Optional `Reranker` seam over the fused top-k; the pipeline must work with it
-  absent.
-- A retrieval regression gate wired into CI, using the Phase 3A evaluation.
+Potential bounded work:
 
-Exit criteria: description passages are retrievable alongside claims, and a
-reranker can be switched on without touching the retrieval or API layers.
+- patent-structure-aware description chunking;
+- optional `Reranker` seam over fused top-k;
+- evaluation specific to description retrieval/reranking.
+
+This phase is not part of the frozen v1.0 accepted capability boundary. No
+completion or quality claim is made for description retrieval or reranking.
 
 ---
 
@@ -188,140 +178,122 @@ reranker can be switched on without touching the retrieval or API layers.
 
 **Goal:** make generation a deployment choice, not a code dependency.
 
-- `LLMProvider` protocol for plain and schema-constrained output, selected by
-  environment variables - built the same way `EmbeddingProvider` was in 3A:
-  plain Python in and out, no framework types crossing the boundary. A test
-  asserts the package imports no web framework or ORM.
-- Two self-hosted implementations, consistent with the on-premise constraint and
-  so the protocol is proven by more than one caller: Ollama, and an
-  OpenAI-compatible endpoint such as vLLM. No data leaves the deployment, and the
-  hosted OpenAI service is deliberately not a supported target.
-- A provider-neutral error taxonomy, a conservative retry policy (only failures
-  that never reached the server are replayed), and three-level timeout control
-  with correct cancellation propagation.
-- Structured JSON output with strict extraction and schema validation that runs
-  *even when* the server enforced the schema - which Phase 4A-1 validation proved
-  necessary: constrained decoding guarantees types, not value ranges.
-- A deterministic fake provider, the default, so CI and offline work never need a
-  model and the whole application runs with nothing downloaded.
-- Narrow diagnostics: `GET /api/v1/llm/status`, two development-only generation
-  endpoints, and a `/llm` page. No chat, no history, no streaming.
-- No database migration: prompts, completions, and provider health are runtime
-  infrastructure, not domain data.
+Delivered:
 
-Exit criteria met: generation works against a locally hosted model
-(`qwen2.5:1.5b`, warm 0.18-0.38 s, structured 0.61-0.94 s), and the 621-test suite
-runs with no model present. vLLM is contract-tested against a mocked transport;
-no real vLLM server was run. See
-[docs/ARCHITECTURE.md](ARCHITECTURE.md) section 10.
+- provider-neutral LLM protocol and configuration boundary;
+- locally hosted/self-hosted provider implementations plus deterministic fake
+  provider for CI/offline execution;
+- provider-neutral error/timeout handling and schema validation;
+- narrow diagnostics and development generation surfaces without chat/history;
+- no persistence of prompts/completions as domain data.
+
+Accepted evidence includes historical local-model execution plus deterministic
+CI/offline coverage. Current real-local-model quality is not promoted beyond the
+explicit evidence recorded in the MASTER.
 
 ### Phase 4A-2 - Evidence-grounded generation (complete)
 
-**Goal:** answers that can be checked, not answers that sound right.
+**Goal:** answers that can be checked, not answers that merely sound right.
 
 Delivered:
 
-- `GroundedGenerationService` composes the existing `ClaimSearchService` and
-  `LLMGenerationService`. Neither changed - 4A-1 left the generation service with
-  no session and no retrieval collaborator precisely so this would be an addition.
-- A request-local **evidence catalog** issues opaque identifiers (`EV-001`, …).
-  The model is shown claim text and may answer only with those identifiers; it
-  never sees and never produces a document id, a page number, or an offset.
-  Fabricating a citation is not unlikely, it is unrepresentable - the output
-  schema has nowhere to put a locator, and an unissued identifier resolves to
-  nothing.
-- Structured output against a strict schema with **no free-form answer field**.
-  The answer text is composed by the server from statements that passed citation
-  validation.
-- Every citation resolves to a canonical `(document_id, page_number, start_char,
-  end_char)` span, and each quote is read out of `document_pages.text` at those
-  offsets by the server rather than reproduced by the model. **No second citation
-  coordinate system was introduced.**
-- Context budget admits whole claims only. A claim that will not fit is dropped
-  and counted, never truncated - a half-included claim would still be citable.
-- One bounded repair attempt for a grounding-rule violation, reusing the same
-  evidence and adding only server-owned corrective text.
-- `insufficient_evidence` is a normal 200 outcome, with a fixed server-owned
-  limitation sentence. Zero retrieved candidates bypass the provider entirely.
-- `POST /api/v1/grounded/answers` and a `/grounded` workspace. Not a chat: no
-  history, no memory, no prompt or model controls.
-- **No migration.** The output is request-scoped; the schema is unchanged at
-  revision 0004.
+- grounded generation composed with claim retrieval;
+- request-local evidence identifiers resolved server-side to canonical source
+  locators;
+- strict structured output with no unrestricted free-form citation coordinates;
+- server-resolved quotes from persisted source text;
+- explicit `insufficient_evidence` behavior;
+- deterministic grounding evaluation and hostile-payload refusal coverage;
+- source-navigation UI for generated analytical output.
 
-Verified: 876 backend tests; a deterministic evaluation tier (16 cases, 23 newly
-authored synthetic Korean claims across 3 documents) with citation resolution
-1.00 and 6/6 hostile payloads refused; and a real `qwen2.5:1.5b` tier with
-structured-output success 1.00, citation resolution 1.00, and zero scope leaks -
-alongside honest weaknesses in that small model's judgement. See
-[docs/ARCHITECTURE.md](ARCHITECTURE.md) section 11 and
-`apps/api/evals/results/grounded/`.
-
-Standing constraint held: this phase answers *about* retrieved text and
-determines nothing about infringement, validity, novelty, inventive step, or
+Standing constraint: this phase answers about retrieved text and determines
+nothing about infringement, validity, novelty, inventive step, equivalence, or
 patentability.
 
 ---
 
-## Phase 5A - Claim comparison workspace (next)
+## Phase 5A - Claim comparison workspace (complete within controlled-pilot scope)
 
-**Goal:** two documents, claim to claim, with the same grounding guarantee.
+**Goal:** compare a target claim against a reference document while preserving the
+same grounding and source-verification guarantee.
 
-- Select two indexed documents and map claims between them: for a chosen claim,
-  the claims in the other document that the retrieved text corresponds to.
-- Reuse the Phase 4A-2 evidence catalog and citation validator unchanged. A
-  mapping is a pair of resolvable citations plus a described textual
-  correspondence.
-- Explicit "no corresponding claim found" state, on the same footing as
-  `insufficient_evidence`.
-- Still no legal conclusion. There is deliberately no output field that could
-  hold "anticipated", "equivalent", or "infringes": the moment such a field
-  exists, the system is making a determination it is not qualified to make, and
-  the absence of the field is the safeguard.
+Delivered within the accepted v1.0 Proof boundary:
 
----
+- target/reference claim comparison under strict reference-document scope;
+- evidence-backed textual correspondence with resolvable source locators;
+- explicit insufficient/no-supported-correspondence behavior rather than a forced
+  conclusion;
+- navigation from comparison output back to persisted source text;
+- deterministic whole-product and comparison regression coverage on the committed
+  synthetic/public-safe corpus.
 
-## Phase 5 - Claim decomposition and evidence comparison
+Exit criteria met for the controlled pilot: comparison surfaces remain grounded
+and source-verifiable.
 
-**Goal:** the product's actual analysis, with grounding enforced.
-
-- Claim decomposition into individually addressable elements (preamble,
-  transition, limitations), preserving dependency structure.
-- Element-level evidence retrieval and side-by-side comparison between a target
-  claim and one or more reference documents.
-- Per-element output: supporting passages, source locators, and an explicit
-  "insufficient evidence" state.
-- Grounding validation: any statement without a resolvable citation is rejected
-  before it reaches the response.
-- UI for claim comparison with citations linking back to source passages.
-
-Exit criteria: a claim can be decomposed and compared against reference documents,
-with every rendered assertion traceable to stored evidence.
-
-Standing constraint: output describes textual correspondence only. ClaimTrace does
-not conclude infringement, validity, or patentability.
+Standing constraint: comparison describes textual correspondence only. It does
+not determine infringement, validity, novelty, inventive step, equivalence,
+patentability, or any other legal conclusion.
 
 ---
 
-## Phase 6 - Evaluation and demonstration
+## Phase 5 - Claim decomposition and evidence comparison (bounded controlled-pilot flow complete)
 
-**Goal:** evidence that the system works, and a path a reviewer can follow.
+**Goal:** combine deterministic decomposition, evidence-backed comparison, and
+review/source navigation into the product's analytical workflow.
 
-- Offline evaluation harness over committed datasets: retrieval metrics
-  (recall@k, MRR) and grounding metrics (citation validity, unsupported-claim rate).
-- Regression gate so retrieval or prompt changes cannot silently degrade quality.
-- Reproducible demonstration script with synthetic sample documents.
-- Performance characterisation: ingestion throughput and query latency on
-  commodity on-premise hardware.
-- Documented limitations based on measurement rather than intuition.
+Delivered within the accepted v1.0 scope:
 
-Exit criteria: metrics are reproducible from a clean checkout with one documented
-command.
+- deterministic claim decomposition into source-backed elements;
+- target/reference evidence comparison under bounded document scope;
+- per-element/source-backed analytical output with explicit insufficient-evidence
+  behavior where supported evidence is absent;
+- grounding/source-resolution validation before analytical output is presented;
+- append-only reviewer state separate from machine output;
+- UI navigation from generated/reviewed analytical surfaces back to persisted
+  source passages.
+
+Exit criteria met within the frozen Proof boundary: claims can be decomposed and
+compared against reference evidence with rendered analytical assertions tied to
+stored source evidence.
+
+Standing constraint: this workflow remains analytical/review support only.
+ClaimTrace does not conclude infringement, validity, novelty, inventive step,
+equivalence, or patentability.
 
 ---
 
-## Out of scope for all six phases
+## Phase 6 - Evaluation and demonstration (core v1.0 proof complete; expansion items remain)
 
-Authentication, authorisation, multi-tenancy, Kubernetes, CI/CD deployment
-pipelines, cloud infrastructure, and hosted third-party model APIs. These are
-deliberate boundaries for a portfolio project that demonstrates retrieval
-engineering, not platform operations.
+**Goal:** evidence that the system works within its bounded scope, and a path a
+reviewer can reproduce.
+
+Accepted v1.0 evidence includes:
+
+- deterministic retrieval regression over the committed synthetic corpus;
+- deterministic grounded evaluation and hostile-grounding checks;
+- expected failure-state verification;
+- clean-start and whole-product golden-path verification;
+- committed screenshots, architecture visual, and golden-path WebM;
+- one-command deterministic regression verification added post-v1.
+
+Still future/unverified unless separately accepted:
+
+- benchmark-quality general patent retrieval performance;
+- broader real-world corpus characterization;
+- current real-local-model quality beyond recorded historical evidence;
+- generalized performance characterization on arbitrary commodity hardware;
+- OCR/scanned-PDF recovery;
+- production security/compliance certification.
+
+---
+
+## Out of scope for the accepted v1.0 Proof boundary
+
+Authentication, authorisation/RBAC, multi-tenancy, public-cloud production
+readiness, Kubernetes, billing/admin production readiness, OCR/scanned-image PDF
+recovery, legal conclusions, benchmark-quality retrieval claims, and production
+security/compliance certification remain outside the accepted v1.0 Proof scope.
+
+The roadmap describes implementation direction and historical phase intent;
+`CLAIMTRACE_V1_MASTER.md` remains authoritative for the frozen v1.0 capability,
+evidence, limitation, and non-claim boundary.
