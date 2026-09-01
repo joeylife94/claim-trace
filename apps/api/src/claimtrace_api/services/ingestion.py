@@ -311,6 +311,7 @@ class DocumentIngestionService:
         document.status = DocumentStatus.COMPLETED
         document.error_code = None
         document.error_message = None
+        document_id = document.id
 
         # One commit: pages and "completed" become visible together or not at all.
         try:
@@ -322,7 +323,7 @@ class DocumentIngestionService:
             document.extracted_character_count = None
             logger.error(
                 "document page persistence failed",
-                extra={"document_id": str(document.id), "page_count": parsed.page_count},
+                extra={"document_id": str(document_id), "page_count": parsed.page_count},
             )
             raise _ParseRejected(
                 ErrorCode.INTERNAL_ERROR,
