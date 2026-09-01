@@ -390,3 +390,59 @@ On PR #38 exact head `26adfe4f82ccc724f7e46259a1e00e0ffb073971`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P4 — Terminalize processing-transition failures during ingestion
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #39 — `Progression: terminalize processing-transition failures during ingestion`  
+**PR:** #40  
+**Accepted PR exact head:** `8802c6e907c7a6608a8a34adccfe9d625a307bd5`  
+**Resulting main merge SHA:** `1c2b4e7cfd9be9082929cec95c1ff5aff6965b5d`
+
+#### Changed
+
+- converted a failed post-registration `UPLOADED -> PROCESSING` commit into the existing client-safe `internal_error` ingestion contract;
+- after rollback, the already-registered document is terminalized through `_mark_failed` when recovery persistence succeeds;
+- added focused deterministic regression coverage that fails only the second commit and verifies terminal state, safe error text, and completion-event evidence;
+- preserved duplicate-race handling, initial registration cleanup, storage-read/page-persistence behavior, parser/retrieval/grounding semantics, Proof assets, frozen metrics, and `v1.0-proof`.
+
+#### Actually Executed
+
+On PR #40 exact head `8802c6e907c7a6608a8a34adccfe9d625a307bd5`:
+
+- `General CI` run `33472375086`: **GREEN**;
+- `Progression Deterministic Regression` run `33472375078`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33472375090`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33472375071`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33472375077`: **GREEN**;
+- `V1-05 Human Review Verification` run `33472375081`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33472375069`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33472375172`: **GREEN**;
+- `V1-06 Expected Failure States` run `33472375112`: **GREEN**;
+- `V1-07 Final Evaluations` run `33472375088`: **GREEN**;
+- `V1-07 Proof Package` run `33472375076`: **GREEN**.
+
+#### Verified
+
+- the focused regression forces only the post-registration processing-transition commit to fail and verifies terminal `FAILED` with `internal_error` after modeled rollback/recovery persistence;
+- the client-visible error and structured completion event exclude the synthetic database detail and report `status=failed` with the stable error code;
+- exact-head General CI and all ten triggered progression/v1 regression workflows are GREEN;
+- unresolved PR review threads at merge: `0`;
+- Issue #39 auto-closed as `completed` after PR #40 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- the forced second-commit failure itself is covered by a deterministic `StubSession`; no dedicated real-PostgreSQL fault-injection test was added for this exact failure point;
+- General CI's real PostgreSQL integration tier passed and protects broader SQLAlchemy/PostgreSQL compatibility, but that alone is not treated as proof that every rollback/expiration behavior at this exact injected transition failure is covered;
+- no automatic retry/resume/operator UI, OCR, parser/retrieval expansion, benchmark, real-local-model, legal, auth, multi-tenant, cloud, Kubernetes, or security-certification capability is claimed.
+
+#### Remaining Risks
+
+- terminalization still depends on the recovery persistence performed by `_mark_failed`; a simultaneous continued database outage can prevent that recovery commit, which remains an operator-visible failure rather than a durable retry path;
+- exact real-database fault injection for the processing-transition commit remains a possible future hardening milestone only if concrete use/show/delivery value justifies it;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
