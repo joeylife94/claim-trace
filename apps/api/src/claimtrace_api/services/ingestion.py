@@ -268,7 +268,15 @@ class DocumentIngestionService:
         return document
 
     def _parse(self, document: Document) -> ParsedDocument:
-        data = self._storage.read(document.storage_key)
+        try:
+            data = self._storage.read(document.storage_key)
+        except StorageError as exc:
+            raise _ParseRejected(
+                ErrorCode.STORAGE_FAILURE,
+                "The stored file could not be read. Check storage availability; "
+                "this failed document requires operator recovery before re-upload.",
+            ) from exc
+
         try:
             return self._parser.parse(data)
         except ParserError as exc:
