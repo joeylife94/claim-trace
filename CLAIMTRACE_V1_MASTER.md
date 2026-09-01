@@ -446,3 +446,59 @@ On PR #40 exact head `8802c6e907c7a6608a8a34adccfe9d625a307bd5`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P5 — Reconcile ingestion failure documentation with accepted runtime behavior
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #41 — `Progression: reconcile ingestion failure documentation with accepted runtime behavior`  
+**PR:** #42  
+**Accepted PR exact head:** `ec8811613c36d1dc190a3f42bff0affc2cf483f4`  
+**Resulting main merge SHA:** `343b7f23a0314395b8d83aa86646a42dd9516208`
+
+#### Changed
+
+- reconciled `docs/ARCHITECTURE.md` ingestion flow and failure table with accepted P2/P3/P4 runtime behavior;
+- documented post-registration stored-file reads and the accepted terminal failure contracts for storage-read, processing-transition, and page/completion persistence failures;
+- explicitly separated verified terminalization from unverified automatic retry/resume behavior and recorded that identical-byte deduplication does not itself re-run a failed ingestion;
+- recorded the P4 evidence boundary: deterministic fault injection verified the service contract, but no dedicated real-PostgreSQL commit-fault injection was executed;
+- added the already-existing `storage_failure` and `internal_error` HTTP 500 mappings to the ingestion error table;
+- no product/runtime code, schema, Proof asset, frozen metric, legal/non-claim boundary, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #42 exact head `ec8811613c36d1dc190a3f42bff0affc2cf483f4`:
+
+- compared the PR head to `main`: exactly one changed file, `docs/ARCHITECTURE.md`, with `+21/-7`;
+- fetched and reviewed the exact-head architecture section after the commit, including all three reconciled failure paths and the retry/resume limitation text;
+- cross-checked the documentation against current `services/ingestion.py` and `core/errors.py` on `main`;
+- reviewed the PR patch and recorded a bounded review; unresolved review threads at merge: `0`;
+- merged PR #42 with an expected-head SHA guard;
+- confirmed Issue #41 auto-closed as `completed`;
+- re-fetched the annotated `v1.0-proof` tag and dereferenced it to the unchanged reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
+
+#### Verified
+
+- architecture documentation no longer states that page/completion persistence failure necessarily leaves a document stranded in `processing`;
+- P2 storage-read and P4 processing-transition failure semantics are now represented alongside P3 page/completion persistence semantics;
+- `storage_failure` and `internal_error` remain mapped to HTTP 500 in the current error taxonomy;
+- documentation explicitly avoids claiming background retry/resume or automatic identical-byte reprocessing;
+- documentation explicitly avoids overstating P4 as real-PostgreSQL fault-injection evidence;
+- PR scope remained documentation-only and the frozen v1.0 tag target remained unchanged.
+
+#### Not Verified
+
+- no new runtime test suite or PR workflow executed on PR #42 because the repository's current General CI path filter excludes `docs/**`, and no dedicated documentation-lint workflow exists;
+- this milestone therefore verifies repository/document consistency, not new runtime behavior;
+- no dedicated real-PostgreSQL commit-fault injection was added or run for P4;
+- no automatic retry/resume/operator recovery mechanism was added or verified;
+- all frozen v1.0 non-claims remain unverified.
+
+#### Remaining Risks
+
+- future runtime changes can make architecture text stale again unless documentation reconciliation is kept inside the same accepted change lifecycle;
+- ingestion recovery after terminal failure remains operator-mediated and is not a durable retry mechanism;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
