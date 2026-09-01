@@ -2,7 +2,7 @@
 
 > **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-08-31  
+**Last execution update:** 2026-09-01  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
@@ -252,6 +252,70 @@ On PR #34 exact head `58a290d617f072947347462c47c86b9fb0cdf0a1`:
 - deterministic fake-provider regression is sensitive to intentional changes in deterministic retrieval plumbing and will require an evidence-backed baseline update if such a change is deliberately accepted;
 - the synthetic corpora remain small and regression-oriented;
 - citation resolution still proves source resolvability, not entailment or legal correctness.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P2 — Terminalize post-registration storage read failures
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #35 — `Progression: terminalize stored-file read failures during ingestion`  
+**PR:** #36  
+**Accepted PR exact head:** `ebcc642fdc51487edc8127ee674220789f37a2ca`  
+**Resulting main merge SHA:** `5b02337d2d98c8c73e43b93cfe0b0fa567b7ac45`
+
+#### Changed
+
+- mapped post-registration `FileStorage.read(...)` `StorageError` into the existing `storage_failure` ingestion contract;
+- the existing `_ParseRejected` / `_mark_failed` path now terminalizes the registered document as `FAILED` instead of allowing this failure to strand it in `PROCESSING`;
+- added focused regression coverage for the client-safe error, terminal document state, persisted `error_code=storage_failure`, and safe completion event;
+- corrected the recovery message after review so it does not recommend an identical-byte re-upload that digest deduplication would short-circuit;
+- no OCR, parser semantics, retrieval, ranking, grounding, comparison, review, auth, cloud, legal capability, frozen Proof asset, metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #36 exact head `ebcc642fdc51487edc8127ee674220789f37a2ca`:
+
+- `General CI` run `33457327009`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint: **PASS**;
+  - Ruff format check: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33457327043`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33457326937`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33457326987`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33457327080`: **GREEN**;
+- `V1-05 Human Review Verification` run `33457327034`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33457326989`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33457327006`: **GREEN**;
+- `V1-06 Expected Failure States` run `33457327110`: **GREEN**;
+- `V1-07 Final Evaluations` run `33457326971`: **GREEN**;
+- `V1-07 Proof Package` run `33457327050`: **GREEN**.
+
+#### Verified
+
+- forced post-registration storage-read failure no longer leaks raw `StorageError` through the ingestion contract;
+- the registered document reaches terminal `FAILED` with `error_code=storage_failure` through the tested service path;
+- completion-event regression coverage checks `status=failed` and `error_code=storage_failure` and excludes the synthetic internal exception detail;
+- current exact-head backend, PostgreSQL integration, lint/format, frontend, deterministic regression, clean-start, whole-product, failure-state, evaluation, and proof-package workflows are GREEN;
+- the one review blocker about misleading retry guidance was corrected and its thread resolved;
+- unresolved PR review threads at merge: `0`;
+- Issue #35 auto-closed as `completed` after PR #36 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- this milestone does not prove recovery/reprocessing of an already-failed deduplicated document; the message explicitly leaves that as operator recovery;
+- no redesign of general database persistence failures or unrelated ingestion stages was attempted;
+- no new benchmark, real-local-model, legal, OCR, auth, multi-tenant, cloud, Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- identical-byte re-upload of an already-failed document still follows existing digest deduplication behavior rather than an automatic reprocess path;
+- other post-registration failure modes remain governed by their existing contracts and were not broadened in this milestone;
+- all frozen v1.0 limitations and non-claims remain in force.
 
 #### Exact Next Action
 
