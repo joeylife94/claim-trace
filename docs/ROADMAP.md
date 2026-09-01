@@ -292,28 +292,6 @@ patentability, or any other legal conclusion.
 
 ---
 
-## Phase 5 - Claim decomposition and evidence comparison
-
-**Goal:** the product's actual analysis, with grounding enforced.
-
-- Claim decomposition into individually addressable elements (preamble,
-  transition, limitations), preserving dependency structure.
-- Element-level evidence retrieval and side-by-side comparison between a target
-  claim and one or more reference documents.
-- Per-element output: supporting passages, source locators, and an explicit
-  "insufficient evidence" state.
-- Grounding validation: any statement without a resolvable citation is rejected
-  before it reaches the response.
-- UI for claim comparison with citations linking back to source passages.
-
-Exit criteria: a claim can be decomposed and compared against reference documents,
-with every rendered assertion traceable to stored evidence.
-
-Standing constraint: output describes textual correspondence only. ClaimTrace does
-not conclude infringement, validity, or patentability.
-
----
-
 ## Phase 6 - Evaluation and demonstration
 
 **Goal:** evidence that the system works, and a path a reviewer can follow.
