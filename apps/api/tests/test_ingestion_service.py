@@ -130,10 +130,10 @@ async def test_duplicate_returns_the_existing_document_without_rewriting(
     assert list(storage_root.rglob("*.pdf")) == []
 
 
-async def test_page_persistence_failure_rolls_back_and_propagates(
+async def test_page_persistence_failure_rolls_back_and_terminalizes_document(
     settings: Settings, storage_root: Path
 ) -> None:
-    """A failed page write must never leave a document looking completed."""
+    """A failed page write must roll back pages and leave a terminal failed document."""
 
     class FailingSession(StubSession):
         def __init__(self) -> None:
@@ -141,10 +141,11 @@ async def test_page_persistence_failure_rolls_back_and_propagates(
             self.rollbacks = 0
 
         async def commit(self) -> None:
-            await super().commit()
-            # First two commits register the document; the third writes pages.
-            if self.commits >= 3:
+            next_commit = self.commits + 1
+            if next_commit == 3:
+                self.commits = next_commit
                 raise RuntimeError("connection lost")
+            await super().commit()
 
         async def rollback(self) -> None:
             self.rollbacks += 1
@@ -152,12 +153,15 @@ async def test_page_persistence_failure_rolls_back_and_propagates(
     session = FailingSession()
     service = make_service(settings, session, storage_root)
 
-    with pytest.raises(RuntimeError, match="connection lost"):
+    with pytest.raises(DocumentIngestionError) as excinfo:
         await service.ingest(payload(build_text_pdf()))
 
-    assert session.rollbacks == 1
+    assert excinfo.value.code is ErrorCode.INTERNAL_ERROR
+    assert excinfo.value.document.status is DocumentStatus.FAILED
+    assert excinfo.value.document.error_code == ErrorCode.INTERNAL_ERROR.value
+    assert session.rollbacks >= 2
     documents = [obj for obj in session.added if isinstance(obj, Document)]
-    assert documents[0].status is not DocumentStatus.COMPLETED
+    assert documents[0].status is DocumentStatus.FAILED
 
 
 async def test_parse_failure_marks_the_document_failed(

@@ -311,23 +311,25 @@ class DocumentIngestionService:
         document.status = DocumentStatus.COMPLETED
         document.error_code = None
         document.error_message = None
+        document_id = document.id
 
         # One commit: pages and "completed" become visible together or not at all.
         try:
             await self._session.commit()
-        except Exception:
-            # Explicit rollback so no page rows and no "completed" status survive;
-            # the document stays in "processing", which is a truthful record of
-            # what happened rather than a false success.
+        except Exception as exc:
             await self._session.rollback()
             document.status = DocumentStatus.PROCESSING
             document.page_count = None
             document.extracted_character_count = None
             logger.error(
                 "document page persistence failed",
-                extra={"document_id": str(document.id), "page_count": parsed.page_count},
+                extra={"document_id": str(document_id), "page_count": parsed.page_count},
             )
-            raise
+            raise _ParseRejected(
+                ErrorCode.INTERNAL_ERROR,
+                "Document pages could not be saved. Check database availability; "
+                "this failed document requires operator recovery.",
+            ) from exc
         await self._session.refresh(document)
 
     async def _mark_failed(self, document: Document, code: ErrorCode, message: str) -> Document:
