@@ -502,3 +502,55 @@ On PR #42 exact head `ec8811613c36d1dc190a3f42bff0affc2cf483f4`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P6 — Reconcile roadmap with accepted v1.0 capability state
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #43 — `Progression: reconcile roadmap with accepted v1.0 capability state`  
+**PR:** #44  
+**Accepted PR exact head:** `23363ed4848fe304f4d8202007d4579837c863b6`  
+**Resulting main merge SHA:** `7230da037e9132f3ca074c7b6bddad14a8acb0fe`
+
+#### Changed
+
+- reconciled `docs/ROADMAP.md` so Phase 2C and Phase 5A are no longer presented as future/unimplemented despite being inside the frozen accepted v1.0 capability boundary;
+- described claim decomposition, append-only review, source navigation, and target/reference comparison only within the controlled-pilot/source-verifiable/non-legal boundary;
+- explicitly marked Phase 3B description retrieval/reranking as future/unverified;
+- preserved OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal determinations, benchmark-quality retrieval, and other frozen non-claims as unverified/out of scope;
+- no runtime, schema, evaluation, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #44 exact head `23363ed4848fe304f4d8202007d4579837c863b6`:
+
+- verified the PR changed exactly one file: `docs/ROADMAP.md`;
+- reviewed the exact-head patch against the current MASTER capability and non-claim sections;
+- narrowed an initially over-broad roadmap rewrite before acceptance so unrelated historical sections were not unnecessarily rewritten;
+- confirmed unresolved PR review threads: `0`;
+- confirmed the docs-only exact head triggered no GitHub Actions workflow under the repository's current path filters;
+- merged PR #44 with expected-head SHA guard;
+- confirmed Issue #43 auto-closed as `completed`.
+
+#### Verified
+
+- ROADMAP no longer marks accepted v1.0 claim decomposition/review or claim comparison as `next`;
+- ROADMAP now keeps the accepted comparison/decomposition/review/source-navigation claims inside the same controlled-pilot and non-legal boundary as the MASTER;
+- Phase 3B remains explicitly future/unverified rather than being promoted to completion;
+- PR scope remained one documentation file and no runtime PASS claim was created by this milestone;
+- frozen v1.0 evidence, limitations, non-claims, and tag target remain authoritative and unchanged.
+
+#### Not Verified
+
+- no new runtime suite or PR workflow executed for PR #44 because the docs-only change did not match current workflow path filters;
+- this milestone verifies repository/document consistency only, not new executable behavior;
+- no description retrieval/reranking, OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- roadmap text can become stale again if future accepted capability changes are not reconciled in the same lifecycle;
+- documentation consistency does not replace executable verification for future runtime changes;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
