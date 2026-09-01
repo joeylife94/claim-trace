@@ -148,6 +148,11 @@ class DocumentIngestionService:
             document = await self._store_and_register(payload, sha256)
         except _DuplicateRace as race:
             return self._duplicate(race.document, sha256)
+        except _RegisteredFailure as failure:
+            self._log_outcome(failure.document, started, error_code=failure.code)
+            raise DocumentIngestionError(
+                failure.code, failure.message, failure.document
+            ) from failure
 
         try:
             parsed = self._parse(document)
@@ -263,7 +268,25 @@ class DocumentIngestionService:
         await self._session.refresh(document)
 
         document.status = DocumentStatus.PROCESSING
-        await self._session.commit()
+        document_id = document.id
+        try:
+            await self._session.commit()
+        except Exception as exc:
+            logger.error(
+                "document processing transition failed",
+                extra={"document_id": str(document_id)},
+            )
+            failed = await self._mark_failed(
+                document,
+                ErrorCode.INTERNAL_ERROR,
+                "Document processing could not start. Check database availability; "
+                "this failed document requires operator recovery.",
+            )
+            raise _RegisteredFailure(
+                ErrorCode.INTERNAL_ERROR,
+                failed.error_message or "Document processing could not start.",
+                failed,
+            ) from exc
         await self._session.refresh(document)
         return document
 
@@ -377,6 +400,16 @@ class _ParseRejected(Exception):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+class _RegisteredFailure(Exception):
+    """Internal signal: a registered document failed before parsing could start."""
+
+    def __init__(self, code: ErrorCode, message: str, document: Document) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.document = document
 
 
 class _DuplicateRace(Exception):
