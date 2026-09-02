@@ -28,6 +28,11 @@ export async function uploadDocumentAction(
   const outcome = await uploadDocument(file);
 
   if (!outcome.ok) {
+    // A post-registration ingestion failure returns the persisted FAILED row.
+    // Refresh the list so the operator immediately sees the retry affordance.
+    if (outcome.document) {
+      revalidatePath("/documents");
+    }
     return {
       status: "error",
       message: outcome.detail,
