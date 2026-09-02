@@ -79,6 +79,7 @@ try {
   const recovered = afterBody.items.find((item) => item.original_filename === filename);
   assert.ok(recovered, "recovered document disappeared from real API listing");
   assert.equal(recovered.id, seeded.id);
+  assert.equal(recovered.sha256, seeded.sha256);
   assert.equal(recovered.status, "completed");
   assert.equal(recovered.error_code, null);
   assert.equal(recovered.error_message, null);
