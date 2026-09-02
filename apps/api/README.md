@@ -34,6 +34,7 @@ pulling every vector into Python to compare it.
 | GET | `/ready` | Readiness. `503` when PostgreSQL is unreachable. |
 | GET | `/api/v1/system/info` | Name, version, environment. |
 | POST | `/api/v1/documents` | Upload a PDF. `200` on a duplicate digest. |
+| POST | `/api/v1/documents/{id}/retry` | Retry one `failed` ingestion from its persisted original. `409` for any non-failed state. |
 | GET | `/api/v1/documents` | Documents, newest first. |
 | GET | `/api/v1/documents/{id}` | One document's ingestion record. |
 | GET | `/api/v1/documents/{id}/pages` | Extracted page text with locators. |
@@ -44,6 +45,13 @@ pulling every vector into Python to compare it.
 | GET | `/api/v1/documents/{id}/claims/index` | The most recent index run and its retrieval profile. |
 | POST | `/api/v1/search/claims` | Hybrid, dense, or lexical claim search. |
 | GET | `/docs` | OpenAPI UI (disabled when `ENVIRONMENT=production`). |
+
+Failed-ingestion retry is intentionally narrow and operator-driven. It reuses the
+existing document row, SHA-256 digest, storage key, and persisted original bytes,
+then re-enters the same parse/page-persistence path. The endpoint accepts no
+replacement file and does not add a worker, queue, retry schedule, OCR fallback,
+or automatic resilience policy. A successful retry clears the prior ingestion
+error metadata; a new failure remains terminal and traceable on the same document.
 
 Three lifecycles stay separate: claim parsing never modifies `documents.status`,
 and claim indexing modifies neither. A document with no detectable claims
