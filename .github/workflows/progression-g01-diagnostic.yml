@@ -1,0 +1,40 @@
+name: Progression G01 Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/api/evals/diagnose_g01.py"
+      - ".github/workflows/progression-g01-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          docker compose build api
+          docker compose up -d postgres
+          docker compose exec -T postgres sh -ec '
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then exit 0; fi
+              sleep 1
+            done
+            exit 1'
+
+      - name: Print synthetic g01 retrieval ranks
+        run: docker compose run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.diagnose_g01
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans || true
