@@ -113,7 +113,7 @@ verify-deterministic-regression: init ## Re-run and enforce public-safe determin
 		exit 1'
 	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake
 	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic
-	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/results/results.json").read_text()); assert r["profile"]["embedding_provider"] == "fake"; m=r["metrics"]; assert m["dense"]["recall_at_5"] == 0.7255; assert m["dense"]["mrr_at_10"] == 0.6725; assert m["lexical"]["recall_at_5"] == 0.9118; assert m["lexical"]["mrr_at_10"] == 0.9608; assert m["hybrid"]["recall_at_5"] == 0.8824; assert m["hybrid"]["mrr_at_10"] == 0.8431; g=json.loads(Path("evals/results/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] == 1.0; assert gm["answerability_accuracy"] == 1.0; assert gm["citation_resolution_rate"] == 1.0; assert gm["statement_citation_coverage"] == 1.0; assert gm["selection_recall"] == 0.8333; assert gm["end_to_end_success_rate"] == 0.875; assert gm["forbidden_citation_count"] == 0; assert all(item["refused"] for item in g["guardrails"]); print("deterministic fake-provider regression baseline: PASS")'
+	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/results/results.json").read_text()); assert r["profile"]["embedding_provider"] == "fake"; m=r["metrics"]; assert m["dense"]["recall_at_5"] == 0.7255; assert m["dense"]["mrr_at_10"] == 0.6725; assert m["lexical"]["recall_at_5"] == 0.9118; assert m["lexical"]["mrr_at_10"] == 0.9608; assert m["hybrid"]["recall_at_5"] == 0.8824; assert m["hybrid"]["mrr_at_10"] == 0.8407; g=json.loads(Path("evals/results/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] == 1.0; assert gm["answerability_accuracy"] == 1.0; assert gm["citation_resolution_rate"] == 1.0; assert gm["statement_citation_coverage"] == 1.0; assert gm["selection_recall"] == 1.0; assert gm["end_to_end_success_rate"] == 1.0; assert gm["forbidden_citation_count"] == 0; g01=next(item for item in g["per_case"] if item["id"] == "g01-single-storage"); assert g01["end_to_end_success"] is True; assert "collector#1" in g01["cited"]; assert not g01["forbidden_cited"]; assert all(item["end_to_end_success"] for item in g["per_case"]); assert all(item["refused"] for item in g["guardrails"]); print("deterministic fake-provider regression baseline: PASS")'
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check evals
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check evals
 
@@ -126,7 +126,7 @@ format: ## Format the backend (ruff)
 fmt-check: ## Verify backend formatting without writing
 	cd $(API_DIR) && uv run ruff format --check .
 
-web-install: ## Install web dependencies
+web-install: ## Install the web app dependencies
 	cd $(WEB_DIR) && npm install
 
 web-lint: ## Lint the web app (eslint)
