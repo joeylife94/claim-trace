@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RetryDocumentForm } from "@/components/RetryDocumentForm";
 import { UploadForm } from "@/components/UploadForm";
 import {
   formatBytes,
@@ -78,6 +79,7 @@ function DocumentRow({ document }: { document: DocumentRecord }) {
         {failed && document.error_message && (
           <span className="row-note">{document.error_message}</span>
         )}
+        {failed && <RetryDocumentForm documentId={document.id} />}
       </td>
       <td>
         <span className="badge" data-status={document.status}>

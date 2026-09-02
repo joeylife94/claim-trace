@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { UploadState } from "@/lib/action-state";
-import { uploadDocument } from "@/lib/documents";
+import type { RetryDocumentState, UploadState } from "@/lib/action-state";
+import { retryDocument, uploadDocument } from "@/lib/documents";
 
 /**
  * Handle the upload form.
@@ -48,4 +48,23 @@ export async function uploadDocumentAction(
         message: `Ingested ${outcome.document.page_count ?? 0} page(s).`,
         documentId: outcome.document.id,
       };
+}
+
+/** Retry one existing failed document through the accepted P8 API contract. */
+export async function retryDocumentAction(
+  documentId: string,
+  _previous: RetryDocumentState,
+): Promise<RetryDocumentState> {
+  const outcome = await retryDocument(documentId);
+
+  if (!outcome.ok) {
+    return { status: "error", message: outcome.detail };
+  }
+
+  revalidatePath("/documents");
+  revalidatePath(`/documents/${documentId}`);
+  return {
+    status: "success",
+    message: `Retry completed: ${outcome.document.page_count ?? 0} page(s) available.`,
+  };
 }
