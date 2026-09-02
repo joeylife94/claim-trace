@@ -19,7 +19,7 @@ function RetryButton() {
 
 export function RetryDocumentForm({ documentId }: { documentId: string }) {
   const action = retryDocumentAction.bind(null, documentId);
-  const [state, formAction] = useActionState<RetryDocumentState, void>(
+  const [state, formAction] = useActionState<RetryDocumentState, FormData>(
     action,
     INITIAL_RETRY_DOCUMENT_STATE,
   );

@@ -54,6 +54,7 @@ export async function uploadDocumentAction(
 export async function retryDocumentAction(
   documentId: string,
   _previous: RetryDocumentState,
+  _formData: FormData,
 ): Promise<RetryDocumentState> {
   const outcome = await retryDocument(documentId);
 

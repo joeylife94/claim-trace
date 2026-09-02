@@ -82,7 +82,7 @@ export type LLMGenerateState = {
   message: string;
   /** Present only on `status: "generated"`; null while idle or after an error. */
   response: import("@/lib/llm").GenerateResponse | null;
-  /** Echoed back so the operator keeps what they typed. */
+  /** Echoed back so the form keeps what the operator typed. */
   prompt: string;
   system: string;
 };
@@ -114,7 +114,7 @@ export type GroundedAnswerState = {
   message: string;
   /** Present only on `status: "answered"`; null while idle or after an error. */
   answer: import("@/lib/grounded").GroundedAnswer | null;
-  /** Echoed back so the user keeps what they asked after a submission. */
+  /** Echoed back so the form keeps what the user asked after a submission. */
   question: string;
   mode: import("@/lib/search").RetrievalMode;
   documentId: string;
