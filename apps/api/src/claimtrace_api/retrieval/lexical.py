@@ -135,10 +135,14 @@ class LexicalRetriever:
         tsquery_sql = " || ".join(
             f"plainto_tsquery('simple', :term_{position})" for position in range(len(terms))
         )
-        term_similarity_sql = "GREATEST(" + ", ".join(
-            f"word_similarity(:term_{position}, r.normalized_text)"
-            for position in range(len(terms))
-        ) + ")"
+        term_similarity_sql = (
+            "GREATEST("
+            + ", ".join(
+                f"word_similarity(:term_{position}, r.normalized_text)"
+                for position in range(len(terms))
+            )
+            + ")"
+        )
         parameters: dict[str, object] = {
             f"term_{position}": term for position, term in enumerate(terms)
         }
