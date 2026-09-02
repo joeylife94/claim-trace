@@ -16,6 +16,16 @@ export type UploadState = {
 
 export const INITIAL_UPLOAD_STATE: UploadState = { status: "idle", message: "" };
 
+export type RetryDocumentState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+export const INITIAL_RETRY_DOCUMENT_STATE: RetryDocumentState = {
+  status: "idle",
+  message: "",
+};
+
 export type ParseClaimsState = {
   status: "idle" | "parsed" | "already_parsed" | "error";
   message: string;

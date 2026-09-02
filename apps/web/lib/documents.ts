@@ -70,6 +70,10 @@ export type UploadOutcome =
   | { ok: true; document: DocumentRecord; duplicate: boolean }
   | { ok: false; detail: string; errorCode: string; document: DocumentRecord | null };
 
+export type RetryOutcome =
+  | { ok: true; document: DocumentRecord }
+  | { ok: false; detail: string; errorCode: string; document: DocumentRecord | null };
+
 /** Upload one PDF. Rejections are returned, not thrown: they are expected outcomes. */
 export async function uploadDocument(file: File): Promise<UploadOutcome> {
   const body = new FormData();
@@ -106,6 +110,38 @@ export async function uploadDocument(file: File): Promise<UploadOutcome> {
   return {
     ok: false,
     detail: error.detail ?? "The upload could not be processed.",
+    errorCode: error.error_code ?? String(response.status),
+    document: error.document ?? null,
+  };
+}
+
+/** Retry one terminal failed ingestion using the backend's persisted original. */
+export async function retryDocument(id: string): Promise<RetryOutcome> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/retry`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+  } catch {
+    return {
+      ok: false,
+      detail: "Could not reach the API. Check that the backend is running.",
+      errorCode: "api_unreachable",
+      document: null,
+    };
+  }
+
+  const payload: unknown = await response.json().catch(() => null);
+  if (response.ok) {
+    return { ok: true, document: payload as DocumentRecord };
+  }
+
+  const error = (payload ?? {}) as Partial<IngestionErrorBody>;
+  return {
+    ok: false,
+    detail: error.detail ?? "The document could not be retried.",
     errorCode: error.error_code ?? String(response.status),
     document: error.document ?? null,
   };
