@@ -95,7 +95,7 @@ async def verify() -> None:
             stored_pdf = storage.read(document.storage_key)
             assert hashlib.sha256(stored_pdf).hexdigest() == document.sha256
 
-        print("Verified same-row real retry completion with persisted original and no duplicate row.")
+        print("Verified same-row retry, persisted source, and no duplicate document.")
     finally:
         await engine.dispose()
 
