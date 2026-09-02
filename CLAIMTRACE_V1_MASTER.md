@@ -731,3 +731,59 @@ On PR #50 exact head `abf99f327f106fe5665feab02d7f8bcdfd259d99`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P10 — Verify failed-ingestion retry through the real web/API/PostgreSQL path
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #51 — `Progression: verify failed-ingestion retry through the real web/API/PostgreSQL path`  
+**PR:** #52  
+**Accepted PR exact head:** `198d322d8e0e66682e21f1715993c412e3074598`  
+**Resulting main merge SHA:** `c1f82bba3cfe2e899939ed300d456d6e60b1c428`
+
+#### Changed
+
+- added a bounded deterministic integration proof for the already accepted P8/P9 retry contract;
+- the verifier seeds one synthetic terminal `FAILED` document plus its persisted original into real PostgreSQL/storage, starts the real FastAPI service and Next.js UI, and drives the retry through Playwright;
+- retry therefore traverses the existing Documents UI → Next.js server action → real `POST /api/v1/documents/{id}/retry` endpoint → PostgreSQL/persisted storage path → UI refresh;
+- no product/runtime behavior, schema, retry policy, OCR support, retrieval/grounding/comparison/review semantics, Proof asset, metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #52 exact head `198d322d8e0e66682e21f1715993c412e3074598`, all 12 triggered PR workflows completed successfully:
+
+- `Progression Real Retry Integration` run `33648094953`: **GREEN**;
+- `General CI` run `33648095211`: **GREEN**;
+- `Progression Deterministic Regression` run `33648095178`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33648095118`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33648095251`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33648095219`: **GREEN**;
+- `V1-05 Human Review Verification` run `33648095233`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33648095069`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33648095145`: **GREEN**;
+- `V1-06 Expected Failure States` run `33648095249`: **GREEN**;
+- `V1-07 Final Evaluations` run `33648094907`: **GREEN**;
+- `V1-07 Proof Package` run `33648095338`: **GREEN**;
+- PR #52 was merged and Issue #51 closed as `completed`.
+
+#### Verified
+
+- the real-stack browser proof exercises the accepted operator retry through the actual web/server-action/API/PostgreSQL/storage boundary rather than a mock API;
+- successful retry keeps the same document ID, SHA-256 digest, and storage key, persists the expected source pages, clears failure metadata, reaches `COMPLETED`, and creates no duplicate document row;
+- exact-head CI/regression/proof workflows are GREEN;
+- this milestone adds integration evidence only and does not broaden the accepted retry feature contract;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- this controlled integration proof does not establish production infrastructure resilience or generalized retry reliability across arbitrary storage/network/database outages;
+- no background worker, automatic retry scheduling, durable retry queue, batch recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- retry still depends on a readable persisted original and a recoverable underlying failure condition;
+- the proof is deterministic controlled-pilot integration evidence, not a production resilience benchmark;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
