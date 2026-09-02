@@ -96,7 +96,7 @@ const web = spawn("npm", ["run", "dev", "--", "--hostname", "127.0.0.1", "--port
   cwd: new URL("..", import.meta.url),
   env: {
     ...process.env,
-    API_BASE_URL: `http://127.0.0.1:${apiPort}`,
+    API_INTERNAL_BASE_URL: `http://127.0.0.1:${apiPort}`,
     NEXT_TELEMETRY_DISABLED: "1",
   },
   stdio: ["ignore", "pipe", "pipe"],
@@ -150,7 +150,11 @@ try {
 
   // Second execution proves the same document refreshes to completed and loses failure UI.
   await failedRow.getByRole("button", { name: "Retry ingestion" }).click();
-  await page.getByRole("row").filter({ hasText: "recoverable-failure.pdf" }).getByText("completed", { exact: true }).waitFor();
+  await page
+    .getByRole("row")
+    .filter({ hasText: "recoverable-failure.pdf" })
+    .getByText("completed", { exact: true })
+    .waitFor();
   const refreshedRow = page.getByRole("row").filter({ hasText: "recoverable-failure.pdf" });
   assert.equal(await refreshedRow.getByRole("button", { name: "Retry ingestion" }).count(), 0);
   assert.doesNotMatch(await refreshedRow.textContent(), /Operator recovery is required/);
