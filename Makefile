@@ -126,7 +126,7 @@ format: ## Format the backend (ruff)
 fmt-check: ## Verify backend formatting without writing
 	cd $(API_DIR) && uv run ruff format --check .
 
-web-install: ## Install the web app dependencies
+web-install: ## Install web dependencies
 	cd $(WEB_DIR) && npm install
 
 web-lint: ## Lint the web app (eslint)
