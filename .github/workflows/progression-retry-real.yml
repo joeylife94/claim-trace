@@ -51,7 +51,7 @@ jobs:
       - name: Migrate and seed one recoverable failed document
         run: |
           docker compose run --rm api alembic upgrade head
-          docker compose run --rm api python tests/progression_retry_real_state.py seed
+          docker compose run --rm -e PYTHONPATH=/app api python tests/progression_retry_real_state.py seed
 
       - name: Start real FastAPI service
         run: docker compose up -d api
@@ -88,7 +88,7 @@ jobs:
         run: node e2e/progression-retry-real.mjs
 
       - name: Verify same PostgreSQL row and persisted original
-        run: docker compose run --rm api python tests/progression_retry_real_state.py verify
+        run: docker compose run --rm -e PYTHONPATH=/app api python tests/progression_retry_real_state.py verify
 
       - name: Capture diagnostics on failure
         if: failure()
