@@ -28,6 +28,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 _ERROR_RESPONSES: dict[int | str, dict[str, object]] = {
     HTTPStatus.BAD_REQUEST: {"model": IngestionErrorResponse},
     HTTPStatus.NOT_FOUND: {"model": IngestionErrorResponse},
+    HTTPStatus.CONFLICT: {"model": IngestionErrorResponse},
     HTTPStatus.REQUEST_ENTITY_TOO_LARGE: {"model": IngestionErrorResponse},
     HTTPStatus.UNSUPPORTED_MEDIA_TYPE: {"model": IngestionErrorResponse},
     HTTPStatus.UNPROCESSABLE_ENTITY: {"model": IngestionErrorResponse},
@@ -64,6 +65,27 @@ async def upload_document(
     if not result.created:
         # Idempotent re-upload: the caller already has this document.
         response.status_code = HTTPStatus.OK
+    return DocumentResponse.model_validate(result.document)
+
+
+@router.post(
+    "/{document_id}/retry",
+    response_model=DocumentResponse,
+    status_code=HTTPStatus.OK,
+    summary="Retry a failed ingestion",
+    description=(
+        "Retries one existing FAILED document from its persisted original bytes. "
+        "The existing document ID, digest, and storage object are reused; this "
+        "endpoint does not accept a replacement upload and does not schedule "
+        "background or automatic retries."
+    ),
+    responses=_ERROR_RESPONSES,
+)
+async def retry_document(
+    document_id: uuid.UUID,
+    service: IngestionServiceDep,
+) -> DocumentResponse:
+    result = await service.retry(document_id)
     return DocumentResponse.model_validate(result.document)
 
 
@@ -137,7 +159,6 @@ async def list_document_pages(
         .limit(limit)
         .offset(offset)
     )
-
     return DocumentPageListResponse(
         document_id=document_id,
         items=[_page_response(page) for page in result.scalars()],
