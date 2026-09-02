@@ -600,3 +600,70 @@ On PR #46 exact head `22788c56380da6d4379fc02ac7142c1865c212b6`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P8 — Retry failed ingestion from persisted original
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #47 — `Progression: retry failed ingestion from the persisted original`  
+**PR:** #48  
+**Accepted PR exact head:** `f7b813ac0863b547ebea9ec518d908b1cc6a4642`  
+**Resulting main merge SHA:** `df3c4df0d46d6e941b34e50ff421721afab69f82`
+
+#### Changed
+
+- added an explicit operator-driven `POST /api/v1/documents/{id}/retry` recovery endpoint for existing terminal `FAILED` documents;
+- retry reuses the existing document row, SHA-256 digest, storage key, and persisted original bytes and does not accept a replacement upload;
+- added stable `document_retry_not_allowed` / HTTP 409 behavior for non-failed document states;
+- retry transitions the existing row through `PROCESSING` and reuses the existing parser and atomic page-persistence path; successful retry clears prior ingestion error metadata;
+- added focused database-free and real-PostgreSQL integration coverage for same-row recovery, source page persistence, and non-failed rejection;
+- documented the operator-driven recovery boundary without claiming a worker, queue, automatic retry policy, OCR recovery, or production resilience;
+- no schema migration, retrieval/ranking, grounding/comparison/review semantics, Proof asset, frozen metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #48 exact head `f7b813ac0863b547ebea9ec518d908b1cc6a4642`:
+
+- `General CI` run `33634178261`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint/format: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33634178253`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33634178277`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33634178199`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33634178221`: **GREEN**;
+- `V1-05 Human Review Verification` run `33634178295`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33634178168`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33634178222`: **GREEN**;
+- `V1-06 Expected Failure States` run `33634178192`: **GREEN**;
+- `V1-07 Final Evaluations` run `33634178342`: **GREEN**;
+- `V1-07 Proof Package` run `33634178197`: **GREEN**;
+- reviewed the exact-head five-file diff and confirmed unresolved review threads: `0`;
+- merged PR #48 with expected-head SHA guard and confirmed Issue #47 auto-closed as `completed`.
+
+#### Verified
+
+- a supported stored text PDF can be retried from `FAILED` to `COMPLETED` without creating a second document row or accepting replacement bytes;
+- real-PostgreSQL integration coverage verifies one persisted document row, unchanged digest/storage key, cleared prior error metadata, and persisted source-verifiable page rows after successful retry;
+- non-failed retry is rejected with stable HTTP 409 / `document_retry_not_allowed` behavior;
+- retry remains explicit/operator-driven and reuses the existing ingestion parser/page-persistence contracts;
+- exact-head General CI and all ten additional triggered progression/v1 workflows are GREEN;
+- frozen v1.0 Proof baseline, Sections 6–7 limitations/non-claims, and reviewed tag boundary remain unchanged.
+
+#### Not Verified
+
+- no background worker, automatic retry scheduling, durable retry queue, or automatic outage recovery was added or verified;
+- no frontend/operator retry control was added; the accepted recovery primitive is API/service-level;
+- no exhaustive fault injection proves every concurrent storage/network/database outage during retry;
+- OCR/scanned-PDF recovery remains unsupported;
+- no new legal, benchmark-quality retrieval, real-local-model, auth/RBAC, multi-tenant, cloud/Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- retry depends on the persisted original still being readable and on the underlying storage/database fault being recovered;
+- the recovery action is operator-driven and API-level rather than a production job system;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
