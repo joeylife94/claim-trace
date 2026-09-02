@@ -1,0 +1,101 @@
+name: Progression Real Retry Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/api/tests/progression_retry_real_state.py"
+      - "apps/api/src/claimtrace_api/services/ingestion.py"
+      - "apps/api/src/claimtrace_api/api/v1/documents.py"
+      - "apps/web/app/documents/**"
+      - "apps/web/components/RetryDocumentForm.tsx"
+      - "apps/web/lib/documents.ts"
+      - "apps/web/e2e/progression-retry-real.mjs"
+      - "docker-compose.yml"
+      - ".github/workflows/progression-retry-real.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-retry-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Initialize deterministic local stack
+        run: |
+          cp .env.example .env
+          sed -i 's/^EMBEDDING_PROVIDER=.*/EMBEDDING_PROVIDER=fake/' .env
+
+      - name: Build API and start PostgreSQL
+        run: |
+          docker compose build api
+          docker compose up -d postgres
+
+      - name: Wait for PostgreSQL
+        run: |
+          docker compose exec -T postgres sh -ec '
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+                exit 0
+              fi
+              sleep 1
+            done
+            exit 1'
+
+      - name: Migrate and seed one recoverable failed document
+        run: |
+          docker compose run --rm api alembic upgrade head
+          docker compose run --rm api python tests/progression_retry_real_state.py seed
+
+      - name: Start real FastAPI service
+        run: docker compose up -d api
+
+      - name: Wait for real API
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS 'http://127.0.0.1:8000/api/v1/documents?limit=1&offset=0' >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose logs --no-color api
+          exit 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies and browser
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Retry through real Next action and FastAPI
+        working-directory: apps/web
+        env:
+          API_INTERNAL_BASE_URL: http://127.0.0.1:8000
+        run: node e2e/progression-retry-real.mjs
+
+      - name: Verify same PostgreSQL row and persisted original
+        run: docker compose run --rm api python tests/progression_retry_real_state.py verify
+
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps || true
+          docker compose logs --no-color api postgres || true
+
+      - name: Tear down integration runtime
+        if: always()
+        run: docker compose down -v --remove-orphans || true
