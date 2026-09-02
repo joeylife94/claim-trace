@@ -667,3 +667,67 @@ On PR #48 exact head `f7b813ac0863b547ebea9ec518d908b1cc6a4642`:
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P9 — Expose failed-ingestion retry in the Documents UI
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #49 — `Progression: expose failed-ingestion retry in the documents UI`  
+**PR:** #50  
+**Accepted PR exact head:** `abf99f327f106fe5665feab02d7f8bcdfd259d99`  
+**Resulting main merge SHA:** `c021428639df3756346abfee81759782558a2e5c`
+
+#### Changed
+
+- connected the accepted P8 `POST /api/v1/documents/{id}/retry` contract to the existing Documents UI through the existing Next.js server-side API boundary;
+- rendered `Retry ingestion` only for documents whose current state is `failed`;
+- successful retry revalidates the documents list and document detail so the same document can render as `completed` without its prior failure metadata or retry affordance;
+- retry failure surfaces only the API's client-safe `detail` and keeps the failed document retryable;
+- after review, post-registration upload failures that return a persisted failed document now revalidate `/documents`, so the retry affordance appears without a manual reload;
+- added a deterministic mock-API + actual Next server-action + Playwright verifier and a PR-visible `Progression Retry UI Verification` workflow;
+- no schema migration, backend retry semantics, automatic/background retry policy, OCR support, retrieval/grounding/comparison/review semantics, frozen Proof asset, metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #50 exact head `abf99f327f106fe5665feab02d7f8bcdfd259d99`:
+
+- `Progression Retry UI Verification` run `33641883472`: **GREEN**;
+- `General CI` run `33641883477`: **GREEN**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint/format: **PASS**;
+- `V1-03 Comparison UI Verification` run `33641883460`: **GREEN**;
+- `V1-05 Human Review Verification` run `33641883465`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33641883385`: **GREEN**;
+- `V1-07 Proof Package` run `33641883418`: **GREEN**;
+- the first retry-UI verifier run exposed an incorrect test-harness API environment variable; the harness was corrected to use the application's actual `API_INTERNAL_BASE_URL` contract;
+- the next verifier iteration exposed nondeterministic dev-server cleanup in the harness; it was narrowed to direct Next process spawning plus explicit mock-server connection cleanup before acceptance;
+- review found that a newly persisted failed upload could return before list revalidation; that same-gap defect was fixed on the accepted exact head and the thread resolved after exact-head verification;
+- PR #50 was squash-merged with an expected-head SHA guard and Issue #49 auto-closed as `completed`.
+
+#### Verified
+
+- deterministic browser evidence shows a failed document has the retry affordance while an already-completed document does not;
+- the first modeled retry failure displays only the client-safe API detail and leaves the same failed document retryable;
+- the second modeled retry succeeds on the same document, refreshes the list to `completed`, removes the prior failure message, and removes the retry affordance;
+- exact-head General CI plus the relevant existing comparison, review, whole-product, and Proof-package workflows are GREEN;
+- unresolved PR review threads at merge: `0`;
+- Issue #49 lifecycle completed through merge/close;
+- frozen v1.0 Proof boundary and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- the new browser verifier uses a deterministic mock API; it verifies the UI/server-action contract but does not establish production infrastructure resilience;
+- P8 remains the authoritative real-PostgreSQL evidence for same-row backend retry behavior;
+- no background worker, automatic retry scheduling, batch recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- retry remains operator-driven and depends on the persisted original plus the underlying storage/database condition being recoverable;
+- repeated retry can still fail safely when the underlying cause remains unresolved;
+- deterministic browser coverage does not replace production deployment/resilience evidence;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
