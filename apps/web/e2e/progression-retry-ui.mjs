@@ -92,15 +92,19 @@ await new Promise((resolve, reject) => {
   apiServer.listen(apiPort, "127.0.0.1", resolve);
 });
 
-const web = spawn("npm", ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", "13010"], {
-  cwd: new URL("..", import.meta.url),
-  env: {
-    ...process.env,
-    API_INTERNAL_BASE_URL: `http://127.0.0.1:${apiPort}`,
-    NEXT_TELEMETRY_DISABLED: "1",
+const web = spawn(
+  process.execPath,
+  ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", "13010"],
+  {
+    cwd: new URL("..", import.meta.url),
+    env: {
+      ...process.env,
+      API_INTERNAL_BASE_URL: `http://127.0.0.1:${apiPort}`,
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
   },
-  stdio: ["ignore", "pipe", "pipe"],
-});
+);
 
 let webLogs = "";
 web.stdout.on("data", (chunk) => {
@@ -164,5 +168,6 @@ try {
 } finally {
   if (browser) await browser.close();
   web.kill("SIGTERM");
+  apiServer.closeAllConnections();
   await new Promise((resolve) => apiServer.close(resolve));
 }
