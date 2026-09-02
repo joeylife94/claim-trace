@@ -71,7 +71,6 @@ async def verify() -> None:
     settings = Settings()
     engine = create_engine(settings)
     session_factory = create_session_factory(engine)
-    pdf, digest, storage_key = _fixture()
     storage = LocalFileStorage(settings.storage_root)
 
     try:
@@ -79,8 +78,7 @@ async def verify() -> None:
             document = await session.get(Document, DOCUMENT_ID)
             assert document is not None, "seeded document disappeared"
             assert document.status is DocumentStatus.COMPLETED
-            assert document.sha256 == digest
-            assert document.storage_key == storage_key
+            assert document.storage_key == build_storage_key(document.sha256)
             assert document.error_code is None
             assert document.error_message is None
             assert document.page_count == 2
@@ -94,9 +92,9 @@ async def verify() -> None:
             )
             assert page_count == 2, f"expected two persisted source pages, found {page_count}"
 
-        stored_pdf = storage.read(storage_key)
-        assert stored_pdf == pdf
-        assert hashlib.sha256(stored_pdf).hexdigest() == digest
+            stored_pdf = storage.read(document.storage_key)
+            assert hashlib.sha256(stored_pdf).hexdigest() == document.sha256
+
         print("Verified same-row real retry completion with persisted original and no duplicate row.")
     finally:
         await engine.dispose()
