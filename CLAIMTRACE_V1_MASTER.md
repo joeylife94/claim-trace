@@ -2,7 +2,7 @@
 
 > **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-09-01  
+**Last execution update:** 2026-09-02  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
@@ -549,6 +549,52 @@ On PR #44 exact head `23363ed4848fe304f4d8202007d4579837c863b6`:
 
 - roadmap text can become stale again if future accepted capability changes are not reconciled in the same lifecycle;
 - documentation consistency does not replace executable verification for future runtime changes;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P7 — Remove stale duplicate Phase 5 roadmap contract
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #45 — `Progression: remove stale duplicate Phase 5 roadmap contract`  
+**PR:** #46  
+**Accepted PR exact head:** `22788c56380da6d4379fc02ac7142c1865c212b6`  
+**Resulting main merge SHA:** `8bde1cd6a0d8532bbf34663f313bf4784b8992b7`
+
+#### Changed
+
+- removed only the stale duplicate generic `Phase 5 - Claim decomposition and evidence comparison` section from `docs/ROADMAP.md`;
+- preserved completed Phase 2C / Phase 5A wording, Phase 3B future/unverified status, Phase 6, the controlled-pilot boundary, frozen non-claims, Proof evidence, metrics, and `v1.0-proof`;
+- no runtime, schema, evaluation corpus, Proof asset, metric, or legal/product capability changed.
+
+#### Actually Executed
+
+On PR #46 exact head `22788c56380da6d4379fc02ac7142c1865c212b6`:
+
+- confirmed the PR changed exactly one file, `docs/ROADMAP.md`, with `+0/-22`;
+- reviewed the merged commit patch and verified it removes only the stale duplicate Phase 5 block;
+- confirmed PR #46 merged to `main` as `8bde1cd6a0d8532bbf34663f313bf4784b8992b7`;
+- confirmed Issue #45 closed as `completed`;
+- no runtime/evaluation workflow evidence was promoted from this docs-only change.
+
+#### Verified
+
+- ROADMAP no longer represents accepted decomposition/comparison capability both as completed and as a second future generic Phase 5 contract;
+- PR scope remained documentation-only and bounded to the stale duplicate block;
+- Issue #45 lifecycle is complete through merge/close;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- no new runtime or evaluation PASS is claimed from PR #46;
+- no description retrieval/reranking, OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified;
+- documentation consistency does not establish new executable behavior.
+
+#### Remaining Risks
+
+- roadmap/documentation can become stale again if future accepted changes are not reconciled in the same lifecycle;
 - all frozen v1.0 limitations and non-claims remain in force.
 
 #### Exact Next Action
