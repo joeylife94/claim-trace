@@ -787,3 +787,61 @@ On PR #52 exact head `198d322d8e0e66682e21f1715993c412e3074598`, all 12 triggere
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P11 — Recover required evidence for the known g01 storage question
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #53 — `Progression: recover required evidence for the known g01 storage question`  
+**PR:** #54 — `Diagnose and recover g01 required evidence`  
+**Accepted PR exact head:** `3ec421b6b65ae4927f758ae61d502cdae2b4086b`  
+**Resulting main merge SHA:** `17f09cc0827df8cee75cca15f32208c43c1dd866`
+
+#### Changed
+
+- added a conservative term-level `pg_trgm` eligibility fallback for multi-word lexical queries while preserving the existing whole-query ranking score;
+- term-level similarity can admit a locally strong Korean token match into the candidate set, but it does not add a second ranking score scale;
+- the accepted deterministic regression now pins the previously weak `g01-single-storage` case to include required evidence `collector#1` without changing the committed g01 question or label;
+- deterministic grounded selection recall and end-to-end success are pinned at `1.0`, with forbidden cross-document citations remaining `0`;
+- no case-ID special handling, hard-coded evidence injection, schema change, legal capability, Proof asset, frozen v1.0 metric rewrite, or `v1.0-proof` movement was introduced.
+
+#### Actually Executed
+
+On PR #54 exact head `3ec421b6b65ae4927f758ae61d502cdae2b4086b`, all 11 triggered PR workflows completed successfully:
+
+- `Progression Deterministic Regression` run `33673845406`: **GREEN**;
+- `General CI` run `33673845405`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33673845449`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33673845393`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33673845463`: **GREEN**;
+- `V1-05 Human Review Verification` run `33673845385`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33673845421`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33673845555`: **GREEN**;
+- `V1-06 Expected Failure States` run `33673845455`: **GREEN**;
+- `V1-07 Final Evaluations` run `33673845434`: **GREEN**;
+- `V1-07 Proof Package` run `33673845395`: **GREEN**;
+- PR #54 was squash-merged and Issue #53 closed as `completed`.
+
+#### Verified
+
+- exact-head deterministic execution requires `g01-single-storage` to succeed end-to-end and cite `collector#1`;
+- all committed grounded cases are required to remain end-to-end successful under the accepted deterministic fake-provider gate;
+- deterministic grounded selection recall is `1.0`, end-to-end success is `1.0`, and forbidden citation count is `0`;
+- retrieval correction is general query-term eligibility logic rather than case-specific behavior;
+- all triggered exact-head CI, regression, review, failure-state, evaluation, and Proof-package workflows are GREEN;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- deterministic fake-provider success is regression/reproducibility evidence, not benchmark-quality general Korean patent retrieval accuracy;
+- the term-level trigram fallback is not a Korean morphological analyser and does not establish synonym resolution or general semantic retrieval quality;
+- no new real-local-model evaluation, legal conclusion, OCR support, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, or security certification was added or verified.
+
+#### Remaining Risks
+
+- term-level substring/trigram eligibility can admit coincidental matches; the existing ranking/fusion path remains responsible for final ordering;
+- the synthetic grounded corpus remains small and regression-oriented;
+- frozen Section 6 non-claims and controlled-pilot limitations remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
