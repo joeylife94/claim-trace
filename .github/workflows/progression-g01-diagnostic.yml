@@ -32,8 +32,17 @@ jobs:
             done
             exit 1'
 
-      - name: Print synthetic g01 retrieval ranks
-        run: docker compose run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.diagnose_g01
+      - name: Capture synthetic g01 retrieval ranks
+        run: docker compose run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.diagnose_g01 | tee g01-diagnostic.txt
+
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g01-diagnostic-${{ github.event.pull_request.head.sha }}
+          path: g01-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 2
 
       - name: Tear down
         if: always()
