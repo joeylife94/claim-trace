@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/api/evals/diagnose_g01.py"
+      - "apps/api/src/claimtrace_api/retrieval/lexical.py"
       - ".github/workflows/progression-g01-diagnostic.yml"
 
 permissions:
