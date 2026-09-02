@@ -12,6 +12,8 @@ Order of operations, and why:
 4. Parse, then write every page and the ``completed`` status in a single
    transaction, so a partial page set can never be presented as a finished
    document.
+5. A failed document can be retried explicitly from its persisted original. Retry
+   preserves document identity and never accepts replacement bytes.
 
 Parsing is synchronous. For a 20 MB text PDF this is a sub-second operation, and
 a queue would add operational surface without buying anything at this stage.
@@ -110,7 +112,7 @@ async def read_upload(
 
 
 class DocumentIngestionService:
-    """Coordinates validation, storage, parsing, and persistence."""
+    """Coordinates validation, storage, parsing, persistence, and explicit retry."""
 
     def __init__(
         self,
@@ -154,6 +156,57 @@ class DocumentIngestionService:
                 failure.code, failure.message, failure.document
             ) from failure
 
+        return await self._parse_and_persist(document, started=started, created=True)
+
+    async def retry(self, document_id: uuid.UUID) -> IngestionResult:
+        """Retry one terminal failed ingestion from its persisted original.
+
+        Retry is deliberately operator-driven. It reuses the existing document
+        identity, digest, storage key, and original bytes; no replacement upload,
+        background queue, or automatic retry policy is introduced here.
+        """
+        started = time.perf_counter()
+        document = await self._session.get(Document, document_id, with_for_update=True)
+        if document is None:
+            raise AppError(ErrorCode.DOCUMENT_NOT_FOUND, "Document not found.")
+        if document.status is not DocumentStatus.FAILED:
+            raise AppError(
+                ErrorCode.DOCUMENT_RETRY_NOT_ALLOWED,
+                "Only a failed document can be retried.",
+            )
+
+        document.status = DocumentStatus.PROCESSING
+        document.error_code = None
+        document.error_message = None
+        document.page_count = None
+        document.extracted_character_count = None
+        try:
+            await self._session.commit()
+        except Exception as exc:
+            await self._session.rollback()
+            failed = await self._mark_failed(
+                document,
+                ErrorCode.INTERNAL_ERROR,
+                "Document retry could not start. Check database availability; "
+                "this failed document still requires operator recovery.",
+            )
+            self._log_outcome(failed, started, error_code=ErrorCode.INTERNAL_ERROR)
+            raise DocumentIngestionError(
+                ErrorCode.INTERNAL_ERROR,
+                failed.error_message or "Document retry could not start.",
+                failed,
+            ) from exc
+        await self._session.refresh(document)
+
+        return await self._parse_and_persist(document, started=started, created=False)
+
+    async def _parse_and_persist(
+        self,
+        document: Document,
+        *,
+        started: float,
+        created: bool,
+    ) -> IngestionResult:
         try:
             parsed = self._parse(document)
             await self._persist_pages(document, parsed)
@@ -163,7 +216,7 @@ class DocumentIngestionService:
             raise DocumentIngestionError(rejected.code, rejected.message, failed) from rejected
 
         self._log_outcome(document, started)
-        return IngestionResult(document=document, created=True)
+        return IngestionResult(document=document, created=created)
 
     def _duplicate(self, existing: Document, sha256: str) -> IngestionResult:
         logger.info(
@@ -297,7 +350,7 @@ class DocumentIngestionService:
             raise _ParseRejected(
                 ErrorCode.STORAGE_FAILURE,
                 "The stored file could not be read. Check storage availability; "
-                "this failed document requires operator recovery before re-upload.",
+                "retry this failed document after storage recovery.",
             ) from exc
 
         try:

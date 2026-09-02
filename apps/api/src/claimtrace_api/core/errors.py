@@ -22,6 +22,7 @@ class ErrorCode(StrEnum):
     ENCRYPTED_PDF = "encrypted_pdf"
     NO_EXTRACTABLE_TEXT = "no_extractable_text"
     DOCUMENT_NOT_COMPLETED = "document_not_completed"
+    DOCUMENT_RETRY_NOT_ALLOWED = "document_retry_not_allowed"
     CLAIM_PARSE_FAILED = "claim_parse_failed"
     CLAIM_PARSE_NOT_FOUND = "claim_parse_not_found"
     CLAIM_NOT_FOUND = "claim_not_found"
@@ -67,6 +68,7 @@ ERROR_STATUS: dict[ErrorCode, HTTPStatus] = {
     ErrorCode.ENCRYPTED_PDF: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.NO_EXTRACTABLE_TEXT: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.DOCUMENT_NOT_COMPLETED: HTTPStatus.CONFLICT,
+    ErrorCode.DOCUMENT_RETRY_NOT_ALLOWED: HTTPStatus.CONFLICT,
     ErrorCode.CLAIM_PARSE_FAILED: HTTPStatus.UNPROCESSABLE_ENTITY,
     ErrorCode.CLAIM_PARSE_NOT_FOUND: HTTPStatus.NOT_FOUND,
     ErrorCode.CLAIM_NOT_FOUND: HTTPStatus.NOT_FOUND,
