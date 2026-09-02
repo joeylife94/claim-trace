@@ -9,21 +9,28 @@ design: an agglutinative language attaches particles to nouns, so the corpus
 contains ``센서에서`` and ``데이터를`` while a user types ``센서`` and ``데이터``.
 Full-text search sees those as unrelated tokens and matches nothing.
 
-So the lexical channel is deliberately two channels feeding one score:
+So the lexical channel is deliberately several signals feeding one score:
 
 * **Full-text search** over ``to_tsvector('simple', normalized_text)``. Precise
   when a whole word matches exactly - which in practice means numbers, units,
   Latin technical terms, and the ``제1항`` reference forms.
-* **Trigram word similarity** from ``pg_trgm``. This is what recovers Korean
-  compounds and particle-suffixed forms: ``word_similarity('센서', …)`` finds the
-  best-matching window inside the claim rather than comparing whole strings, so a
-  short query inside a long claim scores well.
+* **Whole-query trigram word similarity** from ``pg_trgm``. This recovers Korean
+  compounds and near-substrings when the user's short query appears inside a
+  much longer claim.
+* **Term-level trigram eligibility**. A multi-word Korean question can have poor
+  whole-query similarity even when one important noun differs from the claim by
+  only a particle (for example ``측정값은`` vs ``측정값을``). Each normalised query
+  term therefore gets the same bounded trigram threshold as an additional way
+  to enter the candidate set. Ranking still uses the existing whole-query score;
+  this fallback only prevents a locally strong Korean token match from being
+  discarded before fusion can consider it.
 
-Neither is a substitute for the other, and neither should be oversold. This is
-substring and token matching, not morphology: it cannot resolve a synonym, and it
-will match a coincidental substring. Real Korean lexical search wants an analyser
-such as mecab-ko behind a custom text-search configuration, which is a database
-provisioning decision rather than an application change.
+Neither is a substitute for a morphological analyser, and none should be
+oversold. This is substring and token matching, not morphology: it cannot
+resolve a synonym, and it can match a coincidental substring. Real Korean
+lexical search wants an analyser such as mecab-ko behind a custom text-search
+configuration, which is a database provisioning decision rather than an
+application change.
 
 ## Determinism and safety
 
@@ -37,7 +44,8 @@ its argument as plain text: a term containing ``&``, ``|``, ``!`` or a bracket i
 data, not tsquery syntax, and cannot raise a syntax error mid-request.
 
 Ranking is a fixed weighted sum of three bounded components, so the same corpus
-and query always produce the same order.
+and query always produce the same order. Term-level trigram checks affect only
+candidate eligibility and do not introduce a second score scale.
 """
 
 from __future__ import annotations
@@ -122,11 +130,16 @@ class LexicalRetriever:
         tsquery_sql = " || ".join(
             f"plainto_tsquery('simple', :term_{position})" for position in range(len(terms))
         )
+        term_similarity_sql = "GREATEST(" + ", ".join(
+            f"word_similarity(:term_{position}, r.normalized_text)"
+            for position in range(len(terms))
+        ) + ")"
         parameters: dict[str, object] = {
             f"term_{position}": term for position, term in enumerate(terms)
         }
         parameters["query_text"] = normalized_query
         parameters["like_pattern"] = f"%{_escape_like(normalized_query)}%"
+        parameters["term_similarity_threshold"] = _WORD_SIMILARITY_THRESHOLD
         parameters["limit"] = limit
 
         # The `<%` operator reads its threshold from a session GUC whose default
@@ -163,10 +176,15 @@ class LexicalRetriever:
                     r.search_vector @@ q.tsq
                     -- Verbatim substring. GIN trigram index, via LIKE '%…%'.
                  OR r.normalized_text LIKE :like_pattern ESCAPE '{_LIKE_ESCAPE}'
-                    -- Approximate substring. Also the trigram index, and the
-                    -- only branch that can match a Korean compound written
-                    -- without the spaces the claim happens to use.
+                    -- Approximate whole-query substring. Also uses the trigram
+                    -- index and recovers Korean compounds written with different
+                    -- spacing.
                  OR :query_text <% r.normalized_text
+                    -- A multi-word Korean question can fail the whole-query
+                    -- threshold even when one important term differs from the
+                    -- claim only by a particle. Admit that record so the normal
+                    -- score and rank fusion can decide whether it survives.
+                 OR ({term_similarity_sql}) >= :term_similarity_threshold
               )
             ORDER BY score DESC, r.claim_number ASC, r.claim_id ASC
             LIMIT :limit
