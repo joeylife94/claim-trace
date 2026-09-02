@@ -20,8 +20,8 @@ So the lexical channel is deliberately several signals feeding one score:
 * **Term-level trigram eligibility**. A multi-word Korean question can have poor
   whole-query similarity even when one important noun differs from the claim by
   only a particle (for example ``측정값은`` vs ``측정값을``). Each normalised query
-  term therefore gets the same bounded trigram threshold as an additional way
-  to enter the candidate set. Ranking still uses the existing whole-query score;
+  term therefore gets a conservative trigram threshold as an additional way to
+  enter the candidate set. Ranking still uses the existing whole-query score;
   this fallback only prevents a locally strong Korean token match from being
   discarded before fusion can consider it.
 
@@ -81,7 +81,7 @@ _WEIGHT_PHRASE = 0.25
 #: depending on document length.
 _TS_RANK_NORMALIZATION = 32
 
-#: Minimum ``word_similarity`` for a claim to become a trigram candidate.
+#: Minimum whole-query ``word_similarity`` for a claim to become a trigram candidate.
 #:
 #: pg_trgm's default is 0.6, which is far too strict for the case this channel
 #: exists to handle. Measured against this corpus, the query ``환경감시모듈``
@@ -91,10 +91,15 @@ _TS_RANK_NORMALIZATION = 32
 #: 0.6 would reject exactly the match the trigram channel was added for.
 #:
 #: 0.25 is set just below that measurement rather than at some round number, and
-#: being permissive costs little: candidates are still ranked by the weighted
-#: score below and clipped to the caller's limit, so a weak trigram hit that no
-#: other signal supports lands far down the list.
+#: being permissive costs little because it is applied to the whole query and
+#: candidates are still ranked by the weighted score below.
 _WORD_SIMILARITY_THRESHOLD = 0.25
+
+#: Term-level fallback is deliberately stricter than the whole-query gate. Its
+#: job is only to recover a locally near-identical token such as a Korean noun
+#: carrying a different particle; using the permissive compound threshold here
+#: admits too many unrelated multi-word-query candidates and disturbs fusion.
+_TERM_WORD_SIMILARITY_THRESHOLD = 0.60
 
 _LIKE_ESCAPE = "\\"
 
@@ -139,7 +144,7 @@ class LexicalRetriever:
         }
         parameters["query_text"] = normalized_query
         parameters["like_pattern"] = f"%{_escape_like(normalized_query)}%"
-        parameters["term_similarity_threshold"] = _WORD_SIMILARITY_THRESHOLD
+        parameters["term_similarity_threshold"] = _TERM_WORD_SIMILARITY_THRESHOLD
         parameters["limit"] = limit
 
         # The `<%` operator reads its threshold from a session GUC whose default
@@ -182,8 +187,9 @@ class LexicalRetriever:
                  OR :query_text <% r.normalized_text
                     -- A multi-word Korean question can fail the whole-query
                     -- threshold even when one important term differs from the
-                    -- claim only by a particle. Admit that record so the normal
-                    -- score and rank fusion can decide whether it survives.
+                    -- claim only by a particle. Admit only a strong term-level
+                    -- match so the normal score and rank fusion can decide
+                    -- whether it survives without flooding the candidate set.
                  OR ({term_similarity_sql}) >= :term_similarity_threshold
               )
             ORDER BY score DESC, r.claim_number ASC, r.claim_id ASC
