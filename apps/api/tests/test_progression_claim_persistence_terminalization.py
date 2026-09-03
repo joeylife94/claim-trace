@@ -42,6 +42,9 @@ async def test_recoverable_graph_commit_failure_terminalizes_same_result() -> No
     assert session.commits == 3
     assert session.rollbacks == 1
 
+    # The fake query layer does not automatically expose newly committed rows.
+    # Point it at the recovered row so the retry exercises real in-place reuse.
+    session._existing = failed
     outcome = await service.parse(document)
     assert outcome.created is True
     assert outcome.result is failed
