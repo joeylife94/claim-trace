@@ -845,3 +845,61 @@ On PR #54 exact head `3ec421b6b65ae4927f758ae61d502cdae2b4086b`, all 11 triggere
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P12 — Bound Korean term-level lexical fallback with negative regression coverage
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #55 — `Progression: bound Korean term-level lexical fallback with negative regression coverage`  
+**PR:** #56 — `Bound Korean term-level lexical fallback`  
+**Accepted PR exact head:** `b2f046928300c50ebada8ab219fe9a9a7ed4750e`  
+**Resulting main merge SHA:** `07f4857ec43e2d2786528f80b75f28dc2dbabf49`
+
+#### Changed
+
+- added focused real-PostgreSQL regression coverage for the P11 term-level `pg_trgm` eligibility fallback;
+- the positive synthetic case proves a Korean particle-variant term can meet the accepted `0.60` term-level eligibility threshold while whole-query/FTS/phrase gates remain below eligibility;
+- the negative synthetic case proves an unrelated weak term below `0.60` does not admit the same candidate through the fallback;
+- kept the existing deterministic g01 acceptance gate and P11 runtime/scoring behavior unchanged;
+- no retrieval runtime code, ranking score, threshold, corpus label, schema, legal capability, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #56 exact head `b2f046928300c50ebada8ab219fe9a9a7ed4750e`, all 11 triggered PR workflows completed successfully:
+
+- `V1-06 Expected Failure States` run `33702436593`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33702436511`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33702436447`: **GREEN**;
+- `Progression Deterministic Regression` run `33702436528`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33702436444`: **GREEN**;
+- `V1-07 Final Evaluations` run `33702436578`: **GREEN**;
+- `General CI` run `33702436449`: **GREEN**;
+- `V1-05 Human Review Verification` run `33702436450`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33702436517`: **GREEN**;
+- `V1-07 Proof Package` run `33702436489`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33702436512`: **GREEN**;
+- PR #56 was squash-merged and Issue #55 closed as `completed`.
+
+#### Verified
+
+- the P11 term-level fallback now has executable positive and negative PostgreSQL boundary coverage rather than only the g01 success regression;
+- the negative case prevents a weak unrelated Korean term from being treated as eligible solely through the term-level fallback at the accepted threshold;
+- the existing g01 deterministic acceptance remains GREEN on the accepted exact head;
+- exact-head General CI, deterministic regression, comparison, review, clean-start, whole-product, failure-state, final-evaluation, and Proof-package workflows are GREEN;
+- PR #56 changed one test file only (`+109/-0`), so accepted runtime retrieval/scoring/threshold behavior remained unchanged;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- the focused positive/negative cases do not establish general Korean morphology, synonym handling, semantic retrieval quality, or benchmark-quality patent retrieval performance;
+- the `0.60` trigram threshold is preserved as an accepted regression boundary, not proven globally optimal;
+- no new real-local-model evaluation, legal conclusion, OCR support, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, or security certification was added or verified.
+
+#### Remaining Risks
+
+- term-level trigram matching remains a bounded lexical heuristic and can still have corpus-dependent false positives/negatives outside the committed regression cases;
+- the synthetic regression corpora remain intentionally small and are not a general patent-search benchmark;
+- frozen Section 6 non-claims and controlled-pilot limitations remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
