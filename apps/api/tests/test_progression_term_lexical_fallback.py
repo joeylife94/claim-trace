@@ -31,9 +31,10 @@ def _sensor_claim_one_signals(
 ) -> dict[str, object]:
     """Measure the exact lexical gates against synthetic sensor claim 1."""
     with sync_engine.connect() as connection:
-        row = connection.execute(
-            sa.text(
-                """
+        row = (
+            connection.execute(
+                sa.text(
+                    """
                 SELECT
                     r.normalized_text,
                     word_similarity(:query, r.normalized_text) AS whole_similarity,
@@ -45,13 +46,16 @@ def _sensor_claim_one_signals(
                   AND r.normalized_text LIKE '%측정값%'
                 LIMIT 1
                 """
-            ),
-            {
-                "query": query,
-                "term": term,
-                "phrase_pattern": f"%{query}%",
-            },
-        ).mappings().one()
+                ),
+                {
+                    "query": query,
+                    "term": term,
+                    "phrase_pattern": f"%{query}%",
+                },
+            )
+            .mappings()
+            .one()
+        )
     return dict(row)
 
 
