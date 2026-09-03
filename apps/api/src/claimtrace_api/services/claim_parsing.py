@@ -86,16 +86,8 @@ class ClaimParsingService:
         self._session = session
         self._parser = parser
 
-    # -- commands -----------------------------------------------------------
-
     async def parse(self, document: Document) -> ClaimParsingOutcome:
-        """Parse a document's claims, or return the existing result.
-
-        Raises:
-            AppError: the document has not finished ingestion.
-            ClaimParsingFailed: parsing failed; the failed result is persisted
-                and attached to the exception.
-        """
+        """Parse a document's claims, or return the existing result."""
         if document.status is not DocumentStatus.COMPLETED:
             raise AppError(
                 ErrorCode.DOCUMENT_NOT_COMPLETED,
@@ -104,7 +96,6 @@ class ClaimParsingService:
 
         started = time.perf_counter()
         existing = await self._find_result(document.id)
-
         if existing is not None and existing.status in _TERMINAL_SUCCESS:
             logger.info(
                 "claim parsing skipped: existing result",
@@ -118,11 +109,7 @@ class ClaimParsingService:
             )
             return ClaimParsingOutcome(result=existing, created=False)
 
-        # A failed or abandoned 'processing' record is retried in place: the
-        # unique constraint means there is one row per parser version, and
-        # reusing it keeps the attempt history from growing without bound.
         result = await self._begin(document, existing)
-
         pages = await self._load_pages(document.id)
         try:
             parsed = self._parser.parse(pages)
@@ -153,14 +140,11 @@ class ClaimParsingService:
         )
         return ClaimParsingOutcome(result=result, created=True)
 
-    # -- queries ------------------------------------------------------------
-
     async def snapshot(self, document_id: uuid.UUID) -> ClaimSetSnapshot | None:
         """Load the current parse result with its claims, spans, and edges."""
         result = await self._find_result(document_id, any_parser=True)
         if result is None:
             return None
-
         claims = list(
             (
                 await self._session.execute(
@@ -173,7 +157,6 @@ class ClaimParsingService:
             .scalars()
             .all()
         )
-
         numbers = {claim.id: claim.claim_number for claim in claims}
         edges = (
             (
@@ -184,7 +167,6 @@ class ClaimParsingService:
             .scalars()
             .all()
         )
-
         dependencies: dict[uuid.UUID, list[int]] = {claim.id: [] for claim in claims}
         for edge in edges:
             referenced = numbers.get(edge.referenced_claim_id)
@@ -192,15 +174,11 @@ class ClaimParsingService:
                 dependencies[edge.dependent_claim_id].append(referenced)
         for values in dependencies.values():
             values.sort()
-
         return ClaimSetSnapshot(result=result, claims=claims, dependencies=dependencies)
-
-    # -- internals ----------------------------------------------------------
 
     async def _find_result(
         self, document_id: uuid.UUID, *, any_parser: bool = False
     ) -> ClaimParseResult | None:
-        """Find this parser version's result, or the most recent of any version."""
         statement = select(ClaimParseResult).where(ClaimParseResult.document_id == document_id)
         if any_parser:
             statement = statement.order_by(ClaimParseResult.created_at.desc()).limit(1)
@@ -214,7 +192,6 @@ class ClaimParsingService:
     async def _begin(
         self, document: Document, existing: ClaimParseResult | None
     ) -> ClaimParseResult:
-        """Put the result into ``processing`` and commit it before parsing starts."""
         if existing is None:
             result = ClaimParseResult(
                 id=uuid.uuid4(),
@@ -226,10 +203,8 @@ class ClaimParsingService:
             self._session.add(result)
         else:
             result = existing
-            # Clear the previous attempt's graph; spans and edges cascade.
             await self._session.execute(delete(Claim).where(Claim.parse_result_id == result.id))
             result.status = ClaimParseStatus.PROCESSING
-
         result.claim_count = 0
         result.warning_count = 0
         result.warnings = []
@@ -237,7 +212,6 @@ class ClaimParsingService:
         result.error_message = None
         result.started_at = datetime.now(tz=UTC)
         result.completed_at = None
-
         await self._session.commit()
         await self._session.refresh(result)
         return result
@@ -260,9 +234,8 @@ class ClaimParsingService:
         ]
 
     async def _persist(self, result: ClaimParseResult, parsed: ParsedClaimSet) -> None:
-        """Write the whole graph and the terminal status in one transaction."""
+        """Write the whole graph and terminal status, or persist a safe terminal failure."""
         claims_by_number: dict[int, Claim] = {}
-
         for parsed_claim in parsed.claims:
             claim = Claim(
                 id=uuid.uuid4(),
@@ -273,7 +246,6 @@ class ClaimParsingService:
             )
             self._session.add(claim)
             claims_by_number[parsed_claim.claim_number] = claim
-
             for span in parsed_claim.spans:
                 self._session.add(
                     ClaimSpan(
@@ -285,16 +257,12 @@ class ClaimParsingService:
                         end_char=span.end_char,
                     )
                 )
-
-        # Flush so the composite foreign keys on claim_dependencies see the rows.
-        # Still one transaction: nothing is visible to another session yet.
         await self._session.flush()
-
         for parsed_claim in parsed.claims:
             dependent = claims_by_number[parsed_claim.claim_number]
             for referenced_number in parsed_claim.dependencies:
                 referenced = claims_by_number.get(referenced_number)
-                if referenced is None:  # pragma: no cover - parser resolves these first
+                if referenced is None:
                     continue
                 self._session.add(
                     ClaimDependency(
@@ -304,7 +272,6 @@ class ClaimParsingService:
                         referenced_claim_id=referenced.id,
                     )
                 )
-
         result.claim_count = parsed.claim_count
         result.warning_count = parsed.warning_count
         result.warnings = [warning.as_dict() for warning in parsed.warnings]
@@ -312,28 +279,32 @@ class ClaimParsingService:
             ClaimParseStatus.NO_CLAIMS_FOUND if parsed.is_empty else ClaimParseStatus.COMPLETED
         )
         result.completed_at = datetime.now(tz=UTC)
-
+        result_id = result.id
         try:
             await self._session.commit()
-        except Exception:
-            # No claims, no spans, no edges, and the status stays 'processing' -
-            # a truthful record of an attempt that did not finish. The in-memory
-            # object is reset too, so a caller holding it cannot read a
-            # 'completed' status that was never committed.
+        except Exception as exc:
             await self._session.rollback()
-            result.status = ClaimParseStatus.PROCESSING
+            result.status = ClaimParseStatus.FAILED
+            result.error_code = ErrorCode.INTERNAL_ERROR.value
+            result.error_message = "Claim parsing failed while saving the claim graph."
             result.claim_count = 0
             result.warning_count = 0
             result.warnings = []
-            result.completed_at = None
+            result.completed_at = datetime.now(tz=UTC)
             logger.error(
                 "claim graph persistence failed",
-                extra={
-                    "parse_result_id": str(result.id),
-                    "claim_count": parsed.claim_count,
-                },
+                extra={"parse_result_id": str(result_id), "claim_count": parsed.claim_count},
             )
-            raise
+            try:
+                await self._session.commit()
+            except Exception:
+                result.status = ClaimParseStatus.PROCESSING
+                result.error_code = None
+                result.error_message = None
+                result.completed_at = None
+                raise
+            await self._session.refresh(result)
+            raise ClaimParsingFailed(result.error_message or "", result) from exc
         await self._session.refresh(result)
 
     async def _mark_failed(
@@ -359,7 +330,6 @@ class ClaimParsingService:
         page_count: int,
         dependency_count: int = 0,
     ) -> None:
-        """One structured event per parse. Never includes claim text."""
         logger.info(
             "claim parsing finished",
             extra={
