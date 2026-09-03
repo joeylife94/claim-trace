@@ -279,6 +279,7 @@ class ClaimParsingService:
             ClaimParseStatus.NO_CLAIMS_FOUND if parsed.is_empty else ClaimParseStatus.COMPLETED
         )
         result.completed_at = datetime.now(tz=UTC)
+        result_id = result.id
         try:
             await self._session.commit()
         except Exception as exc:
@@ -292,7 +293,7 @@ class ClaimParsingService:
             result.completed_at = datetime.now(tz=UTC)
             logger.error(
                 "claim graph persistence failed",
-                extra={"parse_result_id": str(result.id), "claim_count": parsed.claim_count},
+                extra={"parse_result_id": str(result_id), "claim_count": parsed.claim_count},
             )
             try:
                 await self._session.commit()
