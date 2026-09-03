@@ -4,7 +4,15 @@ This is the repository-native acceptance path for handing ClaimTrace to one anal
 
 ## One-command acceptance
 
-From a clean checkout with Docker available:
+Prerequisites for a clean checkout:
+
+- Docker with Docker Compose support;
+- Node.js 22+;
+- npm.
+
+The Node.js/npm requirement is intentional: the reused browser-verification path installs and executes the existing web test tooling outside Docker. The exact-head GitHub workflow provisions Node.js 22 before running the same handoff command.
+
+From a clean checkout with those prerequisites available:
 
 ```sh
 sh scripts/verify-controlled-pilot-handoff.sh
