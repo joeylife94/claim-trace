@@ -965,3 +965,33 @@ On PR #58 exact head `3f5df0636211d6068292bec6378346bef3868a42`, all 11 triggere
 #### Exact Next Action
 
 `Perform the required destination review for D1 before opening any new milestone. If the controlled-pilot destination is sufficiently covered, record DESTINATION REACHED — CONTROLLED PILOT and prefer coherent D2 handoff packaging over further isolated persistence/retrieval fault permutations.`
+
+## 11. Destination Review
+
+### D1 — L4 Controlled ClaimTrace Pilot
+
+**Status:** `DESTINATION REACHED — CONTROLLED PILOT`
+
+The accepted repository evidence now sufficiently covers the D1 destination for one analyst/reviewer on a trusted workstation or controlled on-premise environment:
+
+- clean checkout / empty-database migration and deterministic whole-product execution are already verified;
+- supported text-based Korean patent PDFs can be ingested into source-verifiable persisted page text;
+- deterministic claim parsing/dependency handling is inside the accepted boundary, with recoverable ingestion and claim-graph persistence failures terminalized through bounded client-safe contracts;
+- explicit operator retry for failed ingestion is available in the Documents UI and has real web/API/PostgreSQL/storage integration evidence;
+- hybrid retrieval, grounded ask, target/reference comparison, deterministic decomposition, append-only human review, and navigation back to persisted source evidence are covered by the frozen controlled-pilot Proof and continuing regression workflows;
+- deterministic one-command regression plus exact-head CI/evaluation/proof workflows provide reproducible evidence for the supported synthetic/public-safe boundary;
+- proof screenshots, architecture visual, source-highlight evidence, human-review evidence, and the golden-path WebM are committed and reproducible.
+
+This destination decision does **not** broaden the product claim boundary. OCR/scanned-PDF recovery, legal conclusions, benchmark-quality general retrieval/semantic correctness, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes readiness, private/customer corpus requirements, and security/compliance certification remain unverified and out of scope.
+
+### D2 — Delivery-ready Controlled Pilot Handoff
+
+**Status:** `NOT YET ACCEPTED`
+
+Current repository evidence is strong but fragmented across clean-start, retry, whole-product, evaluation, and Proof-package workflows. No repository-native single handoff/acceptance path was found that coherently guides an operator from clean setup/migration through supported ingest/recovery, retrieve/ask/compare/decompose, human review, source navigation, and a bounded reviewer-facing evidence/provenance package with explicit limitations.
+
+That coherence gap is the next justified progression axis. It is a delivery/demo friction problem, not another ingestion/persistence fault permutation and not a request for new legal or semantic capability.
+
+### Exact Next Action
+
+`Open exactly one bounded D2 handoff milestone only if its acceptance reuses existing supported flows/assets and produces a coherent clean-environment operator/reviewer handoff path. Do not open another isolated persistence/retrieval proof milestone.`
