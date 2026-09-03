@@ -372,7 +372,7 @@ On PR #38 exact head `26adfe4f82ccc724f7e46259a1e00e0ffb073971`:
 - the review P1 about SQLAlchemy rollback attribute expiration was fixed by preserving the document ID before rollback, and the review thread was resolved;
 - unresolved PR review threads at merge: `0`;
 - Issue #37 auto-closed as `completed` after PR #38 merge;
-- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+- frozen v1.0 Proof tag and all Sections 6–7 limitations/non-claims remain unchanged.
 
 #### Not Verified
 
@@ -995,3 +995,75 @@ That coherence gap is the next justified progression axis. It is a delivery/demo
 ### Exact Next Action
 
 `Open exactly one bounded D2 handoff milestone only if its acceptance reuses existing supported flows/assets and produces a coherent clean-environment operator/reviewer handoff path. Do not open another isolated persistence/retrieval proof milestone.`
+
+### Milestone P14 — Package delivery-ready controlled pilot handoff
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #59 — `Progression: package a delivery-ready controlled pilot handoff`  
+**PR:** #60 — `Package delivery-ready controlled pilot handoff`  
+**Accepted PR exact head:** `2fa7dbefd63ea7787165c50be7c31894da358ec1`  
+**Resulting main merge SHA:** `e4c21c3e5d506ab3839a071d9995884480c8355e`
+
+#### Changed
+
+- added a repository-native controlled-pilot handoff entry point that reuses existing clean-start, supported failed-ingestion recovery, deterministic whole-product, source-navigation, human-review, and Proof-package assets instead of adding another product/error capability;
+- extracted the already-accepted real web/API/PostgreSQL retry proof into a reusable verifier and orchestrated it with clean setup/migration and deterministic whole-product verification;
+- added a reviewer-facing evidence/provenance output with committed Proof-asset SHA-256 hashes and an explicit bounded limitations statement;
+- added an exact-head PR workflow that executes the coherent handoff and uploads the generated evidence package;
+- documented clean-host prerequisites, including Docker Compose plus Node.js 22+ and npm for the reused browser verifier;
+- no OCR/scanned-PDF recovery, retrieval/parser/grounding expansion, auth/RBAC/multi-tenancy, cloud/Kubernetes, private-corpus requirement, legal conclusion capability, general semantic benchmark claim, frozen Proof rewrite, or `v1.0-proof` movement was introduced.
+
+#### Actually Executed
+
+On PR #60 exact head `2fa7dbefd63ea7787165c50be7c31894da358ec1`:
+
+- `General CI` run `33770691441`: **GREEN**;
+- `Progression Controlled Pilot Handoff` run `33770691476`: **GREEN**;
+- the handoff job checked out the exact PR head, provisioned Node.js, executed the delivery-ready controlled-pilot handoff, verified bounded report language, uploaded the handoff evidence artifact, and tore down runtimes successfully;
+- generated artifact `controlled-pilot-handoff-2fa7dbefd63ea7787165c50be7c31894da358ec1` was uploaded as artifact ID `9899812446`, digest `sha256:74a1ba0862e101104224e4f7e8091d2b94d34aa2e4f9cad79744bfeac86661ae`;
+- downloaded artifact contents were inspected: `README.md`, `proof-assets.sha256`, and `handoff-report.sha256` were present; the report recorded PASS for clean setup/migration, supported failed-ingestion operator recovery, deterministic whole-product analyst/reviewer flow, and present+hashed source-navigation/human-review Proof assets;
+- review raised one P2 documentation blocker because the original local prerequisite text omitted Node.js/npm; exact head `2fa7dbef...` corrected the documentation to require Node.js 22+ and npm, and the review thread was reconciled before merge;
+- PR #60 was squash-merged with an expected-head SHA guard;
+- Issue #59 auto-closed as `completed`.
+
+#### Verified
+
+- one repository-native documented command now packages the supported clean setup/migration → ingest/recovery → retrieve/ask/compare/decompose → human review → source navigation → evidence-handoff path using existing accepted public-safe/synthetic flows;
+- exact-head General CI and the dedicated controlled-pilot handoff workflow are GREEN;
+- the generated reviewer-facing package contains deterministic evidence hashes and explicit limitations, including that citation/source resolution is not semantic entailment or legal correctness;
+- the package explicitly makes no infringement, validity, novelty, equivalence, inventive-step, patentability, or other legal determination;
+- exact-head evidence artifact generation is PR-visible and tied to the accepted commit;
+- Issue #59 lifecycle completed through guarded merge/close;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- the handoff does not establish OCR/scanned-PDF recovery, production infrastructure resilience, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes readiness, private/customer corpus behavior, security/compliance certification, benchmark-quality general patent retrieval, semantic entailment, or legal correctness;
+- the generated artifact is bounded controlled-pilot delivery evidence, not a production certification package;
+- Node.js remains an explicit clean-host prerequisite rather than being containerized by this milestone.
+
+#### Remaining Risks
+
+- operator handoff still assumes the documented trusted-workstation/on-premise environment and supported text-based/public-safe input boundary;
+- handoff reproducibility depends on the documented Docker Compose and Node.js/npm prerequisites;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Perform the D2 destination review. If D2 is accepted, do not open another automatic milestone unless a farther destination can be chosen without OCR/scanned-PDF recovery, general legal/semantic claims, auth/RBAC/multi-tenancy, public cloud/Kubernetes, customer/private corpus requirements, or another major product-direction decision.`
+
+### D2 Acceptance Update — Delivery-ready Controlled Pilot Handoff
+
+**Status:** `DESTINATION REACHED — DELIVERY-READY CONTROLLED PILOT HANDOFF`
+
+P14 closes the coherence gap previously recorded under D2. The repository now has a single documented, exact-head executable handoff path that reuses accepted capabilities to verify clean setup/migration, one supported operator recovery path, deterministic whole-product analyst/reviewer behavior, source navigation, human review, and a bounded evidence/provenance output with explicit non-claims.
+
+This acceptance is intentionally limited to the same trusted-workstation/on-premise, supported text-based/public-safe boundary. It does not convert source resolvability into semantic entailment or legal correctness and does not establish production security/cloud readiness.
+
+Further meaningful progression now requires a destination/product decision if it would involve OCR/scanned-PDF recovery, general semantic/legal accuracy claims, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes, customer/private corpus requirements, or comparable scope expansion.
+
+### Exact Next Action
+
+`HUMAN REVIEW — NEXT DESTINATION DECISION`
+
+Do not open another automatic ClaimTrace progression milestone until a human explicitly selects the next destination. Preserve `v1.0-proof`, the accepted D1/D2 evidence, the controlled-pilot boundary, and all legal/non-claim limitations.
