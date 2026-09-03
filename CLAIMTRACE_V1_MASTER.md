@@ -903,3 +903,65 @@ On PR #56 exact head `b2f046928300c50ebada8ab219fe9a9a7ed4750e`, all 11 triggere
 #### Exact Next Action
 
 `Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P13 — Terminalize recoverable claim-graph persistence failures
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #57 — `Progression: terminalize claim-graph persistence failures`  
+**PR:** #58 — `Terminalize recoverable claim graph persistence failures`  
+**Accepted PR exact head:** `3f5df0636211d6068292bec6378346bef3868a42`  
+**Resulting main merge SHA:** `00f297813f56245a0287057d38f19504dd664539`
+
+#### Changed
+
+- when the claim graph/final-status commit fails but recovery persistence is available, the existing parse result is terminalized as `FAILED` with stable `internal_error` semantics instead of being left in `PROCESSING`;
+- the failed graph transaction is rolled back before the recovery state is persisted, so no partial successful graph is accepted;
+- client-facing failure text is bounded and does not expose the synthetic database exception detail;
+- preserved the parse-result ID before `AsyncSession.rollback()` so post-rollback logging does not touch an expired ORM attribute and trigger `MissingGreenlet`;
+- added focused regression coverage for the recoverable persistence failure and in-place retry of the same parser-version result;
+- no schema, parser-rule expansion, retrieval/ranking behavior, legal capability, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #58 exact head `3f5df0636211d6068292bec6378346bef3868a42`, all 11 triggered PR workflows completed successfully:
+
+- `V1-04 Claim Element Verification` run `33742446721`: **GREEN**;
+- `Progression Deterministic Regression` run `33742446619`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33742446625`: **GREEN**;
+- `V1-06 Expected Failure States` run `33742446706`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33742446621`: **GREEN**;
+- `V1-07 Final Evaluations` run `33742446563`: **GREEN**;
+- `General CI` run `33742446571`: **GREEN**;
+- `V1-05 Human Review Verification` run `33742446498`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33742446599`: **GREEN**;
+- `V1-07 Proof Package` run `33742446622`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33742446598`: **GREEN**;
+- review raised a P1 rollback-expiration blocker on the earlier implementation; exact head `3f5df063...` captures `result.id` before rollback, and the review thread was explicitly reconciled before merge;
+- PR #58 was squash-merged with an expected-head SHA guard and Issue #57 auto-closed as `completed`.
+
+#### Verified
+
+- a modeled graph/final-status persistence failure no longer strands the existing parse result in `PROCESSING` when the recovery commit succeeds;
+- the same parse result reaches terminal `FAILED / internal_error`, and the client-visible message excludes the synthetic database exception detail;
+- the source `Document` remains `COMPLETED`, preserving separation between successful ingestion and parse persistence failure;
+- the existing failed-result parser-version retry contract remains in-place and executable under the focused regression;
+- exact-head General CI and all ten additional triggered progression/v1 workflows are GREEN;
+- the SQLAlchemy rollback-expiration review blocker was corrected before merge;
+- Issue #57 lifecycle completed through guarded merge/close;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- if the recovery commit also fails, durable terminalization is not claimed; continued database failure may still leave an operator-visible incomplete state;
+- the forced persistence failure is bounded regression evidence, not a general PostgreSQL/network resilience benchmark;
+- no background retry queue, automatic outage recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, public-cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- parser recovery still depends on the underlying database becoming writable for the recovery commit;
+- this milestone closes the known claim-graph persistence blocker but does not justify further isolated persistence permutations absent a concrete pilot/handoff blocker;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Perform the required destination review for D1 before opening any new milestone. If the controlled-pilot destination is sufficiently covered, record DESTINATION REACHED — CONTROLLED PILOT and prefer coherent D2 handoff packaging over further isolated persistence/retrieval fault permutations.`
