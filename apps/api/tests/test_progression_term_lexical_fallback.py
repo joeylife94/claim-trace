@@ -13,7 +13,8 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from tests.test_claim_retrieval_integration import corpus, search
+from tests.test_claim_retrieval_integration import corpus as corpus
+from tests.test_claim_retrieval_integration import search
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +26,9 @@ _TERM_THRESHOLD = 0.60
 _WHOLE_QUERY_THRESHOLD = 0.25
 
 
-def _sensor_claim_one_signals(sync_engine: sa.Engine, *, query: str, term: str) -> dict[str, object]:
+def _sensor_claim_one_signals(
+    sync_engine: sa.Engine, *, query: str, term: str
+) -> dict[str, object]:
     """Measure the exact lexical gates against synthetic sensor claim 1."""
     with sync_engine.connect() as connection:
         row = connection.execute(
