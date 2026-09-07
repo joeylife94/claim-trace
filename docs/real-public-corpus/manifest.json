@@ -11,7 +11,7 @@
       "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
       "canonical_lookup": "https://www.kipris.or.kr/",
       "source_page": "https://patents.google.com/patent/KR20150055205A/ko",
-      "acquisition_url": "https://patents.google.com/patent/KR20150055205A/ko.pdf",
+      "acquisition_url": "https://patentimages.storage.googleapis.com/a8/7c/bd/7449d32491b7d5/KR20150055205A.pdf",
       "local_filename": "KR20150055205A.pdf",
       "redistribution_status": "not_asserted_do_not_commit_pdf"
     },
@@ -22,19 +22,8 @@
       "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
       "canonical_lookup": "https://www.kipris.or.kr/",
       "source_page": "https://patents.google.com/patent/KR20170054782A/ko",
-      "acquisition_url": "https://patents.google.com/patent/KR20170054782A/ko.pdf",
+      "acquisition_url": "https://patentimages.storage.googleapis.com/b2/83/71/27d92aac6f1b5f/KR20170054782A.pdf",
       "local_filename": "KR20170054782A.pdf",
-      "redistribution_status": "not_asserted_do_not_commit_pdf"
-    },
-    {
-      "publication_number": "KR20180026111A",
-      "application_number": "KR1020160113083A",
-      "title_ko": "내비게이션 경로 탐색 방법",
-      "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
-      "canonical_lookup": "https://www.kipris.or.kr/",
-      "source_page": "https://patents.google.com/patent/KR20180026111A/ko",
-      "acquisition_url": "https://patents.google.com/patent/KR20180026111A/ko.pdf",
-      "local_filename": "KR20180026111A.pdf",
       "redistribution_status": "not_asserted_do_not_commit_pdf"
     }
   ]
