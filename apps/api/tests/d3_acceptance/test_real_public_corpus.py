@@ -223,10 +223,8 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
             structured_text=draft_json(
                 [
                     (
-                        (
-                            "선택된 공개 문서의 저장된 청구항 텍스트를 근거로 "
-                            "확인 가능한 내용을 제시한다."
-                        ),
+                        "선택된 공개 문서의 저장된 청구항 텍스트를 근거로 "
+                        "확인 가능한 내용을 제시한다.",
                         ("EV-001",),
                     )
                 ]
