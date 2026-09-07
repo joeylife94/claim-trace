@@ -1,0 +1,85 @@
+name: Progression D3 Real Public Corpus
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "CLAIMTRACE_V1_MASTER.md"
+      - "docs/real-public-corpus/**"
+      - "scripts/verify-d3-real-corpus-inputs.sh"
+      - ".github/workflows/progression-d3-real-corpus.yml"
+      - "apps/api/**"
+      - "scripts/verify-deterministic-regression.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  real-corpus-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install PDF text tooling
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Acquire public corpus without committing source PDFs
+        run: |
+          set -eu
+          mkdir -p build/d3-real-corpus/source
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import urllib.request
+
+          manifest = json.loads(pathlib.Path('docs/real-public-corpus/manifest.json').read_text(encoding='utf-8'))
+          out = pathlib.Path('build/d3-real-corpus/source')
+          for item in manifest['documents']:
+              target = out / item['local_filename']
+              request = urllib.request.Request(
+                  item['acquisition_url'],
+                  headers={'User-Agent': 'ClaimTrace-D3-01-public-evidence/1.0'},
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  target.write_bytes(response.read())
+              print(item['publication_number'], target.stat().st_size)
+          PY
+
+      - name: Verify provenance hashes and text support fail closed
+        run: sh scripts/verify-d3-real-corpus-inputs.sh
+
+      - name: Allow container to write deterministic regression results
+        if: success()
+        run: chmod -R a+rwX apps/api/evals/results
+
+      - name: Preserve deterministic synthetic regression protection
+        if: success()
+        run: make verify-deterministic-regression
+
+      - name: Execute real-document ClaimTrace product path
+        if: success()
+        run: |
+          set -eu
+          mkdir -p build/d3-real-corpus/evidence/product-path
+          chmod -R a+rwX build/d3-real-corpus/evidence
+          docker compose run --rm \
+            -e CLAIMTRACE_D3_CORPUS_DIR=/d3-source \
+            -e CLAIMTRACE_D3_MANIFEST=/d3-manifest/manifest.json \
+            -e CLAIMTRACE_D3_EVIDENCE_DIR=/d3-evidence/product-path \
+            -v "$PWD/build/d3-real-corpus/source:/d3-source:ro" \
+            -v "$PWD/docs/real-public-corpus:/d3-manifest:ro" \
+            -v "$PWD/build/d3-real-corpus/evidence:/d3-evidence" \
+            api pytest --disable-warnings -q tests/d3_acceptance/test_real_public_corpus.py -m integration
+
+      - name: Upload bounded D3 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-real-public-corpus-${{ github.event.pull_request.head.sha }}
+          path: build/d3-real-corpus/evidence/
+          if-no-files-found: error
+          retention-days: 14

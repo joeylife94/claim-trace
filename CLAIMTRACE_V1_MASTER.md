@@ -8,7 +8,7 @@
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — latest bounded milestone accepted**
+**Post-v1 progression state:** **ENABLED — D3 selected / D3-01 active**
 
 ---
 
@@ -1067,3 +1067,87 @@ Further meaningful progression now requires a destination/product decision if it
 `HUMAN REVIEW — NEXT DESTINATION DECISION`
 
 Do not open another automatic ClaimTrace progression milestone until a human explicitly selects the next destination. Preserve `v1.0-proof`, the accepted D1/D2 evidence, the controlled-pilot boundary, and all legal/non-claim limitations.
+
+## 12. D3 — Real-document Controlled Pilot
+
+**Human Review decision date:** `2026-09-07`  
+**Destination state:** `SELECTED / ACTIVE`  
+**Active bounded milestone:** `D3-01 — verify a real-public-document controlled pilot corpus`  
+**Issue:** #61
+
+D3 reuses the accepted D1 Controlled Pilot and D2 Delivery-ready Controlled Pilot Handoff assets to determine whether one analyst/reviewer can repeatedly use ClaimTrace on a small bounded corpus of real public **text-based Korean patent documents** while preserving source-verifiable ingest → parse → retrieve → ask/compare/decompose → human review → source navigation behavior.
+
+D3 is not a general patent-analysis accuracy benchmark and does not broaden the frozen legal/non-claim boundary. Real-corpus evidence supplements the accepted deterministic public-safe/synthetic evidence; it does not replace or reinterpret it.
+
+### D3-01 acceptance boundary
+
+D3-01 must remain one bounded real-public-document acceptance milestone. Its accepted verifier must:
+
+- record canonical source/provenance metadata sufficient for a reviewer to retrieve/check every selected public document;
+- consume locally obtained public PDFs by default rather than committing third-party PDFs unless redistribution/public-use status is clearly established and repository inclusion is necessary;
+- record a stable local SHA-256 for each acquired input used in executable evidence;
+- distinguish supported text-based PDFs from unsupported/scanned/image-only inputs and fail closed rather than silently converting unsupported inputs into PASS;
+- execute ingestion, text extraction, and supported claim parsing against a small real Korean patent corpus;
+- exercise retrieval plus at least one grounded analytical path with persisted source locators;
+- exercise at least one target/reference comparison or decomposition result that can be traced back to persisted real-document source text;
+- preserve human review and source navigation in the real-document analyst path;
+- emit reproducible per-document/per-step PASS/FAIL evidence, including unsupported/failure states;
+- rerun existing deterministic synthetic regression/evidence gates as regression protection.
+
+Initial bounded provenance candidates recorded under Issue #61 are `KR20150055205A`, `KR20170054782A`, and `KR20180026111A`, a narrow navigation/route family suitable for source-verifiable target/reference exercise without implying legal or semantic benchmark conclusions. Candidate inclusion is not acceptance: actual PDF acquisition, checksum, text-support classification, ingest/parse, retrieval/analysis, comparison/decomposition, review/navigation, and exact-head executable evidence remain required.
+
+### Preserved non-claims / explicitly deferred
+
+D3-01 does not authorize or verify:
+
+- infringement, validity, novelty, equivalence, inventive step, patentability, legal advice, or any other legal conclusion;
+- benchmark-quality general retrieval, semantic accuracy, entailment, or universal Korean patent parsing correctness;
+- OCR/scanned/image-only PDF recovery unless a later executed D3 acceptance run demonstrates that it is the smallest unavoidable blocker and a human separately accepts that scope;
+- private/customer corpus onboarding, copying, publication, or private-data claims;
+- authentication, RBAC, multi-tenancy, billing, public cloud/Kubernetes, production admin readiness, or security/compliance certification;
+- broad parser/retrieval/model rewrites merely to improve corpus scores;
+- model-quality expansion unless actual D3 acceptance evidence exposes a concrete blocker.
+
+### D3-01 current evidence state
+
+#### Changed
+
+- Human Review selected D3 as the next product destination;
+- Issue #61 records D3-01 as the first bounded milestone;
+- this milestone branch reconciles the MASTER before D3 implementation by preserving frozen v1.0/D1/D2 evidence and recording D3/D3-01 active state.
+
+#### Actually Executed
+
+- current `main` MASTER was re-read before mutation;
+- current Issue #61 and open PR state were re-fetched;
+- no relevant open PR existed at reconciliation time;
+- linked branch `issue-61-real-public-controlled-pilot` was confirmed;
+- KIPRIS was re-confirmed as the public Korean patent-information retrieval service for domestic patent/publication checking.
+
+#### Verified
+
+- the frozen v1.0 baseline and accepted D1/D2 destination evidence remain preserved in this document;
+- `v1.0-proof` is not rewritten, reinterpreted, or moved by this D3 selection;
+- D3-01 remains bounded to public text-based Korean patent documents and source-verifiable controlled-pilot use;
+- implementation/acceptance cannot be claimed until real-document and exact-head executable evidence exists.
+
+#### Not Verified
+
+- no selected real PDF has yet been accepted by checksum/text-support verification;
+- no real-document ingest/parse/retrieve/ask/compare/decompose/review/source-navigation PASS is claimed yet;
+- no exact-head D3-01 PR workflow is GREEN yet;
+- all preserved non-claims above remain unverified.
+
+#### Remaining Risks
+
+- public availability does not by itself establish redistribution permission, so source PDFs should remain locally acquired unless repository inclusion is separately justified;
+- candidate documents may expose scanned/non-text pages or parser boundaries and must fail explicitly if unsupported;
+- a successful bounded real-corpus run would establish D3 controlled-pilot usability only for the executed corpus/path, not general legal or semantic accuracy.
+
+#### Source provenance direction
+
+KIPRIS is the preferred official/public Korean patent retrieval surface for D3-01 source checking. Manifest entries must preserve canonical Korean publication identifiers and a reviewer-usable source/acquisition reference; locally used PDF bytes must be tied to the evidence by SHA-256.
+
+#### Exact Next Action
+
+`Implement the smallest manifest-driven, fail-closed real-public-document verifier on Issue #61; acquire the selected public PDFs locally; record source/checksum/text-support evidence; execute at least one real-document analyst/reviewer path plus synthetic regression protection; then open one linked PR for exact-head verification.`
