@@ -2,13 +2,13 @@
 
 > **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-09-08  
+**Last execution update:** 2026-09-02  
 **Current target:** L4 Controlled Pilot  
 **Current active batch:** V1-07 — Final Validation + Wishket Proof  
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **D3 DESTINATION REACHED — HUMAN REVIEW REQUIRED FOR ANY FARTHER DESTINATION**
+**Post-v1 progression state:** **ENABLED — D3 selected / D3-01 active**
 
 ---
 
@@ -203,11 +203,768 @@ Do not resume automatic ClaimTrace v1.0 development. Any future paid-delivery re
 
 The frozen v1.0 baseline above remains immutable. Progression work is tracked separately and must not rewrite, move, or reinterpret `v1.0-proof`.
 
-### Milestones P1–P13
+### Milestone P1 — Deterministic regression one-command reproducibility
 
-The accepted P1–P13 progression history remains preserved in repository history and in the pre-D3 MASTER revisions. Those milestones established deterministic regression reproducibility, bounded ingestion/parse failure terminalization and retry behavior, documentation/roadmap reconciliation, real-stack retry evidence, bounded Korean lexical fallback regression coverage, and D1 controlled-pilot readiness without moving or reinterpreting `v1.0-proof`.
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #33 — `Progression: make deterministic regression verification one-command reproducible`  
+**PR:** #34  
+**Accepted PR exact head:** `58a290d617f072947347462c47c86b9fb0cdf0a1`  
+**Resulting main merge SHA:** `257b30918eaa219956e92ec8740e88f65ce6d469`
 
-Their accepted implementation/evidence commits and Issue/PR lifecycle remain authoritative in Git history. This reconciliation does not rewrite those accepted results or broaden any claim; it compacts the historical ledger only to keep the active authoritative document focused on accepted destination state.
+#### Changed
+
+- added repository-native `make verify-deterministic-regression`;
+- added PR-visible `Progression Deterministic Regression` workflow;
+- verifier runs the existing public-safe synthetic retrieval evaluation with the deterministic fake embedding provider, the existing deterministic grounded evaluation, hostile grounding guardrails, and Ruff checks;
+- verifier asserts a deterministic fake-provider regression baseline rather than reusing the frozen sentence-transformers quality metrics;
+- no product/runtime capability, corpus, legal claim, model claim, Proof asset, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #34 exact head `58a290d617f072947347462c47c86b9fb0cdf0a1`:
+
+- `Progression Deterministic Regression` run `33391315752`: **GREEN**;
+- `General CI` run `33391315831`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33391315754`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33391315634`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33391315635`: **GREEN**;
+- `V1-07 Proof Package` run `33391315633`: **GREEN**;
+- first progression run on prior head failed because fake-provider execution was incorrectly compared against frozen sentence-transformers metrics; its uploaded artifact was inspected and the correction was limited to that executed mismatch.
+
+#### Verified
+
+- one command now exercises the existing deterministic retrieval/evidence regression path from a clean PR checkout;
+- regression assertions fail on mismatched deterministic results rather than merely generating reports;
+- current fake-provider baseline is explicitly plumbing/reproducibility evidence, not semantic retrieval quality;
+- unresolved PR review threads at merge: `0`;
+- Issue #33 auto-closed as `completed` after PR #34 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- no new benchmark-quality patent retrieval performance is claimed;
+- fake-provider dense/hybrid metrics do not establish semantic model quality;
+- no new real-local-model evaluation was run;
+- no legal, security-certification, OCR, auth, multi-tenant, cloud, or Kubernetes capability was added or verified.
+
+#### Remaining Risks
+
+- deterministic fake-provider regression is sensitive to intentional changes in deterministic retrieval plumbing and will require an evidence-backed baseline update if such a change is deliberately accepted;
+- the synthetic corpora remain small and regression-oriented;
+- citation resolution still proves source resolvability, not entailment or legal correctness.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P2 — Terminalize post-registration storage read failures
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #35 — `Progression: terminalize stored-file read failures during ingestion`  
+**PR:** #36  
+**Accepted PR exact head:** `ebcc642fdc51487edc8127ee674220789f37a2ca`  
+**Resulting main merge SHA:** `5b02337d2d98c8c73e43b93cfe0b0fa567b7ac45`
+
+#### Changed
+
+- mapped post-registration `FileStorage.read(...)` `StorageError` into the existing `storage_failure` ingestion contract;
+- the existing `_ParseRejected` / `_mark_failed` path now terminalizes the registered document as `FAILED` instead of allowing this failure to strand it in `PROCESSING`;
+- added focused regression coverage for the client-safe error, terminal document state, persisted `error_code=storage_failure`, and safe completion event;
+- corrected the recovery message after review so it does not recommend an identical-byte re-upload that digest deduplication would short-circuit;
+- no OCR, parser semantics, retrieval, ranking, grounding, comparison, review, auth, cloud, legal capability, frozen Proof asset, metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #36 exact head `ebcc642fdc51487edc8127ee674220789f37a2ca`:
+
+- `General CI` run `33457327009`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint: **PASS**;
+  - Ruff format check: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33457327043`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33457326937`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33457326987`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33457327080`: **GREEN**;
+- `V1-05 Human Review Verification` run `33457327034`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33457326989`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33457327006`: **GREEN**;
+- `V1-06 Expected Failure States` run `33457327110`: **GREEN**;
+- `V1-07 Final Evaluations` run `33457326971`: **GREEN**;
+- `V1-07 Proof Package` run `33457327050`: **GREEN**.
+
+#### Verified
+
+- forced post-registration storage-read failure no longer leaks raw `StorageError` through the ingestion contract;
+- the registered document reaches terminal `FAILED` with `error_code=storage_failure` through the tested service path;
+- completion-event regression coverage checks `status=failed` and `error_code=storage_failure` and excludes the synthetic internal exception detail;
+- current exact-head backend, PostgreSQL integration, lint/format, frontend, deterministic regression, clean-start, whole-product, failure-state, evaluation, and proof-package workflows are GREEN;
+- the one review blocker about misleading retry guidance was corrected and its thread resolved;
+- unresolved PR review threads at merge: `0`;
+- Issue #35 auto-closed as `completed` after PR #36 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- this milestone does not prove recovery/reprocessing of an already-failed deduplicated document; the message explicitly leaves that as operator recovery;
+- no redesign of general database persistence failures or unrelated ingestion stages was attempted;
+- no new benchmark, real-local-model, legal, OCR, auth, multi-tenant, cloud, Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- identical-byte re-upload of an already-failed document still follows existing digest deduplication behavior rather than an automatic reprocess path;
+- other post-registration failure modes remain governed by their existing contracts and were not broadened in this milestone;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P3 — Terminalize page-persistence failures during ingestion
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #37 — `Progression: terminalize page-persistence failures during ingestion`  
+**PR:** #38  
+**Accepted PR exact head:** `26adfe4f82ccc724f7e46259a1e00e0ffb073971`  
+**Resulting main merge SHA:** `5fd8ed6471203e831358c56bb0e749593b2fe92e`
+
+#### Changed
+
+- converted a failed page/completion persistence transaction into the existing client-safe `internal_error` ingestion contract after rollback;
+- preserved the atomic guarantee that partial page rows and a false `COMPLETED` state do not survive the failed transaction;
+- routed the registered document through the existing `_mark_failed` path so the terminal state becomes `FAILED` instead of remaining stranded in `PROCESSING`;
+- preserved `document.id` before rollback so SQLAlchemy attribute expiration cannot trigger `MissingGreenlet` while logging the failure before terminalization;
+- added focused deterministic regression coverage for rollback semantics, terminal state, safe error text, and completion-event evidence;
+- aligned the pre-existing page-persistence regression with the new terminal failure contract;
+- no OCR, retry/resume queue, parser semantics, retrieval, ranking, grounding, comparison, review, auth, cloud, legal capability, frozen Proof asset, metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #38 exact head `26adfe4f82ccc724f7e46259a1e00e0ffb073971`:
+
+- `General CI` run `33468745009`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint: **PASS**;
+  - Ruff format check: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33468745036`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33468745033`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33468745015`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33468745002`: **GREEN**;
+- `V1-05 Human Review Verification` run `33468745037`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33468744967`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33468744989`: **GREEN**;
+- `V1-06 Expected Failure States` run `33468745053`: **GREEN**;
+- `V1-07 Final Evaluations` run `33468745001`: **GREEN**;
+- `V1-07 Proof Package` run `33468745011`: **GREEN**;
+- prior head `0cb21d1eb5bd54934b6f6352375c93116c5888b4` exposed a stale database-free test that still expected the old raw `RuntimeError` behavior; that test was corrected inside Issue #37;
+- prior head `57757a4c5cdb61f51415d73094371797d73bf442` passed database-free and PostgreSQL integration tests but failed Ruff on an unused import in the new focused regression; that lint defect was removed before the accepted exact-head run.
+
+#### Verified
+
+- a forced page/completion persistence failure reaches the stable `DocumentIngestionError` / `internal_error` contract rather than leaking the raw database exception;
+- the registered document reaches terminal `FAILED` through the tested service path;
+- the modeled failed transaction leaves no partial `DocumentPage` rows and no false `COMPLETED` state;
+- completion-event coverage checks `status=failed`, the stable error code, and absence of the synthetic database detail;
+- exact-head database-free tests, real PostgreSQL integration, Ruff lint/format, frontend checks, deterministic regression, clean-start, whole-product, expected-failure, evaluation, and proof-package workflows are GREEN;
+- the review P1 about SQLAlchemy rollback attribute expiration was fixed by preserving the document ID before rollback, and the review thread was resolved;
+- unresolved PR review threads at merge: `0`;
+- Issue #37 auto-closed as `completed` after PR #38 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- this milestone does not add or verify automatic retry, resume, or reprocessing after a database outage;
+- `internal_error` remains intentionally generic; no broader database error taxonomy was introduced;
+- the forced failure is synthetic regression coverage and does not prove every PostgreSQL/network outage mode;
+- no new benchmark, real-local-model, legal, OCR, auth, multi-tenant, cloud, Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- recovery after a terminal page-persistence failure remains operator-mediated;
+- future persistence failure modes outside this bounded transaction may require their own evidence-backed contracts;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P4 — Terminalize processing-transition failures during ingestion
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #39 — `Progression: terminalize processing-transition failures during ingestion`  
+**PR:** #40  
+**Accepted PR exact head:** `8802c6e907c7a6608a8a34adccfe9d625a307bd5`  
+**Resulting main merge SHA:** `1c2b4e7cfd9be9082929cec95c1ff5aff6965b5d`
+
+#### Changed
+
+- converted a failed post-registration `UPLOADED -> PROCESSING` commit into the existing client-safe `internal_error` ingestion contract;
+- after rollback, the already-registered document is terminalized through `_mark_failed` when recovery persistence succeeds;
+- added focused deterministic regression coverage that fails only the second commit and verifies terminal state, safe error text, and completion-event evidence;
+- preserved duplicate-race handling, initial registration cleanup, storage-read/page-persistence behavior, parser/retrieval/grounding semantics, Proof assets, frozen metrics, and `v1.0-proof`.
+
+#### Actually Executed
+
+On PR #40 exact head `8802c6e907c7a6608a8a34adccfe9d625a307bd5`:
+
+- `General CI` run `33472375086`: **GREEN**;
+- `Progression Deterministic Regression` run `33472375078`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33472375090`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33472375071`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33472375077`: **GREEN**;
+- `V1-05 Human Review Verification` run `33472375081`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33472375069`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33472375172`: **GREEN**;
+- `V1-06 Expected Failure States` run `33472375112`: **GREEN**;
+- `V1-07 Final Evaluations` run `33472375088`: **GREEN**;
+- `V1-07 Proof Package` run `33472375076`: **GREEN**.
+
+#### Verified
+
+- the focused regression forces only the post-registration processing-transition commit to fail and verifies terminal `FAILED` with `internal_error` after modeled rollback/recovery persistence;
+- the client-visible error and structured completion event exclude the synthetic database detail and report `status=failed` with the stable error code;
+- exact-head General CI and all ten triggered progression/v1 regression workflows are GREEN;
+- unresolved PR review threads at merge: `0`;
+- Issue #39 auto-closed as `completed` after PR #40 merge;
+- frozen v1.0 Proof tag and all Sections 6–7 non-claims remain unchanged.
+
+#### Not Verified
+
+- the forced second-commit failure itself is covered by a deterministic `StubSession`; no dedicated real-PostgreSQL fault-injection test was added for this exact failure point;
+- General CI's real PostgreSQL integration tier passed and protects broader SQLAlchemy/PostgreSQL compatibility, but that alone is not treated as proof that every rollback/expiration behavior at this exact injected transition failure is covered;
+- no automatic retry/resume/operator UI, OCR, parser/retrieval expansion, benchmark, real-local-model, legal, auth, multi-tenant, cloud, Kubernetes, or security-certification capability is claimed.
+
+#### Remaining Risks
+
+- terminalization still depends on the recovery persistence performed by `_mark_failed`; a simultaneous continued database outage can prevent that recovery commit, which remains an operator-visible failure rather than a durable retry path;
+- exact real-database fault injection for the processing-transition commit remains a possible future hardening milestone only if concrete use/show/delivery value justifies it;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P5 — Reconcile ingestion failure documentation with accepted runtime behavior
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #41 — `Progression: reconcile ingestion failure documentation with accepted runtime behavior`  
+**PR:** #42  
+**Accepted PR exact head:** `ec8811613c36d1dc190a3f42bff0affc2cf483f4`  
+**Resulting main merge SHA:** `343b7f23a0314395b8d83aa86646a42dd9516208`
+
+#### Changed
+
+- reconciled `docs/ARCHITECTURE.md` ingestion flow and failure table with accepted P2/P3/P4 runtime behavior;
+- documented post-registration stored-file reads and the accepted terminal failure contracts for storage-read, processing-transition, and page/completion persistence failures;
+- explicitly separated verified terminalization from unverified automatic retry/resume behavior and recorded that identical-byte deduplication does not itself re-run a failed ingestion;
+- recorded the P4 evidence boundary: deterministic fault injection verified the service contract, but no dedicated real-PostgreSQL commit-fault injection was executed;
+- added the already-existing `storage_failure` and `internal_error` HTTP 500 mappings to the ingestion error table;
+- no product/runtime code, schema, Proof asset, frozen metric, legal/non-claim boundary, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #42 exact head `ec8811613c36d1dc190a3f42bff0affc2cf483f4`:
+
+- compared the PR head to `main`: exactly one changed file, `docs/ARCHITECTURE.md`, with `+21/-7`;
+- fetched and reviewed the exact-head architecture section after the commit, including all three reconciled failure paths and the retry/resume limitation text;
+- cross-checked the documentation against current `services/ingestion.py` and `core/errors.py` on `main`;
+- reviewed the PR patch and recorded a bounded review; unresolved review threads at merge: `0`;
+- merged PR #42 with an expected-head SHA guard;
+- confirmed Issue #41 auto-closed as `completed`;
+- re-fetched the annotated `v1.0-proof` tag and dereferenced it to the unchanged reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
+
+#### Verified
+
+- architecture documentation no longer states that page/completion persistence failure necessarily leaves a document stranded in `processing`;
+- P2 storage-read and P4 processing-transition failure semantics are now represented alongside P3 page/completion persistence semantics;
+- `storage_failure` and `internal_error` remain mapped to HTTP 500 in the current error taxonomy;
+- documentation explicitly avoids claiming background retry/resume or automatic identical-byte reprocessing;
+- documentation explicitly avoids overstating P4 as real-PostgreSQL fault-injection evidence;
+- PR scope remained documentation-only and the frozen v1.0 tag target remained unchanged.
+
+#### Not Verified
+
+- no new runtime test suite or PR workflow executed on PR #42 because the repository's current General CI path filter excludes `docs/**`, and no dedicated documentation-lint workflow exists;
+- this milestone therefore verifies repository/document consistency, not new runtime behavior;
+- no dedicated real-PostgreSQL commit-fault injection was added or run for P4;
+- no automatic retry/resume/operator recovery mechanism was added or verified;
+- all frozen v1.0 non-claims remain unverified.
+
+#### Remaining Risks
+
+- future runtime changes can make architecture text stale again unless documentation reconciliation is kept inside the same accepted change lifecycle;
+- ingestion recovery after terminal failure remains operator-mediated and is not a durable retry mechanism;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P6 — Reconcile roadmap with accepted v1.0 capability state
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #43 — `Progression: reconcile roadmap with accepted v1.0 capability state`  
+**PR:** #44  
+**Accepted PR exact head:** `23363ed4848fe304f4d8202007d4579837c863b6`  
+**Resulting main merge SHA:** `7230da037e9132f3ca074c7b6bddad14a8acb0fe`
+
+#### Changed
+
+- reconciled `docs/ROADMAP.md` so Phase 2C and Phase 5A are no longer presented as future/unimplemented despite being inside the frozen accepted v1.0 capability boundary;
+- described claim decomposition, append-only review, source navigation, and target/reference comparison only within the controlled-pilot/source-verifiable/non-legal boundary;
+- explicitly marked Phase 3B description retrieval/reranking as future/unverified;
+- preserved OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal determinations, benchmark-quality retrieval, and other frozen non-claims as unverified/out of scope;
+- no runtime, schema, evaluation, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #44 exact head `23363ed4848fe304f4d8202007d4579837c863b6`:
+
+- verified the PR changed exactly one file: `docs/ROADMAP.md`;
+- reviewed the exact-head patch against the current MASTER capability and non-claim sections;
+- narrowed an initially over-broad roadmap rewrite before acceptance so unrelated historical sections were not unnecessarily rewritten;
+- confirmed unresolved PR review threads: `0`;
+- confirmed the docs-only exact head triggered no GitHub Actions workflow under the repository's current path filters;
+- merged PR #44 with expected-head SHA guard;
+- confirmed Issue #43 auto-closed as `completed`.
+
+#### Verified
+
+- ROADMAP no longer marks accepted v1.0 claim decomposition/review or claim comparison as `next`;
+- ROADMAP now keeps the accepted comparison/decomposition/review/source-navigation claims inside the same controlled-pilot and non-legal boundary as the MASTER;
+- Phase 3B remains explicitly future/unverified rather than being promoted to completion;
+- PR scope remained one documentation file and no runtime PASS claim was created by this milestone;
+- frozen v1.0 evidence, limitations, non-claims, and tag target remain authoritative and unchanged.
+
+#### Not Verified
+
+- no new runtime suite or PR workflow executed for PR #44 because the docs-only change did not match current workflow path filters;
+- this milestone verifies repository/document consistency only, not new executable behavior;
+- no description retrieval/reranking, OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- roadmap text can become stale again if future accepted capability changes are not reconciled in the same lifecycle;
+- documentation consistency does not replace executable verification for future runtime changes;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P7 — Remove stale duplicate Phase 5 roadmap contract
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #45 — `Progression: remove stale duplicate Phase 5 roadmap contract`  
+**PR:** #46  
+**Accepted PR exact head:** `22788c56380da6d4379fc02ac7142c1865c212b6`  
+**Resulting main merge SHA:** `8bde1cd6a0d8532bbf34663f313bf4784b8992b7`
+
+#### Changed
+
+- removed only the stale duplicate generic `Phase 5 - Claim decomposition and evidence comparison` section from `docs/ROADMAP.md`;
+- preserved completed Phase 2C / Phase 5A wording, Phase 3B future/unverified status, Phase 6, the controlled-pilot boundary, frozen non-claims, Proof evidence, metrics, and `v1.0-proof`;
+- no runtime, schema, evaluation corpus, Proof asset, metric, or legal/product capability changed.
+
+#### Actually Executed
+
+On PR #46 exact head `22788c56380da6d4379fc02ac7142c1865c212b6`:
+
+- confirmed the PR changed exactly one file, `docs/ROADMAP.md`, with `+0/-22`;
+- reviewed the merged commit patch and verified it removes only the stale duplicate Phase 5 block;
+- confirmed PR #46 merged to `main` as `8bde1cd6a0d8532bbf34663f313bf4784b8992b7`;
+- confirmed Issue #45 closed as `completed`;
+- no runtime/evaluation workflow evidence was promoted from this docs-only change.
+
+#### Verified
+
+- ROADMAP no longer represents accepted decomposition/comparison capability both as completed and as a second future generic Phase 5 contract;
+- PR scope remained documentation-only and bounded to the stale duplicate block;
+- Issue #45 lifecycle is complete through merge/close;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- no new runtime or evaluation PASS is claimed from PR #46;
+- no description retrieval/reranking, OCR, auth/RBAC, multi-tenancy, cloud production readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified;
+- documentation consistency does not establish new executable behavior.
+
+#### Remaining Risks
+
+- roadmap/documentation can become stale again if future accepted changes are not reconciled in the same lifecycle;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P8 — Retry failed ingestion from persisted original
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #47 — `Progression: retry failed ingestion from the persisted original`  
+**PR:** #48  
+**Accepted PR exact head:** `f7b813ac0863b547ebea9ec518d908b1cc6a4642`  
+**Resulting main merge SHA:** `df3c4df0d46d6e941b34e50ff421721afab69f82`
+
+#### Changed
+
+- added an explicit operator-driven `POST /api/v1/documents/{id}/retry` recovery endpoint for existing terminal `FAILED` documents;
+- retry reuses the existing document row, SHA-256 digest, storage key, and persisted original bytes and does not accept a replacement upload;
+- added stable `document_retry_not_allowed` / HTTP 409 behavior for non-failed document states;
+- retry transitions the existing row through `PROCESSING` and reuses the existing parser and atomic page-persistence path; successful retry clears prior ingestion error metadata;
+- added focused database-free and real-PostgreSQL integration coverage for same-row recovery, source page persistence, and non-failed rejection;
+- documented the operator-driven recovery boundary without claiming a worker, queue, automatic retry policy, OCR recovery, or production resilience;
+- no schema migration, retrieval/ranking, grounding/comparison/review semantics, Proof asset, frozen metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #48 exact head `f7b813ac0863b547ebea9ec518d908b1cc6a4642`:
+
+- `General CI` run `33634178261`: **GREEN**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint/format: **PASS**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+- `Progression Deterministic Regression` run `33634178253`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33634178277`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33634178199`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33634178221`: **GREEN**;
+- `V1-05 Human Review Verification` run `33634178295`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33634178168`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33634178222`: **GREEN**;
+- `V1-06 Expected Failure States` run `33634178192`: **GREEN**;
+- `V1-07 Final Evaluations` run `33634178342`: **GREEN**;
+- `V1-07 Proof Package` run `33634178197`: **GREEN**;
+- reviewed the exact-head five-file diff and confirmed unresolved review threads: `0`;
+- merged PR #48 with expected-head SHA guard and confirmed Issue #47 auto-closed as `completed`.
+
+#### Verified
+
+- a supported stored text PDF can be retried from `FAILED` to `COMPLETED` without creating a second document row or accepting replacement bytes;
+- real-PostgreSQL integration coverage verifies one persisted document row, unchanged digest/storage key, cleared prior error metadata, and persisted source-verifiable page rows after successful retry;
+- non-failed retry is rejected with stable HTTP 409 / `document_retry_not_allowed` behavior;
+- retry remains explicit/operator-driven and reuses the existing ingestion parser/page-persistence contracts;
+- exact-head General CI and all ten additional triggered progression/v1 workflows are GREEN;
+- frozen v1.0 Proof baseline, Sections 6–7 limitations/non-claims, and reviewed tag boundary remain unchanged.
+
+#### Not Verified
+
+- no background worker, automatic retry scheduling, durable retry queue, or automatic outage recovery was added or verified;
+- no frontend/operator retry control was added; the accepted recovery primitive is API/service-level;
+- no exhaustive fault injection proves every concurrent storage/network/database outage during retry;
+- OCR/scanned-PDF recovery remains unsupported;
+- no new legal, benchmark-quality retrieval, real-local-model, auth/RBAC, multi-tenant, cloud/Kubernetes, or security-certification claim is made.
+
+#### Remaining Risks
+
+- retry depends on the persisted original still being readable and on the underlying storage/database fault being recovered;
+- the recovery action is operator-driven and API-level rather than a production job system;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P9 — Expose failed-ingestion retry in the Documents UI
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #49 — `Progression: expose failed-ingestion retry in the documents UI`  
+**PR:** #50  
+**Accepted PR exact head:** `abf99f327f106fe5665feab02d7f8bcdfd259d99`  
+**Resulting main merge SHA:** `c021428639df3756346abfee81759782558a2e5c`
+
+#### Changed
+
+- connected the accepted P8 `POST /api/v1/documents/{id}/retry` contract to the existing Documents UI through the existing Next.js server-side API boundary;
+- rendered `Retry ingestion` only for documents whose current state is `failed`;
+- successful retry revalidates the documents list and document detail so the same document can render as `completed` without its prior failure metadata or retry affordance;
+- retry failure surfaces only the API's client-safe `detail` and keeps the failed document retryable;
+- after review, post-registration upload failures that return a persisted failed document now revalidate `/documents`, so the retry affordance appears without a manual reload;
+- added a deterministic mock-API + actual Next server-action + Playwright verifier and a PR-visible `Progression Retry UI Verification` workflow;
+- no schema migration, backend retry semantics, automatic/background retry policy, OCR support, retrieval/grounding/comparison/review semantics, frozen Proof asset, metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #50 exact head `abf99f327f106fe5665feab02d7f8bcdfd259d99`:
+
+- `Progression Retry UI Verification` run `33641883472`: **GREEN**;
+- `General CI` run `33641883477`: **GREEN**;
+  - frontend ESLint and TypeScript typecheck: **PASS**;
+  - database-free backend tests: **PASS**;
+  - PostgreSQL integration tests without skip fallback: **PASS**;
+  - Ruff lint/format: **PASS**;
+- `V1-03 Comparison UI Verification` run `33641883460`: **GREEN**;
+- `V1-05 Human Review Verification` run `33641883465`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33641883385`: **GREEN**;
+- `V1-07 Proof Package` run `33641883418`: **GREEN**;
+- the first retry-UI verifier run exposed an incorrect test-harness API environment variable; the harness was corrected to use the application's actual `API_INTERNAL_BASE_URL` contract;
+- the next verifier iteration exposed nondeterministic dev-server cleanup in the harness; it was narrowed to direct Next process spawning plus explicit mock-server connection cleanup before acceptance;
+- review found that a newly persisted failed upload could return before list revalidation; that same-gap defect was fixed on the accepted exact head and the thread resolved after exact-head verification;
+- PR #50 was squash-merged with an expected-head SHA guard and Issue #49 auto-closed as `completed`.
+
+#### Verified
+
+- deterministic browser evidence shows a failed document has the retry affordance while an already-completed document does not;
+- the first modeled retry failure displays only the client-safe API detail and leaves the same failed document retryable;
+- the second modeled retry succeeds on the same document, refreshes the list to `completed`, removes the prior failure message, and removes the retry affordance;
+- exact-head General CI plus the relevant existing comparison, review, whole-product, and Proof-package workflows are GREEN;
+- unresolved PR review threads at merge: `0`;
+- Issue #49 lifecycle completed through merge/close;
+- frozen v1.0 Proof boundary and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- the new browser verifier uses a deterministic mock API; it verifies the UI/server-action contract but does not establish production infrastructure resilience;
+- P8 remains the authoritative real-PostgreSQL evidence for same-row backend retry behavior;
+- no background worker, automatic retry scheduling, batch recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- retry remains operator-driven and depends on the persisted original plus the underlying storage/database condition being recoverable;
+- repeated retry can still fail safely when the underlying cause remains unresolved;
+- deterministic browser coverage does not replace production deployment/resilience evidence;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P10 — Verify failed-ingestion retry through the real web/API/PostgreSQL path
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #51 — `Progression: verify failed-ingestion retry through the real web/API/PostgreSQL path`  
+**PR:** #52  
+**Accepted PR exact head:** `198d322d8e0e66682e21f1715993c412e3074598`  
+**Resulting main merge SHA:** `c1f82bba3cfe2e899939ed300d456d6e60b1c428`
+
+#### Changed
+
+- added a bounded deterministic integration proof for the already accepted P8/P9 retry contract;
+- the verifier seeds one synthetic terminal `FAILED` document plus its persisted original into real PostgreSQL/storage, starts the real FastAPI service and Next.js UI, and drives the retry through Playwright;
+- retry therefore traverses the existing Documents UI → Next.js server action → real `POST /api/v1/documents/{id}/retry` endpoint → PostgreSQL/persisted storage path → UI refresh;
+- no product/runtime behavior, schema, retry policy, OCR support, retrieval/grounding/comparison/review semantics, Proof asset, metric, legal claim, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #52 exact head `198d322d8e0e66682e21f1715993c412e3074598`, all 12 triggered PR workflows completed successfully:
+
+- `Progression Real Retry Integration` run `33648094953`: **GREEN**;
+- `General CI` run `33648095211`: **GREEN**;
+- `Progression Deterministic Regression` run `33648095178`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33648095118`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33648095251`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33648095219`: **GREEN**;
+- `V1-05 Human Review Verification` run `33648095233`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33648095069`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33648095145`: **GREEN**;
+- `V1-06 Expected Failure States` run `33648095249`: **GREEN**;
+- `V1-07 Final Evaluations` run `33648094907`: **GREEN**;
+- `V1-07 Proof Package` run `33648095338`: **GREEN**;
+- PR #52 was merged and Issue #51 closed as `completed`.
+
+#### Verified
+
+- the real-stack browser proof exercises the accepted operator retry through the actual web/server-action/API/PostgreSQL/storage boundary rather than a mock API;
+- successful retry keeps the same document ID, SHA-256 digest, and storage key, persists the expected source pages, clears failure metadata, reaches `COMPLETED`, and creates no duplicate document row;
+- exact-head CI/regression/proof workflows are GREEN;
+- this milestone adds integration evidence only and does not broaden the accepted retry feature contract;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- this controlled integration proof does not establish production infrastructure resilience or generalized retry reliability across arbitrary storage/network/database outages;
+- no background worker, automatic retry scheduling, durable retry queue, batch recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- retry still depends on a readable persisted original and a recoverable underlying failure condition;
+- the proof is deterministic controlled-pilot integration evidence, not a production resilience benchmark;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P11 — Recover required evidence for the known g01 storage question
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #53 — `Progression: recover required evidence for the known g01 storage question`  
+**PR:** #54 — `Diagnose and recover g01 required evidence`  
+**Accepted PR exact head:** `3ec421b6b65ae4927f758ae61d502cdae2b4086b`  
+**Resulting main merge SHA:** `17f09cc0827df8cee75cca15f32208c43c1dd866`
+
+#### Changed
+
+- added a conservative term-level `pg_trgm` eligibility fallback for multi-word lexical queries while preserving the existing whole-query ranking score;
+- term-level similarity can admit a locally strong Korean token match into the candidate set, but it does not add a second ranking score scale;
+- the accepted deterministic regression now pins the previously weak `g01-single-storage` case to include required evidence `collector#1` without changing the committed g01 question or label;
+- deterministic grounded selection recall and end-to-end success are pinned at `1.0`, with forbidden cross-document citations remaining `0`;
+- no case-ID special handling, hard-coded evidence injection, schema change, legal capability, Proof asset, frozen v1.0 metric rewrite, or `v1.0-proof` movement was introduced.
+
+#### Actually Executed
+
+On PR #54 exact head `3ec421b6b65ae4927f758ae61d502cdae2b4086b`, all 11 triggered PR workflows completed successfully:
+
+- `Progression Deterministic Regression` run `33673845406`: **GREEN**;
+- `General CI` run `33673845405`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33673845449`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33673845393`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33673845463`: **GREEN**;
+- `V1-05 Human Review Verification` run `33673845385`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33673845421`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33673845555`: **GREEN**;
+- `V1-06 Expected Failure States` run `33673845455`: **GREEN**;
+- `V1-07 Final Evaluations` run `33673845434`: **GREEN**;
+- `V1-07 Proof Package` run `33673845395`: **GREEN**;
+- PR #54 was squash-merged and Issue #53 closed as `completed`.
+
+#### Verified
+
+- exact-head deterministic execution requires `g01-single-storage` to succeed end-to-end and cite `collector#1`;
+- all committed grounded cases are required to remain end-to-end successful under the accepted deterministic fake-provider gate;
+- deterministic grounded selection recall is `1.0`, end-to-end success is `1.0`, and forbidden citation count is `0`;
+- retrieval correction is general query-term eligibility logic rather than case-specific behavior;
+- all triggered exact-head CI, regression, review, failure-state, evaluation, and Proof-package workflows are GREEN;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- deterministic fake-provider success is regression/reproducibility evidence, not benchmark-quality general Korean patent retrieval accuracy;
+- the term-level trigram fallback is not a Korean morphological analyser and does not establish synonym resolution or general semantic retrieval quality;
+- no new real-local-model evaluation, legal conclusion, OCR support, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, or security certification was added or verified.
+
+#### Remaining Risks
+
+- term-level substring/trigram eligibility can admit coincidental matches; the existing ranking/fusion path remains responsible for final ordering;
+- the synthetic grounded corpus remains small and regression-oriented;
+- frozen Section 6 non-claims and controlled-pilot limitations remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P12 — Bound Korean term-level lexical fallback with negative regression coverage
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #55 — `Progression: bound Korean term-level lexical fallback with negative regression coverage`  
+**PR:** #56 — `Bound Korean term-level lexical fallback`  
+**Accepted PR exact head:** `b2f046928300c50ebada8ab219fe9a9a7ed4750e`  
+**Resulting main merge SHA:** `07f4857ec43e2d2786528f80b75f28dc2dbabf49`
+
+#### Changed
+
+- added focused real-PostgreSQL regression coverage for the P11 term-level `pg_trgm` eligibility fallback;
+- the positive synthetic case proves a Korean particle-variant term can meet the accepted `0.60` term-level eligibility threshold while whole-query/FTS/phrase gates remain below eligibility;
+- the negative synthetic case proves an unrelated weak term below `0.60` does not admit the same candidate through the fallback;
+- kept the existing deterministic g01 acceptance gate and P11 runtime/scoring behavior unchanged;
+- no retrieval runtime code, ranking score, threshold, corpus label, schema, legal capability, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #56 exact head `b2f046928300c50ebada8ab219fe9a9a7ed4750e`, all 11 triggered PR workflows completed successfully:
+
+- `V1-06 Expected Failure States` run `33702436593`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33702436511`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33702436447`: **GREEN**;
+- `Progression Deterministic Regression` run `33702436528`: **GREEN**;
+- `V1-04 Claim Element Verification` run `33702436444`: **GREEN**;
+- `V1-07 Final Evaluations` run `33702436578`: **GREEN**;
+- `General CI` run `33702436449`: **GREEN**;
+- `V1-05 Human Review Verification` run `33702436450`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33702436517`: **GREEN**;
+- `V1-07 Proof Package` run `33702436489`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33702436512`: **GREEN**;
+- PR #56 was squash-merged and Issue #55 closed as `completed`.
+
+#### Verified
+
+- the P11 term-level fallback now has executable positive and negative PostgreSQL boundary coverage rather than only the g01 success regression;
+- the negative case prevents a weak unrelated Korean term from being treated as eligible solely through the term-level fallback at the accepted threshold;
+- the existing g01 deterministic acceptance remains GREEN on the accepted exact head;
+- exact-head General CI, deterministic regression, comparison, review, clean-start, whole-product, failure-state, final-evaluation, and Proof-package workflows are GREEN;
+- PR #56 changed one test file only (`+109/-0`), so accepted runtime retrieval/scoring/threshold behavior remained unchanged;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- the focused positive/negative cases do not establish general Korean morphology, synonym handling, semantic retrieval quality, or benchmark-quality patent retrieval performance;
+- the `0.60` trigram threshold is preserved as an accepted regression boundary, not proven globally optimal;
+- no new real-local-model evaluation, legal conclusion, OCR support, auth/RBAC, multi-tenancy, cloud/Kubernetes readiness, or security certification was added or verified.
+
+#### Remaining Risks
+
+- term-level trigram matching remains a bounded lexical heuristic and can still have corpus-dependent false positives/negatives outside the committed regression cases;
+- the synthetic regression corpora remain intentionally small and are not a general patent-search benchmark;
+- frozen Section 6 non-claims and controlled-pilot limitations remain in force.
+
+#### Exact Next Action
+
+`Run one bounded Progression Review from current main. If a concrete use/show/delivery milestone with executable acceptance exists, create exactly one Issue before implementation; otherwise remain enabled in lightweight HOLD/no-mutation mode.`
+
+### Milestone P13 — Terminalize recoverable claim-graph persistence failures
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #57 — `Progression: terminalize claim-graph persistence failures`  
+**PR:** #58 — `Terminalize recoverable claim graph persistence failures`  
+**Accepted PR exact head:** `3f5df0636211d6068292bec6378346bef3868a42`  
+**Resulting main merge SHA:** `00f297813f56245a0287057d38f19504dd664539`
+
+#### Changed
+
+- when the claim graph/final-status commit fails but recovery persistence is available, the existing parse result is terminalized as `FAILED` with stable `internal_error` semantics instead of being left in `PROCESSING`;
+- the failed graph transaction is rolled back before the recovery state is persisted, so no partial successful graph is accepted;
+- client-facing failure text is bounded and does not expose the synthetic database exception detail;
+- preserved the parse-result ID before `AsyncSession.rollback()` so post-rollback logging does not touch an expired ORM attribute and trigger `MissingGreenlet`;
+- added focused regression coverage for the recoverable persistence failure and in-place retry of the same parser-version result;
+- no schema, parser-rule expansion, retrieval/ranking behavior, legal capability, Proof asset, frozen metric, or `v1.0-proof` tag changed.
+
+#### Actually Executed
+
+On PR #58 exact head `3f5df0636211d6068292bec6378346bef3868a42`, all 11 triggered PR workflows completed successfully:
+
+- `V1-04 Claim Element Verification` run `33742446721`: **GREEN**;
+- `Progression Deterministic Regression` run `33742446619`: **GREEN**;
+- `V1-06 Clean Start Verification` run `33742446625`: **GREEN**;
+- `V1-06 Expected Failure States` run `33742446706`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `33742446621`: **GREEN**;
+- `V1-07 Final Evaluations` run `33742446563`: **GREEN**;
+- `General CI` run `33742446571`: **GREEN**;
+- `V1-05 Human Review Verification` run `33742446498`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `33742446599`: **GREEN**;
+- `V1-07 Proof Package` run `33742446622`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `33742446598`: **GREEN**;
+- review raised a P1 rollback-expiration blocker on the earlier implementation; exact head `3f5df063...` captures `result.id` before rollback, and the review thread was explicitly reconciled before merge;
+- PR #58 was squash-merged with an expected-head SHA guard and Issue #57 auto-closed as `completed`.
+
+#### Verified
+
+- a modeled graph/final-status persistence failure no longer strands the existing parse result in `PROCESSING` when the recovery commit succeeds;
+- the same parse result reaches terminal `FAILED / internal_error`, and the client-visible message excludes the synthetic database exception detail;
+- the source `Document` remains `COMPLETED`, preserving separation between successful ingestion and parse persistence failure;
+- the existing failed-result parser-version retry contract remains in-place and executable under the focused regression;
+- exact-head General CI and all ten additional triggered progression/v1 workflows are GREEN;
+- the SQLAlchemy rollback-expiration review blocker was corrected before merge;
+- Issue #57 lifecycle completed through guarded merge/close;
+- frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
+
+#### Not Verified
+
+- if the recovery commit also fails, durable terminalization is not claimed; continued database failure may still leave an operator-visible incomplete state;
+- the forced persistence failure is bounded regression evidence, not a general PostgreSQL/network resilience benchmark;
+- no background retry queue, automatic outage recovery, OCR/scanned-PDF recovery, auth/RBAC, multi-tenancy, public-cloud/Kubernetes readiness, legal conclusion, benchmark-quality retrieval, or security certification was added or verified.
+
+#### Remaining Risks
+
+- parser recovery still depends on the underlying database becoming writable for the recovery commit;
+- this milestone closes the known claim-graph persistence blocker but does not justify further isolated persistence permutations absent a concrete pilot/handoff blocker;
+- all frozen v1.0 limitations and non-claims remain in force.
+
+#### Exact Next Action
+
+`Perform the required destination review for D1 before opening any new milestone. If the controlled-pilot destination is sufficiently covered, record DESTINATION REACHED — CONTROLLED PILOT and prefer coherent D2 handoff packaging over further isolated persistence/retrieval fault permutations.`
 
 ## 11. Destination Review
 
@@ -215,9 +972,9 @@ Their accepted implementation/evidence commits and Issue/PR lifecycle remain aut
 
 **Status:** `DESTINATION REACHED — CONTROLLED PILOT`
 
-The accepted repository evidence sufficiently covers the D1 destination for one analyst/reviewer on a trusted workstation or controlled on-premise environment:
+The accepted repository evidence now sufficiently covers the D1 destination for one analyst/reviewer on a trusted workstation or controlled on-premise environment:
 
-- clean checkout / empty-database migration and deterministic whole-product execution are verified;
+- clean checkout / empty-database migration and deterministic whole-product execution are already verified;
 - supported text-based Korean patent PDFs can be ingested into source-verifiable persisted page text;
 - deterministic claim parsing/dependency handling is inside the accepted boundary, with recoverable ingestion and claim-graph persistence failures terminalized through bounded client-safe contracts;
 - explicit operator retry for failed ingestion is available in the Documents UI and has real web/API/PostgreSQL/storage integration evidence;
@@ -226,6 +983,18 @@ The accepted repository evidence sufficiently covers the D1 destination for one 
 - proof screenshots, architecture visual, source-highlight evidence, human-review evidence, and the golden-path WebM are committed and reproducible.
 
 This destination decision does **not** broaden the product claim boundary. OCR/scanned-PDF recovery, legal conclusions, benchmark-quality general retrieval/semantic correctness, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes readiness, private/customer corpus requirements, and security/compliance certification remain unverified and out of scope.
+
+### D2 — Delivery-ready Controlled Pilot Handoff
+
+**Status:** `NOT YET ACCEPTED`
+
+Current repository evidence is strong but fragmented across clean-start, retry, whole-product, evaluation, and Proof-package workflows. No repository-native single handoff/acceptance path was found that coherently guides an operator from clean setup/migration through supported ingest/recovery, retrieve/ask/compare/decompose, human review, source navigation, and a bounded reviewer-facing evidence/provenance package with explicit limitations.
+
+That coherence gap is the next justified progression axis. It is a delivery/demo friction problem, not another ingestion/persistence fault permutation and not a request for new legal or semantic capability.
+
+### Exact Next Action
+
+`Open exactly one bounded D2 handoff milestone only if its acceptance reuses existing supported flows/assets and produces a coherent clean-environment operator/reviewer handoff path. Do not open another isolated persistence/retrieval proof milestone.`
 
 ### Milestone P14 — Package delivery-ready controlled pilot handoff
 
@@ -250,23 +1019,28 @@ On PR #60 exact head `2fa7dbefd63ea7787165c50be7c31894da358ec1`:
 
 - `General CI` run `33770691441`: **GREEN**;
 - `Progression Controlled Pilot Handoff` run `33770691476`: **GREEN**;
+- the handoff job checked out the exact PR head, provisioned Node.js, executed the delivery-ready controlled-pilot handoff, verified bounded report language, uploaded the handoff evidence artifact, and tore down runtimes successfully;
 - generated artifact `controlled-pilot-handoff-2fa7dbefd63ea7787165c50be7c31894da358ec1` was uploaded as artifact ID `9899812446`, digest `sha256:74a1ba0862e101104224e4f7e8091d2b94d34aa2e4f9cad79744bfeac86661ae`;
-- downloaded artifact contents were inspected and the report recorded PASS for clean setup/migration, supported failed-ingestion operator recovery, deterministic whole-product analyst/reviewer flow, and present+hashed source-navigation/human-review Proof assets;
-- review documentation blocker about Node.js/npm prerequisites was corrected before merge;
-- PR #60 was squash-merged with an expected-head SHA guard and Issue #59 auto-closed as `completed`.
+- downloaded artifact contents were inspected: `README.md`, `proof-assets.sha256`, and `handoff-report.sha256` were present; the report recorded PASS for clean setup/migration, supported failed-ingestion operator recovery, deterministic whole-product analyst/reviewer flow, and present+hashed source-navigation/human-review Proof assets;
+- review raised one P2 documentation blocker because the original local prerequisite text omitted Node.js/npm; exact head `2fa7dbef...` corrected the documentation to require Node.js 22+ and npm, and the review thread was reconciled before merge;
+- PR #60 was squash-merged with an expected-head SHA guard;
+- Issue #59 auto-closed as `completed`.
 
 #### Verified
 
-- one repository-native documented command packages the supported clean setup/migration → ingest/recovery → retrieve/ask/compare/decompose → human review → source navigation → evidence-handoff path using existing accepted public-safe/synthetic flows;
+- one repository-native documented command now packages the supported clean setup/migration → ingest/recovery → retrieve/ask/compare/decompose → human review → source navigation → evidence-handoff path using existing accepted public-safe/synthetic flows;
 - exact-head General CI and the dedicated controlled-pilot handoff workflow are GREEN;
-- the generated reviewer-facing package contains deterministic evidence hashes and explicit limitations;
+- the generated reviewer-facing package contains deterministic evidence hashes and explicit limitations, including that citation/source resolution is not semantic entailment or legal correctness;
+- the package explicitly makes no infringement, validity, novelty, equivalence, inventive-step, patentability, or other legal determination;
+- exact-head evidence artifact generation is PR-visible and tied to the accepted commit;
 - Issue #59 lifecycle completed through guarded merge/close;
 - frozen v1.0 Proof baseline and Sections 6–7 limitations/non-claims remain unchanged.
 
 #### Not Verified
 
 - the handoff does not establish OCR/scanned-PDF recovery, production infrastructure resilience, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes readiness, private/customer corpus behavior, security/compliance certification, benchmark-quality general patent retrieval, semantic entailment, or legal correctness;
-- the generated artifact is bounded controlled-pilot delivery evidence, not a production certification package.
+- the generated artifact is bounded controlled-pilot delivery evidence, not a production certification package;
+- Node.js remains an explicit clean-host prerequisite rather than being containerized by this milestone.
 
 #### Remaining Risks
 
@@ -274,131 +1048,106 @@ On PR #60 exact head `2fa7dbefd63ea7787165c50be7c31894da358ec1`:
 - handoff reproducibility depends on the documented Docker Compose and Node.js/npm prerequisites;
 - all frozen v1.0 limitations and non-claims remain in force.
 
+#### Exact Next Action
+
+`Perform the D2 destination review. If D2 is accepted, do not open another automatic milestone unless a farther destination can be chosen without OCR/scanned-PDF recovery, general legal/semantic claims, auth/RBAC/multi-tenancy, public cloud/Kubernetes, customer/private corpus requirements, or another major product-direction decision.`
+
 ### D2 Acceptance Update — Delivery-ready Controlled Pilot Handoff
 
 **Status:** `DESTINATION REACHED — DELIVERY-READY CONTROLLED PILOT HANDOFF`
 
-P14 closes the D2 coherence gap. The repository has a single documented, exact-head executable handoff path that reuses accepted capabilities to verify clean setup/migration, one supported operator recovery path, deterministic whole-product analyst/reviewer behavior, source navigation, human review, and a bounded evidence/provenance output with explicit non-claims.
+P14 closes the coherence gap previously recorded under D2. The repository now has a single documented, exact-head executable handoff path that reuses accepted capabilities to verify clean setup/migration, one supported operator recovery path, deterministic whole-product analyst/reviewer behavior, source navigation, human review, and a bounded evidence/provenance output with explicit non-claims.
 
 This acceptance is intentionally limited to the same trusted-workstation/on-premise, supported text-based/public-safe boundary. It does not convert source resolvability into semantic entailment or legal correctness and does not establish production security/cloud readiness.
 
-## 12. D3 — Real-document Controlled Pilot
-
-**Human Review decision date:** `2026-09-07`  
-**Destination state:** `DESTINATION REACHED — REAL-DOCUMENT CONTROLLED PILOT`  
-**Accepted bounded milestone:** `D3-01 — verify a real-public-document controlled pilot corpus`  
-**Issue:** #61  
-**PR:** #62  
-**Accepted PR exact head:** `5b3752c271283e345310f25b15e0da4941f3cb80`  
-**Resulting main merge SHA:** `2f587a09ffac70a9c338799a782c9a069ed7dcef`
-
-D3 reuses the accepted D1 Controlled Pilot and D2 Delivery-ready Controlled Pilot Handoff assets to establish whether one analyst/reviewer can repeatedly use ClaimTrace on a small bounded corpus of real public **text-based Korean patent documents** while preserving source-verifiable ingest → parse → retrieve → ask/compare/decompose → human review → source navigation behavior.
-
-D3 is not a general patent-analysis accuracy benchmark and does not broaden the frozen legal/non-claim boundary. Real-corpus evidence supplements the accepted deterministic public-safe/synthetic evidence; it does not replace or reinterpret it.
-
-### D3-01 acceptance boundary
-
-D3-01 remains one bounded real-public-document acceptance milestone. Its accepted verifier:
-
-- records canonical source/provenance metadata sufficient for a reviewer to retrieve/check each selected public document;
-- consumes public PDFs during verification rather than committing third-party PDF bytes;
-- pins the SHA-256 and publication identity of every accepted input and fails closed on mismatch;
-- distinguishes supported text-based PDFs from unsupported/scanned/image-only inputs and persists explicit failure evidence before nonzero exit;
-- executes ingestion, text extraction, supported claim parsing, indexing, retrieval, grounded citation resolution, comparison, decomposition, append-only review mechanics, and source navigation against the real corpus;
-- emits reproducible per-document/per-step evidence;
-- reruns the deterministic synthetic regression/evidence gates as regression protection.
-
-### Accepted source provenance
-
-The accepted bounded corpus contains two public Korean patent publications:
-
-1. `KR20150055205A` — publication display `10-2015-0055205`, title `다중 경로 안내 텔레매틱스 시스템`, accepted PDF SHA-256 `e9a6cf151af6ec5e3837b9c2912f198fd937c6b29b0ed61bcb1aa79af3b80819`.
-2. `KR20170054782A` — publication display `10-2017-0054782`, title `내비게이션 경로 재탐색을 위한 장치 및 방법`, accepted PDF SHA-256 `206ed95187b78d7793753c924dfc2f3a4023ce6c6188bd75613efc57915167f5`.
-
-The source PDFs were acquired from public patent publication surfaces at verification time and were **not committed** to the repository. The verifier validates both pinned SHA-256 and expected publication identity before an input can become `supported_text_pdf`.
-
-### D3-01 acceptance evidence
-
-#### Changed
-
-- added a bounded manifest-driven real-public corpus definition with canonical source/provenance metadata, publication identity, and pinned SHA-256 values;
-- added repository-owned fail-closed input verification that persists unsupported/failure classifications into structured evidence;
-- added a dedicated D3 exact-head workflow and product-path acceptance harness reusing existing ClaimTrace APIs and accepted deterministic providers;
-- preserved frozen v1.0, D1, D2, legal/non-claim boundaries, synthetic regression evidence, and `v1.0-proof` without movement or reinterpretation.
-
-#### Actually Executed
-
-On PR #62 exact head `5b3752c271283e345310f25b15e0da4941f3cb80`:
-
-- all 13 triggered PR workflows completed **GREEN**;
-- `Progression D3 Real Public Corpus` run `34162022664`: **GREEN**;
-- `General CI` run `34162022697`: **GREEN**;
-- `Progression Deterministic Regression` run `34162022646`: **GREEN**;
-- `V1-02 Claim Comparison Verification` run `34162022607`: **GREEN**;
-- `V1-03 Comparison UI Verification` run `34162022609`: **GREEN**;
-- `V1-04 Claim Element Verification` run `34162022626`: **GREEN**;
-- `V1-05 Human Review Verification` run `34162022638`: **GREEN**;
-- `V1-06 Clean Start Verification` run `34162022643`: **GREEN**;
-- `V1-06 Whole-Product Golden Path` run `34162022655`: **GREEN**;
-- `V1-06 Expected Failure States` run `34162022637`: **GREEN**;
-- `V1-07 Final Evaluations` run `34162022610`: **GREEN**;
-- `V1-07 Proof Package` run `34162022671`: **GREEN**;
-- `Progression Controlled Pilot Handoff` run `34162022613`: **GREEN**;
-- D3 artifact `d3-real-public-corpus-5b3752c271283e345310f25b15e0da4941f3cb80` was uploaded as artifact ID `10032926414`, digest `sha256:829fa3708874325b6df8532bc66f2028cefa5f0bf34abf0b19bd8b1185bde1bd`;
-- the artifact was inspected and records PASS across the accepted per-document and analyst/reviewer product-path steps;
-- both PR review blockers—source identity/hash pinning and structured unsupported/failure evidence persistence—were corrected and both threads were resolved;
-- PR #62 was squash-merged with expected-head protection to main merge SHA `2f587a09ffac70a9c338799a782c9a069ed7dcef`;
-- Issue #61 auto-closed as `completed`.
-
-#### Verified
-
-For both accepted real public documents:
-
-- runtime acquisition matched the pinned SHA-256 and expected Korean publication identity;
-- text-support classification was `supported_text_pdf` rather than an implicit fallback;
-- ingestion and persisted page extraction completed;
-- supported claim parsing and indexing completed;
-- canonical source locators resolved back to persisted source text;
-- retrieval returned source-backed locators;
-- the grounded analytical path produced resolvable citations under the deterministic provider contract;
-- target/reference comparison remained traceable to persisted source spans;
-- decomposition remained traceable to persisted source text;
-- append-only human-review mechanics were exercised;
-- source-navigation contracts remained usable;
-- existing deterministic synthetic regression/evidence protection remained GREEN;
-- unsupported/failure states remain fail-closed and artifact-preserving rather than silently promoted to PASS.
-
-#### Not Verified / limitations
-
-D3-01 does **not** verify or claim:
-
-- infringement, validity, novelty, equivalence, inventive step, patentability, legal advice, or any other legal conclusion;
-- benchmark-quality general retrieval, semantic accuracy, entailment, or universal Korean patent parsing correctness;
-- model quality from the deterministic fake embedding/LLM providers;
-- substantive reviewer/legal judgement from the automated `needs_correction` review exercise; that step verifies append-only review mechanics only;
-- OCR/scanned/image-only PDF recovery;
-- private/customer corpus onboarding, copying, publication, or private-data behavior;
-- authentication, RBAC, multi-tenancy, billing, public cloud/Kubernetes, production admin readiness, or security/compliance certification;
-- broad parser/retrieval/model quality expansion.
-
-#### Remaining Risks
-
-- the accepted corpus is intentionally small and establishes only the bounded real-document controlled-pilot invariant, not general patent-analysis correctness;
-- public acquisition surfaces or bytes can change; pinned SHA-256 and publication identity therefore remain fail-closed acceptance guards rather than assumptions;
-- deterministic fake providers exercise workflow/provenance mechanics but not real-model semantic quality;
-- substantive analyst/reviewer judgement remains a human boundary;
-- all frozen v1.0 Sections 6–7 limitations and non-claims remain in force.
-
-### D3 Destination Review
-
-**Status:** `D3 DESTINATION REACHED — REAL-DOCUMENT CONTROLLED PILOT`
-
-D3-01 closes the demonstrated D3 gap. The accepted evidence now shows that the existing controlled-pilot/handoff assets can execute against a bounded corpus of real public text-based Korean patent PDFs while preserving source-verifiable ingest → parse → retrieve → grounded analysis → comparison/decomposition → append-only review mechanics → source navigation, with exact-head reproducible evidence and explicit unsupported/failure handling.
-
-No demonstrated blocker currently justifies D3-02. Opening another corpus variant, retrieval metric, parser edge-case sweep, or additional proof-of-proof layer solely to continue progression would violate the anti-micro-loop boundary. OCR, private/customer corpora, generalized semantic/legal accuracy, authentication/multi-tenancy, cloud/Kubernetes, or comparable expansion would require a separate Human Review product decision.
+Further meaningful progression now requires a destination/product decision if it would involve OCR/scanned-PDF recovery, general semantic/legal accuracy claims, authentication/RBAC/multi-tenancy, public-cloud/Kubernetes, customer/private corpus requirements, or comparable scope expansion.
 
 ### Exact Next Action
 
 `HUMAN REVIEW — NEXT DESTINATION DECISION`
 
-Do not open another automatic ClaimTrace progression milestone. Preserve `v1.0-proof`, accepted D1/D2/D3 evidence, the controlled-pilot boundary, public-safe source handling, and all legal/non-claim limitations until a human explicitly selects a farther destination.
+Do not open another automatic ClaimTrace progression milestone until a human explicitly selects the next destination. Preserve `v1.0-proof`, the accepted D1/D2 evidence, the controlled-pilot boundary, and all legal/non-claim limitations.
+
+## 12. D3 — Real-document Controlled Pilot
+
+**Human Review decision date:** `2026-09-07`  
+**Destination state:** `SELECTED / ACTIVE`  
+**Active bounded milestone:** `D3-01 — verify a real-public-document controlled pilot corpus`  
+**Issue:** #61
+
+D3 reuses the accepted D1 Controlled Pilot and D2 Delivery-ready Controlled Pilot Handoff assets to determine whether one analyst/reviewer can repeatedly use ClaimTrace on a small bounded corpus of real public **text-based Korean patent documents** while preserving source-verifiable ingest → parse → retrieve → ask/compare/decompose → human review → source navigation behavior.
+
+D3 is not a general patent-analysis accuracy benchmark and does not broaden the frozen legal/non-claim boundary. Real-corpus evidence supplements the accepted deterministic public-safe/synthetic evidence; it does not replace or reinterpret it.
+
+### D3-01 acceptance boundary
+
+D3-01 must remain one bounded real-public-document acceptance milestone. Its accepted verifier must:
+
+- record canonical source/provenance metadata sufficient for a reviewer to retrieve/check every selected public document;
+- consume locally obtained public PDFs by default rather than committing third-party PDFs unless redistribution/public-use status is clearly established and repository inclusion is necessary;
+- record a stable local SHA-256 for each acquired input used in executable evidence;
+- distinguish supported text-based PDFs from unsupported/scanned/image-only inputs and fail closed rather than silently converting unsupported inputs into PASS;
+- execute ingestion, text extraction, and supported claim parsing against a small real Korean patent corpus;
+- exercise retrieval plus at least one grounded analytical path with persisted source locators;
+- exercise at least one target/reference comparison or decomposition result that can be traced back to persisted real-document source text;
+- preserve human review and source navigation in the real-document analyst path;
+- emit reproducible per-document/per-step PASS/FAIL evidence, including unsupported/failure states;
+- rerun existing deterministic synthetic regression/evidence gates as regression protection.
+
+Initial bounded provenance candidates recorded under Issue #61 are `KR20150055205A`, `KR20170054782A`, and `KR20180026111A`, a narrow navigation/route family suitable for source-verifiable target/reference exercise without implying legal or semantic benchmark conclusions. Candidate inclusion is not acceptance: actual PDF acquisition, checksum, text-support classification, ingest/parse, retrieval/analysis, comparison/decomposition, review/navigation, and exact-head executable evidence remain required.
+
+### Preserved non-claims / explicitly deferred
+
+D3-01 does not authorize or verify:
+
+- infringement, validity, novelty, equivalence, inventive step, patentability, legal advice, or any other legal conclusion;
+- benchmark-quality general retrieval, semantic accuracy, entailment, or universal Korean patent parsing correctness;
+- OCR/scanned/image-only PDF recovery unless a later executed D3 acceptance run demonstrates that it is the smallest unavoidable blocker and a human separately accepts that scope;
+- private/customer corpus onboarding, copying, publication, or private-data claims;
+- authentication, RBAC, multi-tenancy, billing, public cloud/Kubernetes, production admin readiness, or security/compliance certification;
+- broad parser/retrieval/model rewrites merely to improve corpus scores;
+- model-quality expansion unless actual D3 acceptance evidence exposes a concrete blocker.
+
+### D3-01 current evidence state
+
+#### Changed
+
+- Human Review selected D3 as the next product destination;
+- Issue #61 records D3-01 as the first bounded milestone;
+- this milestone branch reconciles the MASTER before D3 implementation by preserving frozen v1.0/D1/D2 evidence and recording D3/D3-01 active state.
+
+#### Actually Executed
+
+- current `main` MASTER was re-read before mutation;
+- current Issue #61 and open PR state were re-fetched;
+- no relevant open PR existed at reconciliation time;
+- linked branch `issue-61-real-public-controlled-pilot` was confirmed;
+- KIPRIS was re-confirmed as the public Korean patent-information retrieval service for domestic patent/publication checking.
+
+#### Verified
+
+- the frozen v1.0 baseline and accepted D1/D2 destination evidence remain preserved in this document;
+- `v1.0-proof` is not rewritten, reinterpreted, or moved by this D3 selection;
+- D3-01 remains bounded to public text-based Korean patent documents and source-verifiable controlled-pilot use;
+- implementation/acceptance cannot be claimed until real-document and exact-head executable evidence exists.
+
+#### Not Verified
+
+- no selected real PDF has yet been accepted by checksum/text-support verification;
+- no real-document ingest/parse/retrieve/ask/compare/decompose/review/source-navigation PASS is claimed yet;
+- no exact-head D3-01 PR workflow is GREEN yet;
+- all preserved non-claims above remain unverified.
+
+#### Remaining Risks
+
+- public availability does not by itself establish redistribution permission, so source PDFs should remain locally acquired unless repository inclusion is separately justified;
+- candidate documents may expose scanned/non-text pages or parser boundaries and must fail explicitly if unsupported;
+- a successful bounded real-corpus run would establish D3 controlled-pilot usability only for the executed corpus/path, not general legal or semantic accuracy.
+
+#### Source provenance direction
+
+KIPRIS is the preferred official/public Korean patent retrieval surface for D3-01 source checking. Manifest entries must preserve canonical Korean publication identifiers and a reviewer-usable source/acquisition reference; locally used PDF bytes must be tied to the evidence by SHA-256.
+
+#### Exact Next Action
+
+`Implement the smallest manifest-driven, fail-closed real-public-document verifier on Issue #61; acquire the selected public PDFs locally; record source/checksum/text-support evidence; execute at least one real-document analyst/reviewer path plus synthetic regression protection; then open one linked PR for exact-head verification.`
