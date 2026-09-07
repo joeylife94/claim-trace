@@ -143,9 +143,7 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
             document_id = upload.json()["id"]
             assert upload.json()["status"] == "completed", upload.text
 
-            pages_response = indexing_client.get(
-                f"/api/v1/documents/{document_id}/pages?limit=200"
-            )
+            pages_response = indexing_client.get(f"/api/v1/documents/{document_id}/pages?limit=200")
             assert pages_response.status_code == 200, pages_response.text
             pages = pages_response.json()["items"]
             assert pages and any(page["text"].strip() for page in pages)
@@ -207,9 +205,7 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         assert search.status_code == 200, search.text
         search_body = search.json()
         assert search_body["results"], search.text
-        assert all(
-            result["document_id"] == target["id"] for result in search_body["results"]
-        )
+        assert all(result["document_id"] == target["id"] for result in search_body["results"])
         for result in search_body["results"]:
             resolved = _resolve_spans(
                 indexing_client,
@@ -264,11 +260,14 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         assert compared.status_code == 200, compared.text
         comparison = compared.json()
         assert comparison["target"]["document_id"] == target["id"]
-        assert _resolve_spans(
-            indexing_client,
-            target["id"],
-            comparison["target"]["source_spans"],
-        ) == comparison["target"]["text"]
+        assert (
+            _resolve_spans(
+                indexing_client,
+                target["id"],
+                comparison["target"]["source_spans"],
+            )
+            == comparison["target"]["text"]
+        )
         assert comparison["matches"], compared.text
         for match in comparison["matches"]:
             assert match["document_id"] == reference["id"]
