@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "destination": "D3 — Real-document Controlled Pilot",
+  "milestone": "D3-01",
+  "evidence_boundary": "Public text-based Korean patent documents only; no legal or benchmark-quality conclusions.",
+  "documents": [
+    {
+      "publication_number": "KR20150055205A",
+      "application_number": "KR1020130137065A",
+      "title_ko": "다중 경로 안내 텔레매틱스 시스템",
+      "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
+      "canonical_lookup": "https://www.kipris.or.kr/",
+      "source_page": "https://patents.google.com/patent/KR20150055205A/ko",
+      "acquisition_url": "https://patents.google.com/patent/KR20150055205A/ko.pdf",
+      "local_filename": "KR20150055205A.pdf",
+      "redistribution_status": "not_asserted_do_not_commit_pdf"
+    },
+    {
+      "publication_number": "KR20170054782A",
+      "application_number": "KR1020150157370A",
+      "title_ko": "내비게이션 경로 재탐색을 위한 장치 및 방법",
+      "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
+      "canonical_lookup": "https://www.kipris.or.kr/",
+      "source_page": "https://patents.google.com/patent/KR20170054782A/ko",
+      "acquisition_url": "https://patents.google.com/patent/KR20170054782A/ko.pdf",
+      "local_filename": "KR20170054782A.pdf",
+      "redistribution_status": "not_asserted_do_not_commit_pdf"
+    },
+    {
+      "publication_number": "KR20180026111A",
+      "application_number": "KR1020160113083A",
+      "title_ko": "내비게이션 경로 탐색 방법",
+      "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
+      "canonical_lookup": "https://www.kipris.or.kr/",
+      "source_page": "https://patents.google.com/patent/KR20180026111A/ko",
+      "acquisition_url": "https://patents.google.com/patent/KR20180026111A/ko.pdf",
+      "local_filename": "KR20180026111A.pdf",
+      "redistribution_status": "not_asserted_do_not_commit_pdf"
+    }
+  ]
+}
