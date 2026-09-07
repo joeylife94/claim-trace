@@ -290,7 +290,9 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
             if candidate["elements"]:
                 decomposition = candidate
                 break
-        assert decomposition is not None, "real target document produced no reviewable decomposition"
+        assert decomposition is not None, (
+            "real target document produced no reviewable decomposition"
+        )
         for element in decomposition["elements"]:
             assert element["spans"]
             for span in element["spans"]:
