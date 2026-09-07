@@ -24,7 +24,11 @@ from tests.grounded_fixtures import draft_json
 pytestmark = pytest.mark.integration
 
 
-def _resolve_spans(client: TestClient, document_id: str, spans: list[dict[str, Any]]) -> str:
+def _resolve_spans(
+    client: TestClient,
+    document_id: str,
+    spans: list[dict[str, Any]],
+) -> str:
     response = client.get(f"/api/v1/documents/{document_id}/pages?limit=200")
     assert response.status_code == 200, response.text
     pages = {item["page_number"]: item["text"] for item in response.json()["items"]}
@@ -51,7 +55,8 @@ def _write_evidence(out_dir: Path, evidence: dict[str, Any]) -> None:
     (out_dir / "product-path-evidence.json").write_text(payload, encoding="utf-8")
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     (out_dir / "product-path-evidence.sha256").write_text(
-        f"{digest}  product-path-evidence.json\n", encoding="utf-8"
+        f"{digest}  product-path-evidence.json\n",
+        encoding="utf-8",
     )
     lines = [
         "# D3-01 real-public product-path evidence",
@@ -71,10 +76,19 @@ def _write_evidence(out_dir: Path, evidence: dict[str, Any]) -> None:
             "## Limitations",
             "",
             "- source PDFs were acquired at verification time and are not committed;",
-            "- fake embedding/LLM providers make this workflow deterministic and do not establish model quality;",
-            "- review API exercise proves append-only reviewer workflow mechanics, not substantive human judgement;",
+            (
+                "- fake embedding/LLM providers make this workflow deterministic and do not "
+                "establish model quality;"
+            ),
+            (
+                "- review API exercise proves append-only reviewer workflow mechanics, not "
+                "substantive human judgement;"
+            ),
             "- citation/source resolution proves provenance, not entailment or legal correctness;",
-            "- no infringement, validity, novelty, equivalence, inventive-step, or patentability conclusion is produced.",
+            (
+                "- no infringement, validity, novelty, equivalence, inventive-step, or "
+                "patentability conclusion is produced."
+            ),
             "",
         ]
     )
@@ -193,9 +207,16 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         assert search.status_code == 200, search.text
         search_body = search.json()
         assert search_body["results"], search.text
-        assert all(result["document_id"] == target["id"] for result in search_body["results"])
+        assert all(
+            result["document_id"] == target["id"] for result in search_body["results"]
+        )
         for result in search_body["results"]:
-            assert _resolve_spans(indexing_client, target["id"], result["source_spans"]) == result["text"]
+            resolved = _resolve_spans(
+                indexing_client,
+                target["id"],
+                result["source_spans"],
+            )
+            assert resolved == result["text"]
         evidence["steps"]["retrieval_with_source_locators"] = "pass"
 
         indexing_client.app.state.llm_provider = FakeLLMProvider(
@@ -210,7 +231,12 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         )
         grounded = indexing_client.post(
             "/api/v1/grounded/answers",
-            json={"query": query, "document_ids": [target["id"]], "mode": "hybrid", "top_k": 5},
+            json={
+                "query": query,
+                "document_ids": [target["id"]],
+                "mode": "hybrid",
+                "top_k": 5,
+            },
         )
         assert grounded.status_code == 200, grounded.text
         grounded_body = grounded.json()
@@ -238,18 +264,26 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         comparison = compared.json()
         assert comparison["target"]["document_id"] == target["id"]
         assert _resolve_spans(
-            indexing_client, target["id"], comparison["target"]["source_spans"]
+            indexing_client,
+            target["id"],
+            comparison["target"]["source_spans"],
         ) == comparison["target"]["text"]
         assert comparison["matches"], compared.text
         for match in comparison["matches"]:
             assert match["document_id"] == reference["id"]
-            assert _resolve_spans(indexing_client, reference["id"], match["source_spans"]) == match["text"]
+            resolved = _resolve_spans(
+                indexing_client,
+                reference["id"],
+                match["source_spans"],
+            )
+            assert resolved == match["text"]
         evidence["steps"]["target_reference_comparison_traceability"] = "pass"
 
         decomposition: dict[str, Any] | None = None
         for claim in target["claims"]:
             response = indexing_client.post(
-                f"/api/v1/documents/{target['id']}/claims/{claim['claim_number']}/elements/decompose"
+                f"/api/v1/documents/{target['id']}/claims/"
+                f"{claim['claim_number']}/elements/decompose"
             )
             assert response.status_code in {200, 201}, response.text
             candidate = response.json()
