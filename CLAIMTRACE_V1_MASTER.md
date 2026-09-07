@@ -1151,3 +1151,94 @@ KIPRIS is the preferred official/public Korean patent retrieval surface for D3-0
 #### Exact Next Action
 
 `Implement the smallest manifest-driven, fail-closed real-public-document verifier on Issue #61; acquire the selected public PDFs locally; record source/checksum/text-support evidence; execute at least one real-document analyst/reviewer path plus synthetic regression protection; then open one linked PR for exact-head verification.`
+
+### D3-01 Acceptance Update — Real-public controlled pilot corpus
+
+**Status:** `ACCEPTED / MERGED`  
+**Issue:** #61 — `D3-01: verify a real-public-document controlled pilot corpus`  
+**PR:** #62 — `D3-01: establish real-public corpus input gate`  
+**Accepted PR exact head:** `5b3752c271283e345310f25b15e0da4941f3cb80`  
+**Resulting main squash merge SHA:** `2f587a09ffac70a9c338799a782c9a069ed7dcef`
+
+This acceptance update supersedes the earlier D3 `SELECTED / ACTIVE` evidence-state text above. The frozen v1.0/D1/D2 ledgers remain unchanged and authoritative; `v1.0-proof` is not moved or reinterpreted.
+
+#### Changed
+
+- accepted the bounded manifest-driven public-corpus verifier and exact-head D3 workflow already implemented in PR #62;
+- accepted two public Korean text-based patent PDFs without committing third-party PDF bytes;
+- preserved canonical publication identity, pinned SHA-256 provenance, fail-closed unsupported/failure evidence, synthetic regression protection, and all legal/non-claim boundaries;
+- no OCR, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, production security certification, general semantic benchmark, or legal conclusion capability was added.
+
+#### Actually Executed
+
+On PR #62 exact head `5b3752c271283e345310f25b15e0da4941f3cb80`:
+
+- all 13 triggered PR workflows completed **GREEN**;
+- `Progression D3 Real Public Corpus` run `34162022664`: **GREEN**;
+- `General CI` run `34162022697`: **GREEN**;
+- `Progression Deterministic Regression` run `34162022646`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `34162022607`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `34162022609`: **GREEN**;
+- `V1-04 Claim Element Verification` run `34162022626`: **GREEN**;
+- `V1-05 Human Review Verification` run `34162022638`: **GREEN**;
+- `V1-06 Clean Start Verification` run `34162022643`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `34162022655`: **GREEN**;
+- `V1-06 Expected Failure States` run `34162022637`: **GREEN**;
+- `V1-07 Final Evaluations` run `34162022610`: **GREEN**;
+- `V1-07 Proof Package` run `34162022671`: **GREEN**;
+- `Progression Controlled Pilot Handoff` run `34162022613`: **GREEN**;
+- D3 artifact `d3-real-public-corpus-5b3752c271283e345310f25b15e0da4941f3cb80` was uploaded as artifact ID `10032926414`, digest `sha256:829fa3708874325b6df8532bc66f2028cefa5f0bf34abf0b19bd8b1185bde1bd`;
+- both PR review blockers—source identity/hash pinning and structured unsupported/failure evidence persistence—were corrected and resolved;
+- PR #62 was squash-merged with expected-head protection and Issue #61 closed as `completed`.
+
+#### Verified
+
+Accepted source provenance:
+
+- `KR20150055205A` / `10-2015-0055205` / `다중 경로 안내 텔레매틱스 시스템`, accepted input SHA-256 `e9a6cf151af6ec5e3837b9c2912f198fd937c6b29b0ed61bcb1aa79af3b80819`;
+- `KR20170054782A` / `10-2017-0054782` / `내비게이션 경로 재탐색을 위한 장치 및 방법`, accepted input SHA-256 `206ed95187b78d7793753c924dfc2f3a4023ce6c6188bd75613efc57915167f5`.
+
+For the bounded accepted corpus, executable evidence records PASS for:
+
+- pinned hash/publication identity verification and supported text-PDF classification;
+- ingestion, persisted page extraction, supported claim parsing, and indexing;
+- persisted source-locator resolution;
+- retrieval with source locators;
+- a grounded analytical path with resolvable citations under the deterministic provider contract;
+- target/reference comparison traceability to persisted source spans;
+- decomposition traceability to persisted source text;
+- append-only human-review workflow mechanics;
+- source-navigation contract;
+- existing deterministic synthetic regression/evidence protection.
+
+Source PDFs were acquired during verification and were not committed. Unsupported/failure paths remain fail-closed and preserve structured evidence rather than silently converting to PASS.
+
+#### Not Verified
+
+- no legal correctness or infringement/validity/novelty/equivalence/inventive-step/patentability conclusion is claimed;
+- no benchmark-quality general retrieval, semantic accuracy, entailment, universal Korean patent parsing correctness, or model-quality claim is established;
+- deterministic fake embedding/LLM providers verify workflow/provenance mechanics only;
+- the automated `needs_correction` review exercise verifies append-only review mechanics, not substantive analyst/legal judgement;
+- OCR/scanned-image recovery, private/customer corpus behavior, authentication/RBAC/multi-tenancy, billing, public cloud/Kubernetes, production resilience, and security/compliance certification remain unverified.
+
+#### Remaining Risks
+
+- the accepted corpus is intentionally small and establishes only the bounded D3 controlled-pilot invariant, not general patent-analysis correctness;
+- public acquisition surfaces or bytes can change, so pinned SHA-256 and publication identity remain fail-closed acceptance guards;
+- deterministic fake providers do not establish real-model semantic quality;
+- substantive analyst/reviewer judgement remains a human boundary;
+- all frozen Sections 6–7 limitations and non-claims remain in force.
+
+### D3 Destination Review
+
+**Status:** `DESTINATION REACHED — REAL-DOCUMENT CONTROLLED PILOT`
+
+D3-01 closes the demonstrated D3 gap. The accepted evidence shows that the existing D1/D2 controlled-pilot and handoff assets execute against a bounded real-public Korean patent corpus while preserving source-verifiable ingest → parse → retrieve → grounded analysis → comparison/decomposition → append-only review mechanics → source navigation, with exact-head reproducible evidence and explicit unsupported/failure handling.
+
+No demonstrated blocker currently justifies D3-02. Opening another corpus variant, retrieval metric, parser edge-case sweep, or proof-of-proof layer solely to continue progression would violate the anti-micro-loop boundary. OCR, private/customer corpora, generalized semantic/legal accuracy, authentication/multi-tenancy, cloud/Kubernetes, or comparable scope expansion requires a separate Human Review product decision.
+
+### Exact Next Action
+
+`HUMAN REVIEW — NEXT DESTINATION DECISION`
+
+Do not open another automatic ClaimTrace progression milestone. Preserve `v1.0-proof`, accepted D1/D2/D3 evidence, the controlled-pilot boundary, public-safe source handling, and all legal/non-claim limitations until a human explicitly selects a farther destination.
