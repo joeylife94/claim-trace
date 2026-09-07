@@ -9,6 +9,7 @@ command -v python3 >/dev/null
 command -v pdftotext >/dev/null
 mkdir -p "$OUT_DIR/text"
 
+set +e
 python3 - "$MANIFEST" "$CORPUS_DIR" "$OUT_DIR" <<'PY'
 import hashlib
 import json
@@ -28,6 +29,7 @@ if not isinstance(documents, list) or not (2 <= len(documents) <= 5):
 publication_re = re.compile(r"^KR\d{8,12}[A-Z]\d?$")
 seen = set()
 results = []
+failures = []
 for item in documents:
     publication = item.get("publication_number", "")
     if not publication_re.match(publication):
@@ -48,11 +50,20 @@ for item in documents:
         raise SystemExit(f"{publication}: local filename must be canonical")
     pdf_path = corpus_dir / filename
     if not pdf_path.is_file():
-        raise SystemExit(f"{publication}: local public PDF missing: {pdf_path}")
+        failures.append(f"{publication}: local public PDF missing: {pdf_path}")
+        results.append({"publication_number": publication, "support_classification": "missing"})
+        continue
     data = pdf_path.read_bytes()
-    if not data.startswith(b"%PDF-"):
-        raise SystemExit(f"{publication}: input is not a PDF")
     digest = hashlib.sha256(data).hexdigest()
+    if not data.startswith(b"%PDF-"):
+        failures.append(f"{publication}: input is not a PDF")
+        results.append({
+            "publication_number": publication,
+            "sha256": digest,
+            "bytes": len(data),
+            "support_classification": "not_pdf",
+        })
+        continue
 
     text_path = out_dir / "text" / f"{publication}.txt"
     proc = subprocess.run(
@@ -61,7 +72,15 @@ for item in documents:
         capture_output=True,
     )
     if proc.returncode != 0:
-        raise SystemExit(f"{publication}: pdftotext failed: {proc.stderr.strip()}")
+        failures.append(f"{publication}: pdftotext failed: {proc.stderr.strip()}")
+        results.append({
+            "publication_number": publication,
+            "sha256": digest,
+            "bytes": len(data),
+            "support_classification": "pdftotext_failure",
+        })
+        continue
+
     text = text_path.read_text(encoding="utf-8", errors="replace")
     nonspace = sum(not ch.isspace() for ch in text)
     hangul = sum("가" <= ch <= "힣" for ch in text)
@@ -83,17 +102,19 @@ for item in documents:
     }
     results.append(result)
     if not supported:
-        raise SystemExit(
+        failures.append(
             f"{publication}: unsupported/non-text input; nonspace={nonspace} hangul={hangul} claim_signal={claim_signal}"
         )
 
+passed = not failures
 report = {
     "schema_version": 1,
     "destination": manifest.get("destination"),
     "milestone": manifest.get("milestone"),
-    "result": "PASS",
+    "result": "PASS" if passed else "FAIL",
     "claim_boundary": manifest.get("evidence_boundary"),
     "documents": results,
+    "failures": failures,
     "limitations": [
         "Input support classification proves extractable text plumbing only, not parser, retrieval, semantic, or legal correctness.",
         "PDF redistribution rights are not asserted; source PDFs are locally acquired and are not repository artifacts.",
@@ -107,17 +128,19 @@ report = {
 lines = [
     "# D3-01 Real Public Corpus Input Evidence",
     "",
-    "**Result:** PASS — bounded inputs are public-source-referenced, hashed, and text-extractable.",
+    f"**Result:** {'PASS' if passed else 'FAIL'} — bounded public-source inputs are reported without synthetic fallback.",
     "",
-    "| Publication | SHA-256 | Bytes | Non-space chars | Hangul chars | Classification |",
-    "| --- | --- | ---: | ---: | ---: | --- |",
+    "| Publication | SHA-256 | Bytes | Non-space chars | Hangul chars | Claim signal | Classification |",
+    "| --- | --- | ---: | ---: | ---: | --- | --- |",
 ]
 for result in results:
     lines.append(
-        f"| {result['publication_number']} | `{result['sha256']}` | {result['bytes']} | "
-        f"{result['extracted_nonspace_chars']} | {result['extracted_hangul_chars']} | "
-        f"{result['support_classification']} |"
+        f"| {result['publication_number']} | `{result.get('sha256', '-')}` | {result.get('bytes', '-')} | "
+        f"{result.get('extracted_nonspace_chars', '-')} | {result.get('extracted_hangul_chars', '-')} | "
+        f"{result.get('claim_signal_present', '-')} | {result['support_classification']} |"
     )
+if failures:
+    lines += ["", "## Explicit failures", ""] + [f"- {failure}" for failure in failures]
 lines += [
     "",
     "## Boundary",
@@ -125,7 +148,18 @@ lines += [
     "This verifies source-linked local PDF bytes and text extraction only. It does not establish legal correctness, semantic entailment, general retrieval quality, universal Korean patent parsing correctness, or OCR support.",
 ]
 (out_dir / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+if failures:
+    for failure in failures:
+        print(failure, file=sys.stderr)
+    raise SystemExit(2)
 PY
+status=$?
+set -e
 
 sha256sum "$OUT_DIR/input-evidence.json" "$OUT_DIR/README.md" > "$OUT_DIR/evidence.sha256"
+if [ "$status" -ne 0 ]; then
+  printf 'D3 real-corpus input verification failed closed; diagnostics: %s\n' "$OUT_DIR/input-evidence.json" >&2
+  exit "$status"
+fi
 printf 'D3 real-corpus input verification passed: %s\n' "$OUT_DIR/input-evidence.json"
