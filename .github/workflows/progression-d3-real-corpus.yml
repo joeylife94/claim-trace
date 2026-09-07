@@ -60,11 +60,31 @@ jobs:
         if: success()
         run: make verify-deterministic-regression
 
-      - name: Upload bounded D3 input evidence
+      - name: Execute real-document ClaimTrace product path
+        if: success()
+        run: |
+          set -eu
+          mkdir -p build/d3-real-corpus/evidence/product-path
+          chmod -R a+rwX build/d3-real-corpus/evidence
+          docker compose run --rm \
+            -e CLAIMTRACE_D3_CORPUS_DIR=/d3-source \
+            -e CLAIMTRACE_D3_MANIFEST=/d3-manifest/manifest.json \
+            -e CLAIMTRACE_D3_EVIDENCE_DIR=/d3-evidence/product-path \
+            -v "$PWD/build/d3-real-corpus/source:/d3-source:ro" \
+            -v "$PWD/docs/real-public-corpus:/d3-manifest:ro" \
+            -v "$PWD/build/d3-real-corpus/evidence:/d3-evidence" \
+            api sh -ec '
+              output=$(pytest --disable-warnings -q tests/test_d3_real_public_corpus_acceptance.py -m integration)
+              printf "%s\n" "$output"
+              printf "%s\n" "$output" | grep -Eq "1 passed"
+              ! printf "%s\n" "$output" | grep -Eq "[0-9]+ skipped"
+            '
+
+      - name: Upload bounded D3 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: d3-real-public-corpus-inputs-${{ github.event.pull_request.head.sha }}
+          name: d3-real-public-corpus-${{ github.event.pull_request.head.sha }}
           path: build/d3-real-corpus/evidence/
           if-no-files-found: error
           retention-days: 14
