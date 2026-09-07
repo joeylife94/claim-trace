@@ -6,6 +6,7 @@
   "documents": [
     {
       "publication_number": "KR20150055205A",
+      "publication_display_number": "10-2015-0055205",
       "application_number": "KR1020130137065A",
       "title_ko": "다중 경로 안내 텔레매틱스 시스템",
       "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
@@ -13,10 +14,12 @@
       "source_page": "https://patents.google.com/patent/KR20150055205A/ko",
       "acquisition_url": "https://patentimages.storage.googleapis.com/a8/7c/bd/7449d32491b7d5/KR20150055205A.pdf",
       "local_filename": "KR20150055205A.pdf",
+      "expected_sha256": "e9a6cf151af6ec5e3837b9c2912f198fd937c6b29b0ed61bcb1aa79af3b80819",
       "redistribution_status": "not_asserted_do_not_commit_pdf"
     },
     {
       "publication_number": "KR20170054782A",
+      "publication_display_number": "10-2017-0054782",
       "application_number": "KR1020150157370A",
       "title_ko": "내비게이션 경로 재탐색을 위한 장치 및 방법",
       "source_system": "KIPRIS / public Korean patent publication; Google Patents public mirror used as acquisition surface",
@@ -24,6 +27,7 @@
       "source_page": "https://patents.google.com/patent/KR20170054782A/ko",
       "acquisition_url": "https://patentimages.storage.googleapis.com/b2/83/71/27d92aac6f1b5f/KR20170054782A.pdf",
       "local_filename": "KR20170054782A.pdf",
+      "expected_sha256": "206ed95187b78d7793753c924dfc2f3a4023ce6c6188bd75613efc57915167f5",
       "redistribution_status": "not_asserted_do_not_commit_pdf"
     }
   ]
