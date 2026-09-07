@@ -313,8 +313,8 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
         evidence["steps"]["append_only_review_workflow_exercise"] = "pass"
         evidence["steps"]["source_navigation_contract"] = "pass"
         evidence["review_note"] = (
-            "The automated needs_correction entry exercises append-only human-review mechanics only; "
-            "it is not a substantive reviewer or legal judgement."
+            "The automated needs_correction entry exercises append-only human-review "
+            "mechanics only; it is not a substantive reviewer or legal judgement."
         )
         evidence["overall"] = "pass"
     except Exception as exc:
