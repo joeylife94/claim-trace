@@ -45,7 +45,7 @@ def _claim_locators(claim: dict[str, Any]) -> list[dict[str, Any]]:
     spans = claim.get("spans") or []
     assert spans, f"claim {claim.get('claim_number')} has no persisted source spans"
     locators = [span["locator"] for span in spans]
-    assert all(locator for locator in locators)
+    assert all(locators)
     return locators
 
 
