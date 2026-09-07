@@ -74,7 +74,7 @@ jobs:
             -v "$PWD/docs/real-public-corpus:/d3-manifest:ro" \
             -v "$PWD/build/d3-real-corpus/evidence:/d3-evidence" \
             api sh -ec '
-              output=$(pytest --disable-warnings -q tests/test_d3_real_public_corpus_acceptance.py -m integration)
+              output=$(pytest --disable-warnings -q d3_acceptance/test_real_public_corpus.py -m integration)
               printf "%s\n" "$output"
               printf "%s\n" "$output" | grep -Eq "1 passed"
               ! printf "%s\n" "$output" | grep -Eq "[0-9]+ skipped"
