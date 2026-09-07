@@ -52,6 +52,10 @@ jobs:
       - name: Verify provenance hashes and text support fail closed
         run: sh scripts/verify-d3-real-corpus-inputs.sh
 
+      - name: Allow container to write deterministic regression results
+        if: success()
+        run: chmod -R a+rwX apps/api/evals/results
+
       - name: Preserve deterministic synthetic regression protection
         if: success()
         run: make verify-deterministic-regression
