@@ -353,7 +353,7 @@ class DescriptionEvidenceService:
             results=results,
         )
 
-    async def _existing_run(self, document_id: uuid.UUID):
+    async def _existing_run(self, document_id: uuid.UUID) -> object | None:
         row = (
             await self._session.execute(
                 text(
