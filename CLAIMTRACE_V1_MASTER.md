@@ -8,7 +8,7 @@
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — D3 selected / D3-01 active**
+**Post-v1 progression state:** **ENABLED — D4 selected/current / D4-01 active**
 
 ---
 
