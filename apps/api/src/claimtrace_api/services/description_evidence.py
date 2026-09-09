@@ -292,9 +292,7 @@ class DescriptionEvidenceService:
                  :normalized_text, to_tsvector('simple', :normalized_text), :embedding)
             """
         ).bindparams(bindparam("embedding", type_=Vector(EMBEDDING_DIMENSION)))
-        for segment, search_text, vector in zip(
-            derived.segments, normalized, vectors, strict=True
-        ):
+        for segment, search_text, vector in zip(derived.segments, normalized, vectors, strict=True):
             await self._session.execute(
                 insert,
                 {
