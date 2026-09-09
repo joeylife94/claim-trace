@@ -53,6 +53,9 @@ jobs:
           PY
 
       - name: Verify provenance hashes and text support fail closed
+        env:
+          CLAIMTRACE_D3_CORPUS_DIR: build/d4-description/source
+          CLAIMTRACE_D3_OUT: build/d4-description/evidence/input
         run: sh scripts/verify-d3-real-corpus-inputs.sh
 
       - name: Allow deterministic regression output
