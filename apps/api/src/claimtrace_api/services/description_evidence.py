@@ -613,7 +613,9 @@ def derive_description_segments(
                 continue
             kind, label = heading
             if kind == "stop":
-                if active and region_start is not None:
+                if not active:
+                    continue
+                if region_start is not None:
                     _append_region(
                         drafts,
                         page,
