@@ -441,7 +441,10 @@ class DescriptionEvidenceService:
             """
         ).bindparams(
             bindparam("query_vector", value=list(query_vector), type_=Vector(EMBEDDING_DIMENSION)),
-            bindparam("document_ids", value=list(document_ids) if document_ids else [uuid.UUID(int=0)]),
+            bindparam(
+                "document_ids",
+                value=list(document_ids) if document_ids else [uuid.UUID(int=0)],
+            ),
             bindparam("limit", value=limit),
         )
         rows = (
@@ -510,7 +513,10 @@ class DescriptionEvidenceService:
             LIMIT :limit
             """
         ).bindparams(
-            bindparam("document_ids", value=list(document_ids) if document_ids else [uuid.UUID(int=0)]),
+            bindparam(
+                "document_ids",
+                value=list(document_ids) if document_ids else [uuid.UUID(int=0)],
+            ),
             bindparam("limit", value=limit),
         )
         await self._session.execute(
