@@ -87,7 +87,7 @@ jobs:
         run: |
           set -eu
           mkdir -p build/d4-description/evidence/d3-regression
-          chmod -R a+rwX build/d4-description/evidence
+          sudo chmod -R a+rwX build/d4-description/evidence
           docker compose run --rm \
             -e CLAIMTRACE_D3_CORPUS_DIR=/d3-source \
             -e CLAIMTRACE_D3_MANIFEST=/d3-manifest/manifest.json \
