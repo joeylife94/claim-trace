@@ -28,6 +28,27 @@ def test_description_segments_resolve_exactly_to_persisted_page_text() -> None:
         assert "청구항 1" not in segment.text
 
 
+def test_description_derivation_ignores_claim_section_before_description() -> None:
+    text = (
+        "명 세 서\n"
+        "청구범위\n"
+        "청구항 1\n"
+        "센서 데이터를 수집하는 장치.\n"
+        "발명의 설명\n"
+        "기 술 분 야\n"
+        "본 발명은 저장된 원문에서 직접 파생되는 충분히 긴 기술 설명 문장이다. "
+        "정확한 페이지 문자 범위를 유지한다.\n"
+    )
+
+    status, segments, warnings = derive_description_segments([_Page(page_number=1, text=text)])
+
+    assert status == "completed"
+    assert warnings == []
+    assert segments
+    assert all("청구항 1" not in segment.text for segment in segments)
+    assert all(segment.text == text[segment.start_char : segment.end_char] for segment in segments)
+
+
 def test_description_derivation_stops_before_claim_section() -> None:
     text = (
         "발명의 설명\n"
