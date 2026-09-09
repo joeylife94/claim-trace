@@ -22,6 +22,7 @@ from claimtrace_api.services.claim_elements import ClaimElementService
 from claimtrace_api.services.claim_indexing import ClaimIndexingService
 from claimtrace_api.services.claim_parsing import ClaimParsingService
 from claimtrace_api.services.claim_search import ClaimSearchService
+from claimtrace_api.services.description_evidence import DescriptionEvidenceService
 from claimtrace_api.services.grounded_generation import GroundedGenerationService
 from claimtrace_api.services.ingestion import DocumentIngestionService
 from claimtrace_api.services.llm_generation import LLMGenerationService
@@ -128,6 +129,19 @@ def get_claim_search_service(
 
 
 ClaimSearchServiceDep = Annotated[ClaimSearchService, Depends(get_claim_search_service)]
+
+
+def get_description_evidence_service(
+    session: SessionDep,
+    provider: EmbeddingProviderDep,
+    settings: SettingsDep,
+) -> DescriptionEvidenceService:
+    return DescriptionEvidenceService(session=session, provider=provider, settings=settings)
+
+
+DescriptionEvidenceServiceDep = Annotated[
+    DescriptionEvidenceService, Depends(get_description_evidence_service)
+]
 
 
 def get_claim_comparison_service(
