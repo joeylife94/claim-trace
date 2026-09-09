@@ -47,10 +47,49 @@ class AnalystCaseService:
     async def list(self) -> list[dict[str, Any]]:
         rows = (
             await self._session.execute(
-                text("SELECT id FROM analyst_cases ORDER BY created_at, id")
+                text(
+                    """
+                    SELECT
+                        c.id,
+                        c.title,
+                        c.created_at,
+                        c.updated_at,
+                        d.id AS document_id,
+                        d.original_filename,
+                        d.status AS document_status,
+                        acd.associated_at
+                    FROM analyst_cases AS c
+                    LEFT JOIN analyst_case_documents AS acd ON acd.case_id = c.id
+                    LEFT JOIN documents AS d ON d.id = acd.document_id
+                    ORDER BY c.created_at, c.id, acd.associated_at, d.id
+                    """
+                )
             )
-        ).all()
-        return [await self.get(row.id) for row in rows]
+        ).mappings().all()
+
+        cases: dict[uuid.UUID, dict[str, Any]] = {}
+        for row in rows:
+            case_id = row["id"]
+            case = cases.setdefault(
+                case_id,
+                {
+                    "id": case_id,
+                    "title": row["title"],
+                    "created_at": _datetime(row["created_at"]),
+                    "updated_at": _datetime(row["updated_at"]),
+                    "documents": [],
+                },
+            )
+            if row["document_id"] is not None:
+                case["documents"].append(
+                    {
+                        "id": row["document_id"],
+                        "original_filename": row["original_filename"],
+                        "status": str(row["document_status"]),
+                        "associated_at": _datetime(row["associated_at"]),
+                    }
+                )
+        return list(cases.values())
 
     async def get(self, case_id: uuid.UUID) -> dict[str, Any]:
         case_row = (
@@ -118,6 +157,8 @@ class AnalystCaseService:
             )
         ).first()
         changed = row is not None
+        if changed:
+            await self._touch_case(case_id)
         await self._session.commit()
         return await self.get(case_id), changed
 
@@ -138,6 +179,7 @@ class AnalystCaseService:
         if row is None:
             await self._session.rollback()
             raise CaseDocumentAssociationNotFoundError(str(document_id))
+        await self._touch_case(case_id)
         await self._session.commit()
         return await self.get(case_id)
 
@@ -159,6 +201,12 @@ class AnalystCaseService:
             )
         ).first()
         return row is not None
+
+    async def _touch_case(self, case_id: uuid.UUID) -> None:
+        await self._session.execute(
+            text("UPDATE analyst_cases SET updated_at = now() WHERE id = :case_id"),
+            {"case_id": case_id},
+        )
 
 
 def _datetime(value: Any) -> datetime:
