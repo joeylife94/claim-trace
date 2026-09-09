@@ -68,7 +68,7 @@ torch = [{ index = "pytorch-cpu" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-norecursedirs = ["d3_acceptance"]
+norecursedirs = ["d3_acceptance", "d4_acceptance"]
 # "." lets test modules share helpers via `from tests.pdf_factory import ...`.
 pythonpath = ["src", "."]
 asyncio_mode = "auto"

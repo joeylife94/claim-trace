@@ -1,0 +1,108 @@
+name: Progression D4 Description Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "CLAIMTRACE_V1_MASTER.md"
+      - "docs/D4_DESCRIPTION_AWARE_EVIDENCE.md"
+      - "docs/real-public-corpus/**"
+      - "apps/api/**"
+      - "scripts/verify-d3-real-corpus-inputs.sh"
+      - "scripts/verify-deterministic-regression.sh"
+      - ".github/workflows/progression-d4-description-evidence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  description-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install PDF text tooling
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Acquire bounded public corpus without committing PDFs
+        run: |
+          set -eu
+          mkdir -p build/d4-description/source
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import urllib.request
+
+          manifest = json.loads(
+              pathlib.Path('docs/real-public-corpus/manifest.json').read_text(encoding='utf-8')
+          )
+          out = pathlib.Path('build/d4-description/source')
+          for item in manifest['documents']:
+              target = out / item['local_filename']
+              request = urllib.request.Request(
+                  item['acquisition_url'],
+                  headers={'User-Agent': 'ClaimTrace-D4-01-public-evidence/1.0'},
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  target.write_bytes(response.read())
+              print(item['publication_number'], target.stat().st_size)
+          PY
+
+      - name: Verify provenance hashes and text support fail closed
+        env:
+          CLAIMTRACE_D3_CORPUS_DIR: build/d4-description/source
+          CLAIMTRACE_D3_OUT: build/d4-description/evidence/input
+        run: sh scripts/verify-d3-real-corpus-inputs.sh
+
+      - name: Allow deterministic regression output
+        if: success()
+        run: chmod -R a+rwX apps/api/evals/results
+
+      - name: Preserve deterministic synthetic claim regression
+        if: success()
+        run: make verify-deterministic-regression
+
+      - name: Execute real-public description retrieval path
+        if: success()
+        run: |
+          set -eu
+          mkdir -p build/d4-description/evidence/product-path
+          chmod -R a+rwX build/d4-description/evidence
+          docker compose run --rm \
+            -e CLAIMTRACE_D4_CORPUS_DIR=/d4-source \
+            -e CLAIMTRACE_D4_MANIFEST=/d4-manifest/manifest.json \
+            -e CLAIMTRACE_D4_EVIDENCE_DIR=/d4-evidence/product-path \
+            -v "$PWD/build/d4-description/source:/d4-source:ro" \
+            -v "$PWD/docs/real-public-corpus:/d4-manifest:ro" \
+            -v "$PWD/build/d4-description/evidence:/d4-evidence" \
+            api pytest --disable-warnings -q \
+              tests/d4_acceptance/test_real_public_description.py -m integration
+
+      - name: Preserve accepted D3 real-document regression
+        if: success()
+        run: |
+          set -eu
+          mkdir -p build/d4-description/evidence/d3-regression
+          sudo chmod -R a+rwX build/d4-description/evidence
+          docker compose run --rm \
+            -e CLAIMTRACE_D3_CORPUS_DIR=/d3-source \
+            -e CLAIMTRACE_D3_MANIFEST=/d3-manifest/manifest.json \
+            -e CLAIMTRACE_D3_EVIDENCE_DIR=/d3-evidence/d3-regression \
+            -v "$PWD/build/d4-description/source:/d3-source:ro" \
+            -v "$PWD/docs/real-public-corpus:/d3-manifest:ro" \
+            -v "$PWD/build/d4-description/evidence:/d3-evidence" \
+            api pytest --disable-warnings -q \
+              tests/d3_acceptance/test_real_public_corpus.py -m integration
+
+      - name: Upload bounded D4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d4-description-evidence-${{ github.event.pull_request.head.sha }}
+          path: build/d4-description/evidence/
+          if-no-files-found: error
+          retention-days: 14

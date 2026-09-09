@@ -9,6 +9,7 @@ from claimtrace_api.api.v1 import (
     claim_elements,
     claims,
     comparison,
+    descriptions,
     documents,
     grounded,
     llm,
@@ -22,6 +23,7 @@ api_router.include_router(documents.router)
 api_router.include_router(claims.router)
 api_router.include_router(claim_elements.router)
 api_router.include_router(claim_element_reviews.router)
+api_router.include_router(descriptions.router)
 api_router.include_router(search.router)
 api_router.include_router(comparison.router)
 api_router.include_router(llm.router)
