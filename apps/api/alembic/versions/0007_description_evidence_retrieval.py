@@ -123,9 +123,7 @@ def upgrade() -> None:
             "evidence_kind = 'description'", name="ck_description_segments_evidence_kind"
         ),
     )
-    op.create_index(
-        "ix_description_segments_document_id", "description_segments", ["document_id"]
-    )
+    op.create_index("ix_description_segments_document_id", "description_segments", ["document_id"])
     op.create_index("ix_description_segments_run_id", "description_segments", ["run_id"])
 
     op.create_table(
