@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from http import HTTPStatus
 
 from fastapi import APIRouter, Response
@@ -24,6 +25,7 @@ from claimtrace_api.services.description_evidence import (
     SEGMENTER_VERSION,
     DescriptionDerivationOutcome,
     DescriptionSearchOutcome,
+    DescriptionSegment,
 )
 
 router = APIRouter(tags=["description evidence"])
@@ -135,7 +137,7 @@ def _derivation_response(outcome: DescriptionDerivationOutcome) -> DescriptionDe
     )
 
 
-def _segment_response(segment) -> DescriptionSegmentResponse:
+def _segment_response(segment: DescriptionSegment) -> DescriptionSegmentResponse:
     locator = SourceLocator(
         document_id=segment.document_id,
         page_number=segment.page_number,
@@ -213,9 +215,7 @@ def _source_url(locator: SourceLocator) -> str:
     )
 
 
-def _document_uuid(value: str):
-    import uuid
-
+def _document_uuid(value: str) -> uuid.UUID:
     try:
         return uuid.UUID(value)
     except ValueError as exc:
