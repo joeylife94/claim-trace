@@ -11,7 +11,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.pdf_factory import make_pdf
+from tests.pdf_factory import build_text_pdf
 
 pytestmark = pytest.mark.integration
 
@@ -19,7 +19,13 @@ pytestmark = pytest.mark.integration
 def _upload_document(client: TestClient, filename: str = "case-source.pdf") -> str:
     response = client.post(
         "/api/v1/documents",
-        files={"file": (filename, make_pdf(["기술분야\n테스트 문서 본문입니다."]), "application/pdf")},
+        files={
+            "file": (
+                filename,
+                build_text_pdf(("기술분야\n테스트 문서 본문입니다.",)),
+                "application/pdf",
+            )
+        },
     )
     assert response.status_code == 201, response.text
     return response.json()["id"]
