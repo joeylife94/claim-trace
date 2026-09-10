@@ -166,7 +166,11 @@ class AnalystCaseService:
         await self._session.commit()
         return await self.get(case_id), changed
 
-    async def remove_document(self, case_id: uuid.UUID, document_id: uuid.UUID) -> dict[str, Any]:
+    async def remove_document(
+        self,
+        case_id: uuid.UUID,
+        document_id: uuid.UUID,
+    ) -> dict[str, Any]:
         await self._assert_case(case_id)
         row = (
             await self._session.execute(
