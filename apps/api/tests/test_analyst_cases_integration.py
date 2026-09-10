@@ -67,7 +67,8 @@ def test_case_reopens_with_stable_identity_and_existing_document_reference(
 
 def test_duplicate_association_is_explicitly_idempotent(indexing_client: TestClient) -> None:
     document_id = _upload_document(indexing_client, "duplicate-source.pdf")
-    case_id = indexing_client.post("/api/v1/cases", json={"title": "Duplicate check"}).json()["id"]
+    created = indexing_client.post("/api/v1/cases", json={"title": "Duplicate check"})
+    case_id = created.json()["id"]
 
     first = indexing_client.put(f"/api/v1/cases/{case_id}/documents/{document_id}")
     second = indexing_client.put(f"/api/v1/cases/{case_id}/documents/{document_id}")
@@ -80,7 +81,8 @@ def test_duplicate_association_is_explicitly_idempotent(indexing_client: TestCli
 
 
 def test_missing_references_and_disassociation_are_explicit(indexing_client: TestClient) -> None:
-    case_id = indexing_client.post("/api/v1/cases", json={"title": "Failure contract"}).json()["id"]
+    created = indexing_client.post("/api/v1/cases", json={"title": "Failure contract"})
+    case_id = created.json()["id"]
     missing_document_id = uuid.uuid4()
 
     missing = indexing_client.put(
@@ -90,12 +92,11 @@ def test_missing_references_and_disassociation_are_explicit(indexing_client: Tes
     assert missing.json()["detail"] == "Document not found."
 
     document_id = _upload_document(indexing_client, "removable-source.pdf")
-    assert indexing_client.put(
-        f"/api/v1/cases/{case_id}/documents/{document_id}"
-    ).status_code == 200
-    assert indexing_client.delete(
-        f"/api/v1/cases/{case_id}/documents/{document_id}"
-    ).status_code == 204
+    associate = indexing_client.put(f"/api/v1/cases/{case_id}/documents/{document_id}")
+    assert associate.status_code == 200
+
+    disassociate = indexing_client.delete(f"/api/v1/cases/{case_id}/documents/{document_id}")
+    assert disassociate.status_code == 204
 
     reopened = indexing_client.get(f"/api/v1/cases/{case_id}")
     assert reopened.status_code == 200
