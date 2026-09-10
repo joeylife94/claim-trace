@@ -25,8 +25,8 @@ def _upload_document(client: TestClient, filename: str = "case-source.pdf") -> s
                 build_text_pdf(
                     (
                         "기술분야\n"
-                        "테스트 문서의 본문입니다. 분석 케이스가 기존 문서를 참조하는지 검증하기 위한 "
-                        "충분한 길이의 공개 안전 합성 텍스트입니다.",
+                        "테스트 문서의 본문입니다. 분석 케이스가 기존 문서를 "
+                        "참조하는지 검증하기 위한 충분한 길이의 공개 안전 합성 텍스트입니다.",
                     )
                 ),
                 "application/pdf",
