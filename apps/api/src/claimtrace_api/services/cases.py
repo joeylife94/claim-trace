@@ -46,9 +46,10 @@ class AnalystCaseService:
 
     async def list(self) -> list[dict[str, Any]]:
         rows = (
-            await self._session.execute(
-                text(
-                    """
+            (
+                await self._session.execute(
+                    text(
+                        """
                     SELECT
                         c.id,
                         c.title,
@@ -63,9 +64,12 @@ class AnalystCaseService:
                     LEFT JOIN documents AS d ON d.id = acd.document_id
                     ORDER BY c.created_at, c.id, acd.associated_at, d.id
                     """
+                    )
                 )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
 
         cases: dict[uuid.UUID, dict[str, Any]] = {}
         for row in rows:
@@ -93,34 +97,42 @@ class AnalystCaseService:
 
     async def get(self, case_id: uuid.UUID) -> dict[str, Any]:
         case_row = (
-            await self._session.execute(
-                text(
-                    """
+            (
+                await self._session.execute(
+                    text(
+                        """
                     SELECT id, title, created_at, updated_at
                     FROM analyst_cases
                     WHERE id = :case_id
                     """
-                ),
-                {"case_id": case_id},
+                    ),
+                    {"case_id": case_id},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         if case_row is None:
             raise CaseNotFoundError(str(case_id))
 
         document_rows = (
-            await self._session.execute(
-                text(
-                    """
+            (
+                await self._session.execute(
+                    text(
+                        """
                     SELECT d.id, d.original_filename, d.status, acd.associated_at
                     FROM analyst_case_documents AS acd
                     JOIN documents AS d ON d.id = acd.document_id
                     WHERE acd.case_id = :case_id
                     ORDER BY acd.associated_at, d.id
                     """
-                ),
-                {"case_id": case_id},
+                    ),
+                    {"case_id": case_id},
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
 
         return {
             "id": case_row["id"],
