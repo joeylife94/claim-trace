@@ -38,16 +38,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "length(trim(title)) > 0",
-            name="ck_analyst_cases_title_nonempty",
-        ),
+        sa.CheckConstraint("length(trim(title)) > 0", name="ck_analyst_cases_title_nonempty"),
     )
-    op.create_index(
-        "ix_analyst_cases_created_at",
-        "analyst_cases",
-        ["created_at"],
-    )
+    op.create_index("ix_analyst_cases_created_at", "analyst_cases", ["created_at"])
 
     op.create_table(
         "analyst_case_documents",
@@ -71,11 +64,7 @@ def upgrade() -> None:
             name="fk_analyst_case_documents_document_id",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint(
-            "case_id",
-            "document_id",
-            name="pk_analyst_case_documents",
-        ),
+        sa.PrimaryKeyConstraint("case_id", "document_id", name="pk_analyst_case_documents"),
     )
     op.create_index(
         "ix_analyst_case_documents_document_id",
@@ -85,13 +74,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_analyst_case_documents_document_id",
-        table_name="analyst_case_documents",
-    )
+    op.drop_index("ix_analyst_case_documents_document_id", table_name="analyst_case_documents")
     op.drop_table("analyst_case_documents")
-    op.drop_index(
-        "ix_analyst_cases_created_at",
-        table_name="analyst_cases",
-    )
+    op.drop_index("ix_analyst_cases_created_at", table_name="analyst_cases")
     op.drop_table("analyst_cases")
