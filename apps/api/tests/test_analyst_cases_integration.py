@@ -30,7 +30,7 @@ def _upload_document(client: TestClient, filename: str = "case-source.pdf") -> s
                     )
                 ),
                 "application/pdf",
-            )
+            ),
         },
     )
     assert response.status_code == 201, response.text
