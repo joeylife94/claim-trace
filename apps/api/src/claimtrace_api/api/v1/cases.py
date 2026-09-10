@@ -40,26 +40,47 @@ async def get_case(case_id: uuid.UUID, session: SessionDep) -> CaseResponse:
     try:
         case = await AnalystCaseService(session=session).get(case_id)
     except CaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
     return CaseResponse.model_validate(case)
 
 
-@router.put("/{case_id}/documents/{document_id}", response_model=CaseDocumentMutationResponse)
+@router.put(
+    "/{case_id}/documents/{document_id}",
+    response_model=CaseDocumentMutationResponse,
+)
 async def associate_document(
     case_id: uuid.UUID,
     document_id: uuid.UUID,
     session: SessionDep,
 ) -> CaseDocumentMutationResponse:
     try:
-        case, changed = await AnalystCaseService(session=session).add_document(case_id, document_id)
+        case, changed = await AnalystCaseService(session=session).add_document(
+            case_id,
+            document_id,
+        )
     except CaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
     except CaseDocumentNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.") from exc
-    return CaseDocumentMutationResponse(case=CaseResponse.model_validate(case), changed=changed)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found.",
+        ) from exc
+    return CaseDocumentMutationResponse(
+        case=CaseResponse.model_validate(case),
+        changed=changed,
+    )
 
 
-@router.delete("/{case_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{case_id}/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def disassociate_document(
     case_id: uuid.UUID,
     document_id: uuid.UUID,
@@ -68,7 +89,10 @@ async def disassociate_document(
     try:
         await AnalystCaseService(session=session).remove_document(case_id, document_id)
     except CaseNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
     except CaseDocumentAssociationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
