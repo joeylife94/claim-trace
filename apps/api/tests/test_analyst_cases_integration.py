@@ -85,9 +85,7 @@ def test_missing_references_and_disassociation_are_explicit(indexing_client: Tes
     case_id = created.json()["id"]
     missing_document_id = uuid.uuid4()
 
-    missing = indexing_client.put(
-        f"/api/v1/cases/{case_id}/documents/{missing_document_id}"
-    )
+    missing = indexing_client.put(f"/api/v1/cases/{case_id}/documents/{missing_document_id}")
     assert missing.status_code == 404
     assert missing.json()["detail"] == "Document not found."
 
@@ -102,8 +100,6 @@ def test_missing_references_and_disassociation_are_explicit(indexing_client: Tes
     assert reopened.status_code == 200
     assert reopened.json()["documents"] == []
 
-    duplicate_delete = indexing_client.delete(
-        f"/api/v1/cases/{case_id}/documents/{document_id}"
-    )
+    duplicate_delete = indexing_client.delete(f"/api/v1/cases/{case_id}/documents/{document_id}")
     assert duplicate_delete.status_code == 404
     assert duplicate_delete.json()["detail"] == "Document is not associated with this Case."
