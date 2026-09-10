@@ -138,7 +138,11 @@ class AnalystCaseService:
             ],
         }
 
-    async def add_document(self, case_id: uuid.UUID, document_id: uuid.UUID) -> tuple[dict[str, Any], bool]:
+    async def add_document(
+        self,
+        case_id: uuid.UUID,
+        document_id: uuid.UUID,
+    ) -> tuple[dict[str, Any], bool]:
         await self._assert_case(case_id)
         if not await self._document_exists(document_id):
             raise CaseDocumentNotFoundError(str(document_id))
