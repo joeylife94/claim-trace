@@ -47,7 +47,7 @@ def _upload_indexed_claim_document(client: TestClient, filename: str) -> str:
     pages = (
         "【청구범위】\n"
         "【청구항 1】\n"
-        "복수의 센서로부터 측정값을 수집하는 수집부와, 수집된 측정값을 저장하는 저장부를 포함하는 장치.",
+        "복수의 센서로부터 측정값을 수집하는 수집부와, 수집된 측정값을 저장하는 저장부를 포함하는 장치."
     )
     uploaded = client.post(
         "/api/v1/documents",
@@ -137,7 +137,9 @@ def test_missing_references_and_disassociation_are_explicit(indexing_client: Tes
     assert reopened.status_code == 200
     assert reopened.json()["documents"] == []
 
-    duplicate_delete = indexing_client.delete(f"/api/v1/cases/{case_id}/documents/{document_id}")
+    duplicate_delete = indexing_client.delete(
+        f"/api/v1/cases/{case_id}/documents/{document_id}"
+    )
     assert duplicate_delete.status_code == 404
     assert duplicate_delete.json()["detail"] == "Document is not associated with this Case."
 
@@ -190,7 +192,8 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
     with sync_engine.connect() as connection:
         result_row = connection.execute(
             sa.text(
-                "SELECT request_snapshot, result_snapshot FROM analyst_case_results WHERE id = :id"
+                "SELECT request_snapshot, result_snapshot "
+                "FROM analyst_case_results WHERE id = :id"
             ),
             {"id": uuid.UUID(result_id)},
         ).one()
@@ -217,7 +220,9 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
             assert span["quote"] not in persisted_payload
 
 
-def test_grounded_result_rejects_cross_case_document_scope(indexing_client: TestClient) -> None:
+def test_grounded_result_rejects_cross_case_document_scope(
+    indexing_client: TestClient,
+) -> None:
     first_document_id = _upload_indexed_claim_document(indexing_client, "case-a.pdf")
     second_document_id = _upload_indexed_claim_document(indexing_client, "case-b.pdf")
     first_case_id = _create_case(indexing_client, "Case A")
