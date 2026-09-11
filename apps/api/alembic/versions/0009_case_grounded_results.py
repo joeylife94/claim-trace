@@ -49,7 +49,10 @@ def upgrade() -> None:
             "request_fingerprint",
             name="uq_case_grounded_results_case_request",
         ),
-        sa.CheckConstraint("length(trim(query)) > 0", name="ck_case_grounded_results_query_nonempty"),
+        sa.CheckConstraint(
+            "length(trim(query)) > 0",
+            name="ck_case_grounded_results_query_nonempty",
+        ),
     )
     op.create_index(
         "ix_case_grounded_results_case_created",
@@ -90,7 +93,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_case_grounded_evidence_document_id", table_name="analyst_case_grounded_evidence")
+    op.drop_index(
+        "ix_case_grounded_evidence_document_id",
+        table_name="analyst_case_grounded_evidence",
+    )
     op.drop_table("analyst_case_grounded_evidence")
-    op.drop_index("ix_case_grounded_results_case_created", table_name="analyst_case_grounded_results")
+    op.drop_index(
+        "ix_case_grounded_results_case_created",
+        table_name="analyst_case_grounded_results",
+    )
     op.drop_table("analyst_case_grounded_results")
