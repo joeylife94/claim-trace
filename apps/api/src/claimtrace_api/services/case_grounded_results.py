@@ -72,9 +72,16 @@ class CaseGroundedResultService:
             raise CaseGroundedScopeError("grounded request references a document outside the Case")
         for evidence in result.evidence:
             if evidence.document_id not in associated:
-                raise CaseGroundedScopeError("grounded evidence references a document outside the Case")
-            if any(span.locator.document_id != evidence.document_id for span in evidence.source_spans):
-                raise CaseGroundedScopeError("evidence locator document does not match its evidence")
+                raise CaseGroundedScopeError(
+                    "grounded evidence references a document outside the Case"
+                )
+            if any(
+                span.locator.document_id != evidence.document_id
+                for span in evidence.source_spans
+            ):
+                raise CaseGroundedScopeError(
+                    "evidence locator document does not match its evidence"
+                )
 
         existing = await self.find_existing(case_id, request)
         if existing is not None:
@@ -185,7 +192,9 @@ class CaseGroundedResultService:
             for raw in evidence_row["locator_snapshot"]:
                 locator = SourceLocator.model_validate(raw)
                 if locator.document_id != evidence_row["document_id"]:
-                    raise CaseGroundedScopeError("persisted locator document no longer matches evidence")
+                    raise CaseGroundedScopeError(
+                        "persisted locator document no longer matches evidence"
+                    )
                 spans.append(
                     {
                         "locator": locator.model_dump(mode="json"),
