@@ -143,7 +143,10 @@ async def create_case_grounded_result(
         result = _answer_response(answer, rrf_k=settings.rrf_k)
         persisted = await persistence.persist(case_id, scoped_request, result)
     except CaseGroundedResultNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
     except CaseGroundedScopeError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return CaseGroundedResultResponse.model_validate(persisted)
@@ -160,7 +163,10 @@ async def list_case_grounded_results(
     try:
         items = await CaseGroundedResultService(session=session).list(case_id)
     except CaseGroundedResultNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
     return CaseGroundedResultListResponse(
         items=[CaseGroundedResultSummary.model_validate(item) for item in items]
     )
