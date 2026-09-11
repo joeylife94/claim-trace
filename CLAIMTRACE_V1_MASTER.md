@@ -8,7 +8,7 @@
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — D4 selected/current / D4-01 active**
+**Post-v1 progression state:** **ENABLED — D5 selected/current / D5-01 active**
 
 ---
 
@@ -1242,3 +1242,122 @@ No demonstrated blocker currently justifies D3-02. Opening another corpus varian
 `HUMAN REVIEW — NEXT DESTINATION DECISION`
 
 Do not open another automatic ClaimTrace progression milestone. Preserve `v1.0-proof`, accepted D1/D2/D3 evidence, the controlled-pilot boundary, public-safe source handling, and all legal/non-claim limitations until a human explicitly selects a farther destination.
+
+## 13. D4 — Description-aware Evidence Retrieval Pilot
+
+**Human Review decision date:** `2026-09-09`  
+**Destination state:** `DESTINATION REACHED — DESCRIPTION-AWARE EVIDENCE RETRIEVAL PILOT`  
+**Accepted bounded milestone:** `D4-01 — description structure + retrieval`  
+**Issue:** #63  
+**PR:** #64  
+**Accepted PR exact head:** `b786e99ade458b784f68987b7dfed69932be80b6`  
+**Resulting main merge SHA:** `a6d8b4447bf251a5f0bb08465e9288f169c05622`
+
+D4 extends the accepted D3 controlled pilot from claim-only retrieval into source-verifiable description evidence while preserving the canonical persisted document/page/span coordinate model. Description evidence is a derived/searchable representation of already persisted page text; it does not create a second source coordinate system.
+
+### D4-01 Acceptance Update
+
+#### Changed
+
+- added description derivation/search persistence that anchors every accepted description segment to persisted document/page/start/end coordinates;
+- added description-oriented retrieval while keeping claim and description evidence explicitly distinguished;
+- added API/reviewer navigation sufficient to resolve a description result back to the exact stored source span;
+- added a bounded real-public Korean patent description-evidence acceptance path and preserved existing D3 and deterministic synthetic regression gates;
+- no legal conclusion, OCR, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, production security/compliance, benchmark-quality, or production-readiness claim was added.
+
+#### Actually Executed
+
+On PR #64 exact head `b786e99ade458b784f68987b7dfed69932be80b6`, all 14 triggered PR workflows completed **GREEN**, including:
+
+- `Progression D4 Description Evidence` run `34387286784`: **GREEN**;
+- `General CI` run `34387286908`: **GREEN**;
+- `Progression D3 Real Public Corpus` run `34387286965`: **GREEN**;
+- `Progression Deterministic Regression` run `34387286828`: **GREEN**;
+- `Progression Controlled Pilot Handoff` run `34387286790`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `34387286807`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `34387286874`: **GREEN**;
+- `V1-04 Claim Element Verification` run `34387287052`: **GREEN**;
+- `V1-05 Human Review Verification` run `34387286804`: **GREEN**;
+- `V1-06 Clean Start Verification` run `34387287231`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `34387286882`: **GREEN**;
+- `V1-06 Expected Failure States` run `34387286958`: **GREEN**;
+- `V1-07 Final Evaluations` run `34387286964`: **GREEN**;
+- `V1-07 Proof Package` run `34387286959`: **GREEN**.
+
+PR #64 was merged to `main` as `a6d8b4447bf251a5f0bb08465e9288f169c05622`; Issue #63 is the completed D4-01 acceptance item.
+
+#### Verified
+
+- description segments are derived from already persisted page text and retain canonical page-relative source spans;
+- accepted D4 evidence verifies exact stored-span source resolution and reviewer navigation for real-public Korean patent description retrieval;
+- claim-only and prior D1/D2/D3 regression/proof paths remain GREEN on the accepted exact head;
+- unsupported/ambiguous structure remains fail-closed rather than silently promoted to PASS;
+- D4 destination review found no executed blocker requiring D4-02 or reranking.
+
+#### Not Verified
+
+- no benchmark-quality general patent semantic/retrieval accuracy is claimed;
+- no legal correctness, infringement, validity, novelty, equivalence, inventive step, or patentability conclusion is claimed;
+- OCR/scanned-image recovery, private/customer corpus behavior, authentication/RBAC/multi-tenancy, public cloud/Kubernetes, production resilience, and security/compliance certification remain unverified.
+
+#### Remaining Risks
+
+- D4 real-public evidence remains bounded controlled-pilot evidence, not a general retrieval benchmark;
+- deterministic providers and bounded public corpus evidence do not establish general model semantic quality;
+- all frozen Sections 6–7 limitations and accepted D1/D2/D3 non-claims remain in force.
+
+### D4 Destination Review
+
+**Status:** `DESTINATION REACHED — DESCRIPTION-AWARE EVIDENCE RETRIEVAL PILOT`
+
+D4-01 closes the demonstrated description-aware retrieval gap. No executed D4 destination-level blocker currently justifies D4-02 mixed grounded analysis, reranking, corpus variants, parser permutations, threshold work, or retrieval-score tuning. D5 is therefore selected under the human-approved long-term destination envelope.
+
+## 14. D5 — Persistent Analyst Case Workspace
+
+**Human pre-authorization date:** `2026-09-09`  
+**Destination state:** `SELECTED / CURRENT`  
+**Active bounded milestone:** `D5-01 — Persistent Case identity + document association`  
+**Issue:** #66  
+**PR:** #67  
+**Current candidate implementation head before this reconciliation:** `fcc8a88f276154900588862150b948813a792b86`
+
+D5 turns the accepted request-scoped analysis surfaces into a coherent persistent analyst work unit while preserving source-verifiable document ownership and provenance. D5-01 is intentionally limited to stable Case identity plus association to existing documents; it does not yet persist grounded-analysis snapshots, attach comparison/decomposition/review artifacts, or add export/handoff.
+
+### D5-01 Current Evidence State
+
+#### Changed
+
+- persistent analyst `Case` identity with minimal human-readable metadata;
+- persisted Case-to-existing-document association without copying source text or creating a second evidence coordinate system;
+- bounded create/list/read/reopen API surface;
+- explicit duplicate/missing/disassociation behavior;
+- PostgreSQL migration and focused backend/API regression;
+- this reconciliation updates authority only and does not broaden D5-01 product scope.
+
+#### Actually Executed
+
+On candidate PR #67 head `fcc8a88f276154900588862150b948813a792b86`, all 14 triggered workflows completed **GREEN**, including General CI, D4 Description Evidence, D3 Real Public Corpus, deterministic regression, Controlled Pilot Handoff, comparison/decomposition/review gates, clean start, whole-product golden path, expected failures, final evaluations, and Proof Package.
+
+This MASTER reconciliation itself creates a new PR head, so the prior `fcc8a88f...` GREEN evidence is implementation evidence only and is **not** promoted to exact-head acceptance for the new reconciliation head.
+
+#### Verified
+
+- the bounded D5-01 implementation reached a full-GREEN pre-reconciliation head;
+- D4 accepted evidence and D1/D2/D3/frozen v1.0 ledgers remain preserved in this document;
+- the D5-01 scope does not duplicate persisted document/source evidence and does not introduce auth/RBAC/multi-tenancy or other deferred product surfaces.
+
+#### Not Verified
+
+- the new reconciliation head has not yet completed exact-head CI/workflow verification;
+- D5-01 is not yet accepted/merged and Issue #66 remains open until guarded merge completes;
+- persisted grounded-analysis provenance snapshots, Case-linked comparison/decomposition/review artifacts, Case export/handoff, OCR, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, legal conclusions, benchmark-quality claims, production readiness, and security/compliance certification remain unverified.
+
+#### Remaining Risks
+
+- acceptance depends on the reconciliation head preserving full workflow convergence;
+- D5 destination-level coherence must be reviewed after D5-01 acceptance before any follow-on milestone is selected;
+- all frozen Sections 6–7 limitations and prior accepted destination non-claims remain in force.
+
+### Exact Next Action
+
+`Run exact-head verification on PR #67 after this preservation-safe MASTER reconciliation. If all required workflows remain GREEN, merge PR #67 with expected-head protection, confirm Issue #66 closure, re-read current-main MASTER, and perform D5 Destination Review before selecting any D5 follow-on.`
