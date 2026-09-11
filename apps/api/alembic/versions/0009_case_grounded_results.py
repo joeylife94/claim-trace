@@ -28,6 +28,7 @@ def upgrade() -> None:
         "analyst_case_grounded_results",
         sa.Column("id", sa.Uuid(), primary_key=True, nullable=False),
         sa.Column("case_id", sa.Uuid(), nullable=False),
+        sa.Column("request_fingerprint", sa.String(length=64), nullable=False),
         sa.Column("query", sa.String(length=512), nullable=False),
         sa.Column("request_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("result_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -42,6 +43,11 @@ def upgrade() -> None:
             ["analyst_cases.id"],
             name="fk_case_grounded_results_case_id",
             ondelete="CASCADE",
+        ),
+        sa.UniqueConstraint(
+            "case_id",
+            "request_fingerprint",
+            name="uq_case_grounded_results_case_request",
         ),
         sa.CheckConstraint("length(trim(query)) > 0", name="ck_case_grounded_results_query_nonempty"),
     )
