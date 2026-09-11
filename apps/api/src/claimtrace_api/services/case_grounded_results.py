@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from claimtrace_api.schemas.grounded import GroundedAnswerRequest, GroundedAnswerResponse
 from claimtrace_api.schemas.locators import SourceLocator
+from claimtrace_api.schemas.retrieval import MAX_DOCUMENT_FILTER
 
 
 class CaseGroundedResultNotFoundError(LookupError):
@@ -45,6 +46,10 @@ class CaseGroundedResultService:
         selected = requested_set or associated
         if not selected:
             raise CaseGroundedScopeError("Case has no associated documents to search")
+        if len(selected) > MAX_DOCUMENT_FILTER:
+            raise CaseGroundedScopeError(
+                f"Case scope exceeds the {MAX_DOCUMENT_FILTER}-document grounded request limit"
+            )
         return sorted(selected, key=str)
 
     async def find_existing(
@@ -91,13 +96,15 @@ class CaseGroundedResultService:
         request_snapshot = request.model_dump(mode="json")
         result_snapshot = result.model_dump(mode="json")
         evidence_snapshots = result_snapshot.pop("evidence")
-        await self._session.execute(
+        inserted = await self._session.execute(
             text(
                 """
                 INSERT INTO analyst_case_results
                     (id, case_id, request_fingerprint, query, request_snapshot, result_snapshot)
                 VALUES (:id, :case_id, :fingerprint, :query,
                         CAST(:request_snapshot AS jsonb), CAST(:result_snapshot AS jsonb))
+                ON CONFLICT (case_id, request_fingerprint) DO NOTHING
+                RETURNING id
                 """
             ),
             {
@@ -109,6 +116,13 @@ class CaseGroundedResultService:
                 "result_snapshot": json.dumps(result_snapshot),
             },
         )
+        inserted_id = inserted.scalar_one_or_none()
+        if inserted_id is None:
+            existing = await self.find_existing(case_id, request)
+            if existing is None:
+                raise RuntimeError("conflicting Case grounded result could not be reopened")
+            return existing
+
         for evidence in evidence_snapshots:
             spans = evidence.pop("source_spans")
             locators = [span["locator"] for span in spans]
