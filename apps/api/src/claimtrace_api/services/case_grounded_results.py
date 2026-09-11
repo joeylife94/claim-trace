@@ -246,7 +246,7 @@ class CaseGroundedResultService:
                 {"case_id": case_id},
             )
         ).all()
-        return {row[0] for row in rows]
+        return {row[0] for row in rows}
 
 
 def _datetime(value: Any) -> datetime:
