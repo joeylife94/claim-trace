@@ -75,9 +75,11 @@ class CaseGroundedResultService:
                 raise CaseGroundedScopeError(
                     "grounded evidence references a document outside the Case"
                 )
-            if any(
-                span.locator.document_id != evidence.document_id for span in evidence.source_spans
-            ):
+            locator_mismatches = (
+                span.locator.document_id != evidence.document_id
+                for span in evidence.source_spans
+            )
+            if any(locator_mismatches):
                 raise CaseGroundedScopeError(
                     "evidence locator document does not match its evidence"
                 )
