@@ -53,7 +53,7 @@ class CaseGroundedResultService:
         row = (
             await self._session.execute(
                 text(
-                    "SELECT id FROM analyst_case_grounded_results "
+                    "SELECT id FROM analyst_case_results "
                     "WHERE case_id = :case_id AND request_fingerprint = :fingerprint"
                 ),
                 {"case_id": case_id, "fingerprint": self.request_fingerprint(request)},
@@ -95,7 +95,7 @@ class CaseGroundedResultService:
         await self._session.execute(
             text(
                 """
-                INSERT INTO analyst_case_grounded_results
+                INSERT INTO analyst_case_results
                     (id, case_id, request_fingerprint, query, request_snapshot, result_snapshot)
                 VALUES (:id, :case_id, :fingerprint, :query,
                         CAST(:request_snapshot AS jsonb), CAST(:result_snapshot AS jsonb))
@@ -116,7 +116,7 @@ class CaseGroundedResultService:
             await self._session.execute(
                 text(
                     """
-                    INSERT INTO analyst_case_grounded_evidence
+                    INSERT INTO analyst_case_evidence
                         (result_id, evidence_id, document_id, evidence_snapshot, locator_snapshot)
                     VALUES (:result_id, :evidence_id, :document_id,
                             CAST(:evidence_snapshot AS jsonb), CAST(:locator_snapshot AS jsonb))
@@ -143,7 +143,7 @@ class CaseGroundedResultService:
             (
                 await self._session.execute(
                     text(
-                        "SELECT id, case_id, query, created_at FROM analyst_case_grounded_results "
+                        "SELECT id, case_id, query, created_at FROM analyst_case_results "
                         "WHERE case_id = :case_id ORDER BY created_at, id"
                     ),
                     {"case_id": case_id},
@@ -160,7 +160,7 @@ class CaseGroundedResultService:
                 await self._session.execute(
                     text(
                         "SELECT id, case_id, request_snapshot, result_snapshot, created_at "
-                        "FROM analyst_case_grounded_results "
+                        "FROM analyst_case_results "
                         "WHERE id = :result_id AND case_id = :case_id"
                     ),
                     {"result_id": result_id, "case_id": case_id},
@@ -177,7 +177,7 @@ class CaseGroundedResultService:
                 await self._session.execute(
                     text(
                         "SELECT document_id, evidence_snapshot, locator_snapshot "
-                        "FROM analyst_case_grounded_evidence WHERE result_id = :result_id "
+                        "FROM analyst_case_evidence WHERE result_id = :result_id "
                         "ORDER BY evidence_id"
                     ),
                     {"result_id": result_id},
