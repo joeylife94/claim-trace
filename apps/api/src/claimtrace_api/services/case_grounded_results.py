@@ -76,8 +76,7 @@ class CaseGroundedResultService:
                     "grounded evidence references a document outside the Case"
                 )
             if any(
-                span.locator.document_id != evidence.document_id
-                for span in evidence.source_spans
+                span.locator.document_id != evidence.document_id for span in evidence.source_spans
             ):
                 raise CaseGroundedScopeError(
                     "evidence locator document does not match its evidence"
@@ -245,7 +244,7 @@ class CaseGroundedResultService:
                 {"case_id": case_id},
             )
         ).all()
-        return {row[0] for row in rows}
+        return {row[0] for row in rows]
 
 
 def _datetime(value: Any) -> datetime:
