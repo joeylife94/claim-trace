@@ -52,7 +52,7 @@ def _upload_indexed_claim_document(client: TestClient, filename: str) -> str:
     )
     uploaded = client.post(
         "/api/v1/documents",
-        files={"file": (filename, build_korean_claims_pdf(pages), "application/pdf")},
+        files={"file": (filename, build_korean_claims_pdf((pages,)), "application/pdf")},
     )
     assert uploaded.status_code == 201, uploaded.text
     document_id = uploaded.json()["id"]
