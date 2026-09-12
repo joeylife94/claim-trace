@@ -188,7 +188,9 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
 
     with sync_engine.connect() as connection:
         result_row = connection.execute(
-            sa.text("SELECT request_snapshot, result_snapshot FROM analyst_case_results WHERE id = :id"),  # noqa: E501
+            sa.text(
+                "SELECT request_snapshot, result_snapshot FROM analyst_case_results WHERE id = :id"
+            ),  # noqa: E501
             {"id": uuid.UUID(result_id)},
         ).one()
         evidence_rows = connection.execute(
