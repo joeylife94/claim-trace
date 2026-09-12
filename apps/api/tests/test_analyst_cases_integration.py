@@ -138,9 +138,7 @@ def test_missing_references_and_disassociation_are_explicit(indexing_client: Tes
     assert reopened.status_code == 200
     assert reopened.json()["documents"] == []
 
-    duplicate_delete = indexing_client.delete(
-        f"/api/v1/cases/{case_id}/documents/{document_id}"
-    )
+    duplicate_delete = indexing_client.delete(f"/api/v1/cases/{case_id}/documents/{document_id}")
     assert duplicate_delete.status_code == 404
     assert duplicate_delete.json()["detail"] == "Document is not associated with this Case."
 
@@ -154,9 +152,7 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
     _associate(indexing_client, case_id, document_id)
 
     indexing_client.app.state.llm_provider = FakeLLMProvider(  # type: ignore[attr-defined]
-        structured_text=draft_json(
-            [("수집부는 복수의 센서로부터 측정값을 수집한다.", ("EV-001",))]
-        )
+        structured_text=draft_json([("수집부는 복수의 센서로부터 측정값을 수집한다.", ("EV-001",))])
     )
     request = {
         "query": "센서 측정값을 수집하는 구성",
@@ -180,9 +176,9 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
         assert evidence["document_id"] == document_id
         for span in evidence["source_spans"]:
             locator = span["locator"]
-            pages = indexing_client.get(
-                f"/api/v1/documents/{document_id}/pages?limit=200"
-            ).json()["items"]
+            pages = indexing_client.get(f"/api/v1/documents/{document_id}/pages?limit=200").json()[
+                "items"
+            ]
             page = next(item for item in pages if item["page_number"] == locator["page_number"])
             assert span["quote"] == page["text"][locator["start_char"] : locator["end_char"]]
 
@@ -192,10 +188,7 @@ def test_grounded_result_reopens_with_canonical_source_and_no_source_copy(
 
     with sync_engine.connect() as connection:
         result_row = connection.execute(
-            sa.text(
-                "SELECT request_snapshot, result_snapshot "
-                "FROM analyst_case_results WHERE id = :id"
-            ),
+            sa.text("SELECT request_snapshot, result_snapshot FROM analyst_case_results WHERE id = :id"),
             {"id": uuid.UUID(result_id)},
         ).one()
         evidence_rows = connection.execute(
@@ -244,9 +237,7 @@ def test_grounded_result_rejects_cross_case_document_scope(
     assert "outside the Case" in outside_scope.json()["detail"]
 
     indexing_client.app.state.llm_provider = FakeLLMProvider(  # type: ignore[attr-defined]
-        structured_text=draft_json(
-            [("수집부는 복수의 센서로부터 측정값을 수집한다.", ("EV-001",))]
-        )
+        structured_text=draft_json([("수집부는 복수의 센서로부터 측정값을 수집한다.", ("EV-001",))])
     )
     created = indexing_client.post(
         f"/api/v1/cases/{first_case_id}/grounded-results",
