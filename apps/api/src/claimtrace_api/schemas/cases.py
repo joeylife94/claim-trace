@@ -7,6 +7,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+from claimtrace_api.schemas.grounded import GroundedAnswerRequest, GroundedAnswerResponse
+
 
 class CaseCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -42,3 +44,22 @@ class CaseListResponse(BaseModel):
 class CaseDocumentMutationResponse(BaseModel):
     case: CaseResponse
     changed: bool
+
+
+class CaseGroundedResultSummary(BaseModel):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    query: str
+    created_at: datetime
+
+
+class CaseGroundedResultListResponse(BaseModel):
+    items: list[CaseGroundedResultSummary] = Field(default_factory=list)
+
+
+class CaseGroundedResultResponse(BaseModel):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    request: GroundedAnswerRequest
+    result: GroundedAnswerResponse
+    created_at: datetime

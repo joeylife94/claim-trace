@@ -1,4 +1,4 @@
-"""D5-01 persistent analyst Case API."""
+"""Persistent analyst Case API."""
 
 from __future__ import annotations
 
@@ -6,12 +6,26 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Response, status
 
-from claimtrace_api.api.deps import SessionDep
+from claimtrace_api.api.deps import (
+    GroundedGenerationServiceDep,
+    SessionDep,
+    SettingsDep,
+)
+from claimtrace_api.api.v1.grounded import _answer_response
 from claimtrace_api.schemas.cases import (
     CaseCreateRequest,
     CaseDocumentMutationResponse,
+    CaseGroundedResultListResponse,
+    CaseGroundedResultResponse,
+    CaseGroundedResultSummary,
     CaseListResponse,
     CaseResponse,
+)
+from claimtrace_api.schemas.grounded import GroundedAnswerRequest
+from claimtrace_api.services.case_grounded_results import (
+    CaseGroundedResultNotFoundError,
+    CaseGroundedResultService,
+    CaseGroundedScopeError,
 )
 from claimtrace_api.services.cases import (
     AnalystCaseService,
@@ -99,3 +113,81 @@ async def disassociate_document(
             detail="Document is not associated with this Case.",
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{case_id}/grounded-results",
+    response_model=CaseGroundedResultResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_case_grounded_result(
+    case_id: uuid.UUID,
+    request: GroundedAnswerRequest,
+    session: SessionDep,
+    grounded: GroundedGenerationServiceDep,
+    settings: SettingsDep,
+) -> CaseGroundedResultResponse:
+    persistence = CaseGroundedResultService(session=session)
+    try:
+        scoped_document_ids = await persistence.scope_document_ids(case_id, request.document_ids)
+        scoped_request = request.model_copy(update={"document_ids": scoped_document_ids})
+        existing = await persistence.find_existing(case_id, scoped_request)
+        if existing is not None:
+            return CaseGroundedResultResponse.model_validate(existing)
+        answer = await grounded.answer(
+            query=scoped_request.query,
+            mode=scoped_request.mode,
+            document_ids=scoped_request.document_ids,
+            top_k=min(scoped_request.top_k, settings.search_top_k_max),
+        )
+        result = _answer_response(answer, rrf_k=settings.rrf_k)
+        persisted = await persistence.persist(case_id, scoped_request, result)
+    except CaseGroundedResultNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
+    except CaseGroundedScopeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return CaseGroundedResultResponse.model_validate(persisted)
+
+
+@router.get(
+    "/{case_id}/grounded-results",
+    response_model=CaseGroundedResultListResponse,
+)
+async def list_case_grounded_results(
+    case_id: uuid.UUID,
+    session: SessionDep,
+) -> CaseGroundedResultListResponse:
+    try:
+        items = await CaseGroundedResultService(session=session).list(case_id)
+    except CaseGroundedResultNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        ) from exc
+    return CaseGroundedResultListResponse(
+        items=[CaseGroundedResultSummary.model_validate(item) for item in items]
+    )
+
+
+@router.get(
+    "/{case_id}/grounded-results/{result_id}",
+    response_model=CaseGroundedResultResponse,
+)
+async def get_case_grounded_result(
+    case_id: uuid.UUID,
+    result_id: uuid.UUID,
+    session: SessionDep,
+) -> CaseGroundedResultResponse:
+    try:
+        item = await CaseGroundedResultService(session=session).get(case_id, result_id)
+    except CaseGroundedResultNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case grounded result not found.",
+        ) from exc
+    except CaseGroundedScopeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return CaseGroundedResultResponse.model_validate(item)
