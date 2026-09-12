@@ -19,6 +19,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from claimtrace_api.llm.fake import FakeLLMProvider
+from claimtrace_api.parsing.pymupdf_parser import (
+    PdfTextLayerClassification,
+    PyMuPDFDocumentParser,
+    classify_pdf_text_layer,
+)
 from tests.grounded_fixtures import draft_json
 
 pytestmark = pytest.mark.integration
@@ -135,6 +140,10 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
             digest = hashlib.sha256(raw).hexdigest()
             assert digest == item["expected_sha256"], item["publication_number"]
 
+            parsed_pdf = PyMuPDFDocumentParser().parse(raw)
+            text_layer_classification = classify_pdf_text_layer(parsed_pdf.pages)
+            assert text_layer_classification is PdfTextLayerClassification.TEXT_NATIVE
+
             upload = indexing_client.post(
                 "/api/v1/documents",
                 files={"file": (item["local_filename"], raw, "application/pdf")},
@@ -175,6 +184,7 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
                     "document_id": document_id,
                     "page_count": len(pages),
                     "claim_count": len(claims),
+                    "pdf_text_layer_classification": text_layer_classification.value,
                     "ingestion": "pass",
                     "claim_parse": "pass",
                     "claim_index": "pass",
@@ -183,6 +193,7 @@ def test_real_public_corpus_controlled_pilot(indexing_client: TestClient) -> Non
             )
             runtime.append({"id": document_id, "claims": claims, "item": item})
 
+        evidence["steps"]["real_public_pdf_text_layer_classification"] = "pass"
         evidence["steps"]["ingest_parse_index_real_documents"] = "pass"
         evidence["steps"]["persisted_source_locator_resolution"] = "pass"
 
