@@ -56,8 +56,14 @@ jobs:
       - name: Run PostgreSQL integration tests without skip fallback
         run: |
           docker compose run --rm api sh -ec '
+            set +e
             output=$(pytest --disable-warnings -m integration)
+            status=$?
+            set -e
             printf "%s\n" "$output"
+            if [ "$status" -ne 0 ]; then
+              exit "$status"
+            fi
             printf "%s\n" "$output" | grep -Eq "[0-9]+ passed"
             ! printf "%s\n" "$output" | grep -Eq "[0-9]+ skipped"'
 
