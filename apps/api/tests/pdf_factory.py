@@ -39,6 +39,19 @@ def build_pdf_without_text() -> bytes:
         document.close()
 
 
+def build_mixed_text_pdf() -> bytes:
+    """A deterministic ambiguous PDF: one text page and one graphics-only page."""
+    document = pymupdf.open()
+    try:
+        text_page = document.new_page()
+        text_page.insert_text((72, 96), DEFAULT_PAGES[0], fontsize=11)
+        graphics_page = document.new_page()
+        graphics_page.draw_rect(pymupdf.Rect(72, 72, 300, 300), color=(0, 0, 0), width=2)
+        return document.tobytes()
+    finally:
+        document.close()
+
+
 def build_encrypted_pdf(password: str = "correct horse battery staple") -> bytes:
     """A password-protected PDF, deterministic and generated on the fly."""
     document = pymupdf.open()

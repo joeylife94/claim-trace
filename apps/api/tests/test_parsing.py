@@ -6,10 +6,16 @@ import pytest
 
 from claimtrace_api.core.errors import ErrorCode
 from claimtrace_api.parsing.base import ParsedPage, ParserError
-from claimtrace_api.parsing.pymupdf_parser import PyMuPDFDocumentParser, normalise_page_text
+from claimtrace_api.parsing.pymupdf_parser import (
+    PdfTextLayerClassification,
+    PyMuPDFDocumentParser,
+    classify_pdf_text_layer,
+    normalise_page_text,
+)
 from tests.pdf_factory import (
     build_encrypted_pdf,
     build_malformed_pdf,
+    build_mixed_text_pdf,
     build_non_pdf_bytes,
     build_pdf_without_text,
     build_text_pdf,
@@ -87,6 +93,22 @@ def test_graphics_only_pdf_parses_but_yields_no_text(parser: PyMuPDFDocumentPars
 
     assert parsed.page_count == 1
     assert parsed.character_count < 32
+    assert classify_pdf_text_layer(parsed.pages) is PdfTextLayerClassification.IMAGE_ONLY_OR_NO_TEXT
+
+
+def test_text_native_pdf_is_classified_deterministically(parser: PyMuPDFDocumentParser) -> None:
+    parsed = parser.parse(build_text_pdf())
+
+    assert classify_pdf_text_layer(parsed.pages) is PdfTextLayerClassification.TEXT_NATIVE
+
+
+def test_mixed_text_layer_pdf_fails_closed(parser: PyMuPDFDocumentParser) -> None:
+    with pytest.raises(ParserError) as excinfo:
+        parser.parse(build_mixed_text_pdf())
+
+    assert excinfo.value.code is ErrorCode.NO_EXTRACTABLE_TEXT
+    assert "mixed or ambiguous text layer" in excinfo.value.message
+    assert "OCR is not used" in excinfo.value.message
 
 
 def test_error_messages_never_leak_internals(parser: PyMuPDFDocumentParser) -> None:

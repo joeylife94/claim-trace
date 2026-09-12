@@ -8,6 +8,8 @@ later phase with different accuracy and provenance characteristics.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
+from enum import StrEnum
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 
@@ -25,6 +27,30 @@ _METADATA_KEYS = ("title", "author", "subject", "keywords", "creator", "producer
 #: Longest metadata value kept, to bound what an uploaded file can push into logs
 #: and responses.
 _METADATA_VALUE_LIMIT = 512
+
+
+class PdfTextLayerClassification(StrEnum):
+    """Bounded D6-01 classification based only on extracted page text."""
+
+    TEXT_NATIVE = "text_native"
+    IMAGE_ONLY_OR_NO_TEXT = "image_only_or_no_text"
+    MIXED_OR_AMBIGUOUS = "mixed_or_ambiguous"
+
+
+def classify_pdf_text_layer(pages: Sequence[ParsedPage]) -> PdfTextLayerClassification:
+    """Classify whether every page, no page, or only some pages expose text.
+
+    This deliberately does not infer OCR quality or inspect image semantics. A
+    document with both text-bearing and text-empty pages is ambiguous for the
+    text-native evidence contract, so D6-01 fails it closed instead of silently
+    presenting a partial source-verifiable document.
+    """
+    has_text = tuple(bool(page.text.strip()) for page in pages)
+    if has_text and all(has_text):
+        return PdfTextLayerClassification.TEXT_NATIVE
+    if not any(has_text):
+        return PdfTextLayerClassification.IMAGE_ONLY_OR_NO_TEXT
+    return PdfTextLayerClassification.MIXED_OR_AMBIGUOUS
 
 
 def _pymupdf_version() -> str:
@@ -103,6 +129,14 @@ class PyMuPDFDocumentParser:
                     ErrorCode.MALFORMED_PDF,
                     "The PDF could not be read to the end. It may be corrupted.",
                 ) from exc
+
+            classification = classify_pdf_text_layer(pages)
+            if classification is PdfTextLayerClassification.MIXED_OR_AMBIGUOUS:
+                raise ParserError(
+                    ErrorCode.NO_EXTRACTABLE_TEXT,
+                    "The PDF has a mixed or ambiguous text layer: some pages expose text "
+                    "while others do not. D6-01 fails this input closed; OCR is not used.",
+                )
 
             metadata = self._safe_metadata(document.metadata)
 
