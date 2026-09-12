@@ -9,6 +9,7 @@ from tests.conftest import StubSession, upload_pdf
 from tests.pdf_factory import (
     build_encrypted_pdf,
     build_malformed_pdf,
+    build_mixed_text_pdf,
     build_non_pdf_bytes,
     build_pdf_without_text,
     build_text_pdf,
@@ -104,6 +105,18 @@ def test_pdf_without_extractable_text_is_rejected(upload_client: TestClient) -> 
     body = response.json()
     assert body["error_code"] == ErrorCode.NO_EXTRACTABLE_TEXT.value
     assert "text layer" in body["detail"]
+    assert body["document"]["status"] == "failed"
+    assert body["document"]["page_count"] is None
+
+
+def test_mixed_text_layer_pdf_fails_closed(upload_client: TestClient) -> None:
+    response = upload_pdf(upload_client, build_mixed_text_pdf(), filename="mixed.pdf")
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == ErrorCode.NO_EXTRACTABLE_TEXT.value
+    assert "mixed or ambiguous text layer" in body["detail"]
+    assert "OCR is not used" in body["detail"]
     assert body["document"]["status"] == "failed"
     assert body["document"]["page_count"] is None
 
