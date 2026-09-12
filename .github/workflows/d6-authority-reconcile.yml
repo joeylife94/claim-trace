@@ -43,32 +43,28 @@ jobs:
           tail = dedent(r'''
           ## 14. D5 — Persistent Analyst Case Workspace
 
-          **Human pre-authorization date:** `2026-09-09`  
-          **Destination state:** `DESTINATION REACHED — PERSISTENT ANALYST CASE WORKSPACE`  
-          **Accepted bounded milestones:** `D5-01 — Persistent Case identity + document association`; `D5-02 — Persist grounded-analysis result + provenance snapshot under Case`
+          **Human pre-authorization date:** `2026-09-09`
+          **Destination state:** `DESTINATION REACHED — PERSISTENT ANALYST CASE WORKSPACE`
+          **Accepted bounded milestones:** D5-01 and D5-02
 
-          D5 turns the accepted request-scoped analysis surfaces into a coherent persistent analyst work unit while preserving source-verifiable document ownership and provenance. The accepted destination invariant is intentionally bounded: stable Case identity and document association plus persisted/reopenable grounded-analysis results with canonical provenance. Current executable evidence does not demonstrate that Case-linked comparison/decomposition/review persistence, export/handoff, chat/history, or broader productivity surfaces are required blockers to that invariant.
+          D5 establishes a bounded persistent analyst work unit while preserving canonical source provenance. It does not expand into general case-management or productivity scope.
 
           ### D5-01 Acceptance Update
 
-          **Status:** `ACCEPTED / MERGED`  
-          **Issue:** #66  
-          **PR:** #67  
-          **Accepted PR exact head:** `30aac51dbbfef13efda149130f4a6106d36c3f06`  
+          **Status:** `ACCEPTED / MERGED`
+          **Issue:** #66
+          **PR:** #67
+          **Accepted PR exact head:** `30aac51dbbfef13efda149130f4a6106d36c3f06`
           **Resulting main merge SHA:** `8bcff96fd64461f3f46a2c9a388009fbbf7b7325`
 
-          #### Verified
-
-          - persistent Case identity and Case-to-existing-document association were accepted through the bounded Issue/PR lifecycle;
-          - source text was not copied into a second evidence coordinate system;
-          - D1–D4 and frozen `v1.0-proof` evidence remained preserved.
+          Verified bounded capability: persistent Case identity plus association to existing documents without copying source text or creating a second evidence coordinate system. Prior D1-D4 and frozen `v1.0-proof` evidence remained preserved.
 
           ### D5-02 Acceptance Update
 
-          **Status:** `ACCEPTED / MERGED`  
-          **Issue:** #68  
-          **PR:** #69  
-          **Accepted PR exact head:** `549eae12ad54a24ed476dc46619e75c24306793a`  
+          **Status:** `ACCEPTED / MERGED`
+          **Issue:** #68
+          **PR:** #69
+          **Accepted PR exact head:** `549eae12ad54a24ed476dc46619e75c24306793a`
           **Resulting main merge SHA:** `e88f2913a629e2e5f334e4cc9b5c6407b897e194`
 
           #### Changed
@@ -85,67 +81,57 @@ jobs:
           #### Verified
 
           - grounded-analysis results persist under a Case and reopen with source-verifiable canonical provenance;
-          - Case scope and persisted provenance invariants are covered by executable acceptance evidence;
           - PR #69 merged to `main` as `e88f2913a629e2e5f334e4cc9b5c6407b897e194` and Issue #68 completed;
-          - prior D1–D4 and frozen v1.0 evidence remain preserved.
+          - prior D1-D4 and frozen v1.0 evidence remain preserved.
 
           #### Not Verified
 
-          - legal correctness or infringement/validity/novelty/equivalence/inventive-step/patentability conclusions;
-          - benchmark-quality general retrieval/semantic/model quality;
-          - Case-linked comparison/decomposition/review persistence, export/handoff, chat/history/productivity expansion;
-          - OCR recovery, private/customer corpus behavior, authentication/RBAC/multi-tenancy, public cloud/Kubernetes, production resilience, or security/compliance certification.
-
-          #### Remaining Risks
-
-          - D5 is intentionally a bounded analyst-work-unit invariant, not a complete case-management product;
-          - bounded/deterministic evidence does not establish substantive analyst or legal correctness;
-          - all frozen Sections 6–7 limitations and accepted D1–D4 non-claims remain in force.
+          Legal conclusions, benchmark-quality general semantic/retrieval/model quality, broader Case productivity surfaces, OCR recovery, private/customer corpus behavior, authentication/RBAC/multi-tenancy, public cloud/Kubernetes, production resilience, and security/compliance certification remain unverified.
 
           ### D5 Destination Review
 
           **Status:** `DESTINATION REACHED — PERSISTENT ANALYST CASE WORKSPACE`
 
-          Accepted D5-01 establishes persistent Case identity and document association. Accepted D5-02 establishes persisted/reopenable grounded-analysis results with canonical provenance. No executed destination-level blocker demonstrates that further Case-linked artifact persistence or export is required before the bounded Persistent Analyst Case Workspace goal is coherent. Continuing D5 solely to add adjacent productivity surfaces would risk micro-loop expansion.
+          Accepted D5-01 provides persistent Case identity/document association. Accepted D5-02 provides persisted/reopenable grounded-analysis results with canonical provenance. No executed destination-level blocker requires another D5 milestone, so further adjacent Case work would risk micro-loop expansion.
 
-          Under the human-approved long-term destination envelope dated `2026-09-09`, D6 is therefore selected automatically without another Human Review.
+          Under the human-approved long-term destination envelope dated `2026-09-09`, D6 is selected automatically.
 
           ## 15. D6 — Mixed-PDF Controlled Pilot
 
-          **Human pre-authorization date:** `2026-09-09`  
-          **Destination state:** `SELECTED / CURRENT`  
-          **Active bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`  
+          **Human pre-authorization date:** `2026-09-09`
+          **Destination state:** `SELECTED / CURRENT`
+          **Active bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`
           **Issue:** #70
 
-          D6 improves input robustness beyond the text-native PDF boundary while preserving truthful source provenance. D6-01 begins with deterministic classification and fail-closed behavior only. It does **not** authorize OCR implementation, OCR-quality claims, private/customer data, production-scale processing, authentication/RBAC/multi-tenancy, cloud/Kubernetes, production deployment/security/compliance, legal conclusions, or benchmark chasing.
+          D6 improves input robustness beyond text-native PDFs while preserving truthful source provenance. D6-01 is classification/fail-closed only and does not authorize OCR implementation.
 
           ### D6-01 Acceptance Contract
 
           The bounded slice must:
 
           - reuse existing PDF ingestion/extraction and D3 public-document verification assets;
-          - distinguish supported text-native PDFs from image-only/scanned and materially mixed/ambiguous inputs using the smallest deterministic classification that closes the demonstrated input-truthfulness gap;
+          - distinguish supported text-native PDFs from image-only/scanned and materially mixed/ambiguous inputs using deterministic classification;
           - preserve page/document provenance and canonical source-locator semantics for supported text-native evidence;
-          - fail closed for unsupported/ambiguous inputs rather than silently treating missing text as source-verifiable success;
-          - expose a bounded machine/reviewer-visible classification or failure reason through existing ingestion/verifier surfaces where practical;
-          - execute committed synthetic fixtures for text-native, image-only/scanned, and mixed/ambiguous behavior plus at least one already accepted real-public Korean patent path;
-          - preserve claim/description retrieval, grounded analysis, Case persistence, comparison/decomposition/review, D1–D5 evidence, and frozen `v1.0-proof`.
+          - fail closed for unsupported/ambiguous inputs instead of silently promoting missing text to source-verifiable success;
+          - expose a bounded machine/reviewer-visible classification or failure reason through existing surfaces where practical;
+          - execute synthetic text-native, image-only/scanned, and mixed/ambiguous fixtures plus at least one accepted real-public Korean patent path;
+          - preserve claim/description retrieval, grounded analysis, Case persistence, comparison/decomposition/review, D1-D5 evidence, and frozen `v1.0-proof`.
 
           ### OCR Gate
 
-          No OCR implementation is authorized in D6-01. Local OCR may be proposed only after D6-01 exact-head evidence demonstrates that classification/fail-closed behavior is insufficient and OCR is the smallest concrete remaining blocker. OCR-derived text must never be silently promoted to canonical source evidence.
+          No OCR implementation is authorized in D6-01. Local OCR may be proposed only after executable D6-01 evidence demonstrates that classification/fail-closed behavior is insufficient and OCR is the smallest concrete remaining blocker. OCR-derived text must never be silently promoted to canonical source evidence.
 
           ### D6-01 Acceptance
 
           Exact-head executable evidence must prove:
 
           1. supported text-native PDFs remain accepted without source-coordinate regression;
-          2. image-only/scanned PDFs are explicitly classified and fail closed rather than producing a false source-verifiable PASS;
-          3. materially mixed/ambiguous PDFs receive an explicit bounded classification/outcome rather than silent promotion;
+          2. image-only/scanned PDFs are explicitly classified and fail closed;
+          3. materially mixed/ambiguous PDFs receive an explicit bounded classification/outcome;
           4. classification is reproducible for committed synthetic fixtures and at least one accepted real-public Korean patent input path;
           5. no OCR-derived text is accepted as source evidence in D6-01;
-          6. current D1–D5 regression/provenance/workspace evidence and frozen `v1.0-proof` remain preserved;
-          7. no legal conclusion, private/customer corpus, auth/RBAC/multi-tenancy, public cloud/Kubernetes, production security/compliance, benchmark-quality general retrieval/OCR-quality, or production-readiness claim is added.
+          6. D1-D5 regression/provenance/workspace evidence and frozen `v1.0-proof` remain preserved;
+          7. no legal conclusion, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, production security/compliance, benchmark-quality general retrieval/OCR-quality, or production-readiness claim is added.
 
           ### Current Evidence State
 
@@ -154,16 +140,9 @@ jobs:
           - authority reconciled from stale D5-01-active state to accepted D5 closure and D6/D6-01 selection;
           - no D6 product/runtime implementation is promoted to PASS by this authority-only reconciliation.
 
-          #### Actually Executed
-
-          - current `main` MASTER and repository lifecycle were re-read;
-          - D5-01 and D5-02 accepted exact heads/resulting main commits were reconciled from repository evidence;
-          - Issue #70 was confirmed as the sole bounded D6-01 work item;
-          - no open implementation PR existed before this reconciliation branch.
-
           #### Verified
 
-          - D5-01 and D5-02 lifecycle evidence recorded above is accepted repository state;
+          - D5-01 and D5-02 accepted repository lifecycle evidence is recorded above;
           - D5 is destination-level coherent under the pre-authorized bounded goal;
           - D6 is inside the human-approved destination envelope;
           - OCR remains gated and explicitly unimplemented.
@@ -171,19 +150,18 @@ jobs:
           #### Not Verified
 
           - D6-01 classification/fail-closed implementation and exact-head acceptance evidence are not yet verified;
-          - OCR/scanned-image recovery quality is not verified or claimed;
-          - all broader legal, private-corpus, auth/RBAC/multi-tenant, cloud/Kubernetes, production security/compliance, benchmark-quality, and production-readiness claims remain outside scope.
+          - OCR/scanned-image recovery quality and all broader deferred claims remain unverified.
 
           #### Remaining Risks
 
           - D6-01 must distinguish unsupported/mixed input truthfully without inventing source evidence;
-          - synthetic classification fixtures must not be promoted into general OCR/PDF quality claims;
+          - synthetic fixtures must not become general OCR/PDF quality claims;
           - accepted real-public source identity/hash guards must remain fail-closed;
-          - all frozen Sections 6–7 and accepted D1–D5 non-claims remain in force.
+          - all frozen Sections 6-7 and accepted D1-D5 non-claims remain in force.
 
           ### Exact Next Action
 
-          `Implement the smallest D6-01 classification/fail-closed slice on the Issue #70 branch, using this same bounded Issue/PR as the sole acceptance surface. Run exact-head executable evidence before any merge or destination-level promotion.`
+          `Implement the smallest D6-01 classification/fail-closed slice on the Issue #70 branch, using this same bounded Issue/PR as the sole acceptance surface. Run exact-head executable evidence before merge or destination-level promotion.`
           ''').lstrip()
 
           path.write_text(prefix + tail)
