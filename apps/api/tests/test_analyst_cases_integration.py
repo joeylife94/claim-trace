@@ -47,7 +47,8 @@ def _upload_indexed_claim_document(client: TestClient, filename: str) -> str:
     pages = (
         "【청구범위】\n"
         "【청구항 1】\n"
-        "복수의 센서로부터 측정값을 수집하는 수집부와, 수집된 측정값을 저장하는 저장부를 포함하는 장치.\n"
+        "복수의 센서로부터 측정값을 수집하는 수집부와, "
+        "수집된 측정값을 저장하는 저장부를 포함하는 장치.\n"
         f"합성 문서 식별자: {filename}"
     )
     uploaded = client.post(
