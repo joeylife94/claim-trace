@@ -11,7 +11,7 @@ bash proof/firebat-start.sh
 The script:
 
 1. creates `.env` from `.env.example` only when missing;
-2. uses dedicated host ports (`13000` web, `18000` API, `15432` PostgreSQL, `11435` Ollama);
+2. uses dedicated host ports (`13000` web, `18000` API; `15432` PostgreSQL and `11435` Ollama on loopback only);
 3. starts PostgreSQL and the repository's optional Ollama service;
 4. ensures `qwen2.5:1.5b` is present in the persistent `ollama_models` volume;
 5. runs `alembic upgrade head` explicitly;
