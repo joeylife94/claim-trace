@@ -16,10 +16,12 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
 
-export POSTGRES_PORT="${POSTGRES_PORT:-15432}"
+# PostgreSQL and Ollama are only reached from other containers or from this
+# host, so publish them on loopback instead of every host interface.
+export POSTGRES_PORT="${POSTGRES_PORT:-127.0.0.1:15432}"
 export API_PORT="${API_PORT:-18000}"
 export WEB_PORT="${WEB_PORT:-13000}"
-export OLLAMA_PORT="${OLLAMA_PORT:-11435}"
+export OLLAMA_PORT="${OLLAMA_PORT:-127.0.0.1:11435}"
 export CORS_ALLOW_ORIGINS="${CORS_ALLOW_ORIGINS:-http://127.0.0.1:${WEB_PORT}}"
 export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:${API_PORT}}"
 export EMBEDDING_PROVIDER="${EMBEDDING_PROVIDER:-sentence-transformers}"
