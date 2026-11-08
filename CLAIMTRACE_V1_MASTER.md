@@ -8,7 +8,7 @@
 **Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — D6 selected/current / D6-01 active**
+**Post-v1 progression state:** **ENABLED — D6 selected/current / D6-01 accepted / D6 destination review held for Human Review**
 
 ---
 
@@ -1370,9 +1370,12 @@ Under the human-approved long-term destination envelope dated `2026-09-09`, D6 i
 ## 15. D6 — Mixed-PDF Controlled Pilot
 
 **Human pre-authorization date:** `2026-09-09`
-**Destination state:** `SELECTED / CURRENT`
-**Active bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`
+**Destination state:** `SELECTED / CURRENT — D6-01 ACCEPTED; DESTINATION REVIEW HELD FOR HUMAN DECISION`
+**Accepted bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`
 **Issue:** #70
+**PR:** #71
+**Accepted PR exact head:** `7bae45d26e44f38fb16b47be463e6e1de70c05f4`
+**Resulting main squash merge SHA:** `db09b31731c5983ee1f0fc09245a53f881c7db45`
 
 D6 improves input robustness beyond text-native PDFs while preserving truthful source provenance. D6-01 is classification/fail-closed only and does not authorize OCR implementation.
 
@@ -1404,7 +1407,7 @@ Exact-head executable evidence must prove:
 6. D1-D5 regression/provenance/workspace evidence and frozen `v1.0-proof` remain preserved;
 7. no legal conclusion, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, production security/compliance, benchmark-quality general retrieval/OCR-quality, or production-readiness claim is added.
 
-### Current Evidence State
+### Current Evidence State (at D6-01 selection; superseded by the D6-01 Acceptance Update below)
 
 #### Changed
 
@@ -1430,6 +1433,101 @@ Exact-head executable evidence must prove:
 - accepted real-public source identity/hash guards must remain fail-closed;
 - all frozen Sections 6-7 and accepted D1-D5 non-claims remain in force.
 
-### Exact Next Action
+### Exact Next Action at D6-01 selection (superseded below)
 
 `Implement the smallest D6-01 classification/fail-closed slice on the Issue #70 branch, using this same bounded Issue/PR as the sole acceptance surface. Run exact-head executable evidence before merge or destination-level promotion.`
+
+### D6-01 Acceptance Update — Mixed-PDF classification and fail-closed input
+
+**Status:** `ACCEPTED / MERGED`
+**Issue:** #70 — `D6-01: classify mixed-PDF input and fail closed before OCR` (closed as `completed`)
+**PR:** #71 — `D6-01: classify mixed-PDF input and fail closed before OCR`
+**Accepted PR exact head:** `7bae45d26e44f38fb16b47be463e6e1de70c05f4`
+**Resulting main squash merge SHA:** `db09b31731c5983ee1f0fc09245a53f881c7db45`
+**Reconciled:** `2026-11-08`
+
+This update supersedes the D6-01 selection-time evidence state and next action above. It records evidence that already existed when PR #71 merged; it adds no product behavior. The frozen v1.0 and accepted D1-D5 ledgers remain unchanged and authoritative; `v1.0-proof` is not moved or reinterpreted.
+
+#### Changed
+
+- `apps/api/src/claimtrace_api/parsing/pymupdf_parser.py`: `classify_pdf_text_layer` labels a parsed PDF `text_native` when every page exposes extracted text, `image_only_or_no_text` when no page does, and `mixed_or_ambiguous` otherwise. The parser raises `ParserError(NO_EXTRACTABLE_TEXT)` for `mixed_or_ambiguous` input, with a detail that names the mixed/ambiguous text layer and states that OCR is not used;
+- the existing minimum extracted-character gate (`services/ingestion.py`, `min_extracted_characters`, default 32) continues to reject image-only/no-text input. D6-01 does not change that path;
+- deterministic synthetic fixture `build_mixed_text_pdf` (one text page plus one graphics-only page) in `apps/api/tests/pdf_factory.py`;
+- parser and upload tests for text-native, graphics-only and mixed classification and fail-closed behavior;
+- the D3 real-public acceptance test now asserts `text_native` for each pinned real-public PDF before upload and records `pdf_text_layer_classification` in its evidence;
+- no OCR, private/customer corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, production security/compliance, benchmark, or legal-conclusion capability was added.
+
+#### Actually Executed
+
+On PR #71 exact head `7bae45d26e44f38fb16b47be463e6e1de70c05f4`, all 14 triggered PR workflows completed **GREEN** (`success`):
+
+- `Progression D3 Real Public Corpus` run `34719156419`: **GREEN**. The real-document step `pytest tests/d3_acceptance/test_real_public_corpus.py -m integration` reported 1 passed (job `103621686765`). The evidence artifact `d3-real-public-corpus-7bae45d26e44f38fb16b47be463e6e1de70c05f4` was uploaded as artifact ID `10306022711`, zip digest `sha256:2a24681647f8f71295a5adb40ae44f7c1febfa0905a780e2a8820a025133e3af`, with 14-day retention, so it is no longer downloadable;
+- `Progression D4 Description Evidence` run `34719156408`: **GREEN**;
+- `General CI` run `34719156390`: **GREEN** (backend database-free tests, PostgreSQL integration tests without skip fallback, Ruff, ESLint, TypeScript);
+- `Progression Deterministic Regression` run `34719156421`: **GREEN**;
+- `Progression Controlled Pilot Handoff` run `34719156393`: **GREEN**;
+- `V1-02 Claim Comparison Verification` run `34719156407`: **GREEN**;
+- `V1-03 Comparison UI Verification` run `34719156429`: **GREEN**;
+- `V1-04 Claim Element Verification` run `34719156410`: **GREEN**;
+- `V1-05 Human Review Verification` run `34719156418`: **GREEN**;
+- `V1-06 Clean Start Verification` run `34719156398`: **GREEN**;
+- `V1-06 Whole-Product Golden Path` run `34719156381`: **GREEN**;
+- `V1-06 Expected Failure States` run `34719156399`: **GREEN**;
+- `V1-07 Final Evaluations` run `34719156379`: **GREEN**;
+- `V1-07 Proof Package` run `34719156438`: **GREEN**.
+
+Reconciliation-time checks on `2026-11-08`:
+
+- the `main` tree at `db09b31731c5983ee1f0fc09245a53f881c7db45` is byte-identical to the accepted PR head tree (`1f7463b4bf6a8c74faa266c85268f2c7e571fa11`), so the exact-head evidence above applies to the merged product without reinterpretation;
+- on that `main` tree, the local database-free backend suite (`pytest -m "not integration"`) reported **798 passed, 144 deselected**. The focused D6-01 parser/upload tests reported **5 passed**. `ruff check` and `ruff format --check` passed. PostgreSQL integration and real-public acquisition were not rerun locally. The reconciliation PR's own exact-head workflow results are recorded on that PR, not in this file;
+- `v1.0-proof` still resolves to tag object `19260bff8e90be7eda23fcef88ef1950a83cce65` → commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`, and `docs/proof/` is unchanged since the tag.
+
+#### Verified
+
+Against the D6-01 Acceptance list above:
+
+1. **Text-native accepted without source-coordinate regression:** `PASS`. The classifier raises only for `mixed_or_ambiguous`, and the parsed pages/offsets of text-native input are unchanged. Unit coverage: `test_text_native_pdf_is_classified_deterministically` and the existing upload/parse tests. Real-public coverage: both pinned PDFs (`KR20150055205A`, `KR20170054782A`) are classified `text_native` and pass ingest/parse/index/source-locator resolution in run `34719156419`. The D4 description-span gate and the D5 Case-provenance integration tests (`test_analyst_cases_integration.py`, run by General CI) are GREEN on the same head.
+2. **Image-only/scanned classified and fail closed:** `PASS`. Graphics-only input is classified `image_only_or_no_text` (`test_graphics_only_pdf_parses_but_yields_no_text`). Upload is rejected with 422 `NO_EXTRACTABLE_TEXT`, document `failed`, no page counts (`test_pdf_without_extractable_text_is_rejected`). The rejection itself comes from the pre-existing minimum-character gate.
+3. **Mixed/ambiguous explicit bounded outcome:** `PASS`. The input is classified `mixed_or_ambiguous` and the parser raises `NO_EXTRACTABLE_TEXT`. Upload is rejected with 422, document `failed`, no page counts, and a detail naming the mixed/ambiguous text layer and stating that OCR is not used (`test_mixed_text_layer_pdf_fails_closed`, at both the parser and the upload level).
+4. **Reproducible classification:** `PASS`. The synthetic fixtures are generated deterministically by committed code. The real-public path asserts `text_native` for SHA-256-pinned inputs on the exact head.
+5. **No OCR-derived text accepted by ClaimTrace:** `PASS`. The product code, dependencies and image contain no OCR path. The mixed-input failure explicitly states that OCR is not used. This does not cover an embedded text layer the uploaded PDF already carries; see Not Verified.
+6. **D1-D5 and frozen `v1.0-proof` preserved:** `PASS`. All 14 triggered workflows are GREEN on the exact head, the merged tree is identical to that head, and the tag is unchanged.
+7. **No added claim:** `PASS`. No legal, private-corpus, auth/RBAC/multi-tenancy, cloud/Kubernetes, security/compliance, benchmark/OCR-quality, or production-readiness claim was added.
+
+#### Not Verified
+
+- **Classification is a per-page text-presence check, not an image or OCR analysis.**
+  - A scanned document whose every page already carries an embedded text layer (for example, a third-party OCR layer or per-page stamps) is classified `text_native`. That text is extracted as-is.
+  - D6-01 does not determine whether an embedded text layer is native or OCR-derived.
+- The classification label is not persisted on document records and is not a distinct API field:
+  - mixed input shares error code `NO_EXTRACTABLE_TEXT` with image-only input and is distinguished only by its `detail`;
+  - the label appears as structured evidence only in the D3 verifier output.
+- No real-public mixed or image-only Korean patent PDF was exercised. Mixed and image-only behavior is proven on synthetic fixtures only.
+- The exact-head D3 evidence artifact has expired. The run conclusion, step results and logged pytest result remain the retained evidence.
+- OCR/scanned-image recovery or quality, legal correctness, benchmark-quality retrieval/semantic accuracy, private/customer corpus behavior, authentication/RBAC/multi-tenancy, public cloud/Kubernetes, production resilience, and security/compliance certification remain unverified.
+
+#### Remaining Risks
+
+- **Conservative false rejection (medium, usability):** a text-native PDF containing even one text-empty page, such as a blank or drawing-only page, now fails closed as `mixed_or_ambiguous`. This is the accepted D6-01 trade-off: it never produces false source-verifiable success. It may still reject documents analysts expect to work.
+- **Embedded-OCR blind spot (medium, provenance):** see Not Verified. Pre-existing text layers are trusted as PDF text, as in v1.0.
+- **Synthetic-only negative evidence (low):** synthetic fixtures must not be generalized into PDF/OCR quality claims.
+- All frozen Sections 6-7 limitations and accepted D1-D5 non-claims remain in force.
+
+### D6 Destination Review
+
+**Status:** `HOLD — HUMAN REVIEW REQUIRED`
+
+D6-01 closes the classification/fail-closed gap: unsupported and ambiguous text layers are now explicit and never promoted to source-verifiable success. D6's stated purpose, however, is to improve input robustness *beyond* text-native PDFs. D6-01 makes no mixed or scanned input usable; it rejects such input truthfully.
+
+Whether that satisfies the D6 destination is a product decision that this reconciliation does not make:
+
+- under the OCR Gate, OCR may be proposed only after executable evidence shows that classification/fail-closed behavior is insufficient and that OCR is the smallest remaining blocker;
+- no such evidence exists, because no real-public mixed or scanned input has been exercised.
+
+This reconciliation therefore does **not** declare D6 reached, does **not** open D6-02, does **not** authorize OCR, and does **not** select D7.
+
+### Exact Next Action
+
+`HUMAN REVIEW — D6 DESTINATION DECISION`
+
+Decide whether D6 is reached with truthful fail-closed handling of mixed and image-only input, or whether a further bounded D6 milestone is warranted. Any further milestone must first be justified by executable evidence under the OCR Gate. Until then, preserve `v1.0-proof`, accepted D1-D5 evidence, D6-01 fail-closed behavior, and all legal and non-claim limitations.
