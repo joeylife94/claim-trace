@@ -1,0 +1,29 @@
+# Firebat Proof host-publication boundary.
+#
+# Layered over docker-compose.yml by proof/firebat-start.sh. The base file
+# publishes ports without a host IP, which Docker binds to every interface
+# (0.0.0.0 and [::]); that stays the local-development default. On the Firebat
+# host every published port is pinned to IPv4 loopback here, and the address is
+# deliberately hard-coded so no environment variable can widen it. The *_PORT
+# variables are port numbers only.
+#
+# `!override` is REQUIRED. Without it Compose merges port lists, so the base
+# wildcard entry would be kept next to the loopback one and the service would
+# still be reachable from the network. proof/check-firebat-bindings.py rejects
+# that merged shape.
+#
+# Tailnet access, if ever approved, must go through Tailscale Serve proxying to
+# 127.0.0.1 after a separate review - never through a wider bind here.
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:${POSTGRES_PORT:-15432}:5432"
+  api:
+    ports: !override
+      - "127.0.0.1:${API_PORT:-18000}:8000"
+  web:
+    ports: !override
+      - "127.0.0.1:${WEB_PORT:-13000}:3000"
+  ollama:
+    ports: !override
+      - "127.0.0.1:${OLLAMA_PORT:-11435}:11434"

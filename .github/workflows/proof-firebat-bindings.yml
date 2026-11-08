@@ -1,0 +1,32 @@
+name: Proof Firebat Binding Contract
+
+on:
+  pull_request:
+    paths:
+      - "proof/**"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/proof-firebat-bindings.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bindings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tool versions
+        run: |
+          docker compose version
+          python3 --version
+      - name: Shell syntax
+        run: bash -n proof/firebat-start.sh proof/test-firebat-bindings.sh
+      - name: ShellCheck
+        run: shellcheck proof/firebat-start.sh proof/test-firebat-bindings.sh
+      - name: Python syntax
+        run: python3 -m py_compile proof/check-firebat-bindings.py
+      - name: Binding contract tests
+        run: bash proof/test-firebat-bindings.sh
