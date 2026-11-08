@@ -12,16 +12,33 @@ MODEL="${PROOF_CLAIMTRACE_OLLAMA_MODEL:-qwen2.5:1.5b}"
 COMPOSE_PROJECT="${PROOF_CLAIMTRACE_COMPOSE_PROJECT:-claimtrace-proof}"
 LEGACY_PROJECT="${PROOF_CLAIMTRACE_LEGACY_PROJECT:-claimtrace}"
 
+# `--check` renders and verifies the host-publication contract, then exits
+# without touching any container.
+CHECK_ONLY=0
+case "${1-}" in
+  "") ;;
+  --check) CHECK_ONLY=1 ;;
+  *)
+    echo "usage: $0 [--check]" >&2
+    exit 2
+    ;;
+esac
+if [[ $# -gt 1 ]]; then
+  echo "usage: $0 [--check]" >&2
+  exit 2
+fi
+
 if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
 
-# PostgreSQL and Ollama are only reached from other containers or from this
-# host, so publish them on loopback instead of every host interface.
-export POSTGRES_PORT="${POSTGRES_PORT:-127.0.0.1:15432}"
+# These variables are port numbers only. The host bind address is fixed to
+# 127.0.0.1 by proof/compose.firebat.yml; the ports are also used below to
+# build the loopback browser URLs.
+export POSTGRES_PORT="${POSTGRES_PORT:-15432}"
 export API_PORT="${API_PORT:-18000}"
 export WEB_PORT="${WEB_PORT:-13000}"
-export OLLAMA_PORT="${OLLAMA_PORT:-127.0.0.1:11435}"
+export OLLAMA_PORT="${OLLAMA_PORT:-11435}"
 export CORS_ALLOW_ORIGINS="${CORS_ALLOW_ORIGINS:-http://127.0.0.1:${WEB_PORT}}"
 export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:${API_PORT}}"
 export EMBEDDING_PROVIDER="${EMBEDDING_PROVIDER:-sentence-transformers}"
@@ -38,15 +55,40 @@ export GROUNDED_MAX_STATEMENTS="${GROUNDED_MAX_STATEMENTS:-2}"
 export GROUNDED_TIMEOUT_SECONDS="${GROUNDED_TIMEOUT_SECONDS:-150}"
 export GROUNDED_REPAIR_MAX_ATTEMPTS="${GROUNDED_REPAIR_MAX_ATTEMPTS:-1}"
 
+for port_var in POSTGRES_PORT API_PORT WEB_PORT OLLAMA_PORT; do
+  port_value="${!port_var}"
+  # At most five digits, so bash arithmetic cannot wrap an oversized value into range.
+  if [[ ! "$port_value" =~ ^[0-9]{1,5}$ ]] || (( 10#$port_value < 1 || 10#$port_value > 65535 )); then
+    echo "[FAIL] $port_var must be a port number (got '$port_value'); the host bind address is fixed to 127.0.0.1 by proof/compose.firebat.yml" >&2
+    exit 1
+  fi
+done
+
 compose() {
-  docker compose -p "$COMPOSE_PROJECT" --profile llm "$@"
+  docker compose -p "$COMPOSE_PROJECT" -f docker-compose.yml -f proof/compose.firebat.yml --profile llm "$@"
 }
 
-printf '[PROOF] ClaimTrace runtime: project=%s web=%s api=%s postgres=%s ollama=%s\n' \
+printf '[PROOF] ClaimTrace runtime: project=%s web=127.0.0.1:%s api=127.0.0.1:%s postgres=127.0.0.1:%s ollama=127.0.0.1:%s\n' \
   "$COMPOSE_PROJECT" "$WEB_PORT" "$API_PORT" "$POSTGRES_PORT" "$OLLAMA_PORT"
 printf '[PROOF] Models: embedding=%s llm=%s\n' "$EMBEDDING_MODEL" "$MODEL"
 printf '[PROOF] Grounded bounds: max_output=%s max_statements=%s timeout=%ss repairs=%s\n' \
   "$GROUNDED_MAX_OUTPUT_TOKENS" "$GROUNDED_MAX_STATEMENTS" "$GROUNDED_TIMEOUT_SECONDS" "$GROUNDED_REPAIR_MAX_ATTEMPTS"
+
+# Binding gate: verify the rendered host publication before touching any
+# container. The baseline is the same project/env without the overlay, used to
+# prove the overlay changes host ports and nothing else.
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+compose config --format json >"$scratch/candidate.json"
+docker compose -p "$COMPOSE_PROJECT" -f docker-compose.yml --profile llm config --format json >"$scratch/baseline.json"
+if ! python3 proof/check-firebat-bindings.py "$scratch/candidate.json" --baseline "$scratch/baseline.json"; then
+  echo "[FAIL] Firebat binding contract failed; no containers were changed" >&2
+  exit 1
+fi
+if [[ "$CHECK_ONLY" == "1" ]]; then
+  echo "[PROOF] --check: binding contract verified; no containers were touched"
+  exit 0
+fi
 
 # Earlier Proof iterations used the repository's default Compose project name.
 # Stop those containers only to release the dedicated Proof ports. Volumes are
