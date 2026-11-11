@@ -2,13 +2,14 @@
 
 > **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
 
-**Last execution update:** 2026-09-02  
-**Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-07 — Final Validation + Wishket Proof  
-**Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
+**Last execution update:** 2026-11-11  
+**v1.0 target:** L4 Controlled Pilot  
+**v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
+**v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — D6 selected/current / D6-01 accepted / D6 destination review held for Human Review**
+**Post-v1 progression state:** **FIRST WRAP-UP CHECKPOINT (2026-11-11) — D1-D6 closed / no active milestone / next destination requires Human Review**  
+**Where to start reading:** Section 16 for the current state; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
 
@@ -1370,7 +1371,7 @@ Under the human-approved long-term destination envelope dated `2026-09-09`, D6 i
 ## 15. D6 — Mixed-PDF Controlled Pilot
 
 **Human pre-authorization date:** `2026-09-09`
-**Destination state:** `SELECTED / CURRENT — D6-01 ACCEPTED; DESTINATION REVIEW HELD FOR HUMAN DECISION`
+**Destination state:** `DESTINATION REACHED AT THE FAIL-CLOSED BOUNDARY — OCR DEFERRED` (Human Review decision `2026-11-11`, recorded below)
 **Accepted bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`
 **Issue:** #70
 **PR:** #71
@@ -1513,9 +1514,9 @@ Against the D6-01 Acceptance list above:
 - **Synthetic-only negative evidence (low):** synthetic fixtures must not be generalized into PDF/OCR quality claims.
 - All frozen Sections 6-7 limitations and accepted D1-D5 non-claims remain in force.
 
-### D6 Destination Review
+### D6 Destination Review (held 2026-11-08; superseded by the Human Review decision below)
 
-**Status:** `HOLD — HUMAN REVIEW REQUIRED`
+**Status at 2026-11-08:** `HOLD — HUMAN REVIEW REQUIRED`
 
 D6-01 closes the classification/fail-closed gap: unsupported and ambiguous text layers are now explicit and never promoted to source-verifiable success. D6's stated purpose, however, is to improve input robustness *beyond* text-native PDFs. D6-01 makes no mixed or scanned input usable; it rejects such input truthfully.
 
@@ -1526,8 +1527,37 @@ Whether that satisfies the D6 destination is a product decision that this reconc
 
 This reconciliation therefore does **not** declare D6 reached, does **not** open D6-02, does **not** authorize OCR, and does **not** select D7.
 
-### Exact Next Action
+### Exact Next Action at 2026-11-08 (superseded below)
 
 `HUMAN REVIEW — D6 DESTINATION DECISION`
 
 Decide whether D6 is reached with truthful fail-closed handling of mixed and image-only input, or whether a further bounded D6 milestone is warranted. Any further milestone must first be justified by executable evidence under the OCR Gate. Until then, preserve `v1.0-proof`, accepted D1-D5 evidence, D6-01 fail-closed behavior, and all legal and non-claim limitations.
+
+### D6 Human Review Decision — 2026-11-11
+
+**Status:** `DESTINATION REACHED AT THE FAIL-CLOSED BOUNDARY — OCR DEFERRED`
+**Decided by:** Human Review (repository owner), `2026-11-11`
+**Decision:** close D6 with D6-01 as its only milestone; defer OCR/scanned-input recovery to a separately selected future destination.
+
+This decision answers the question the 2026-11-08 review left open. It is a product decision, not new evidence: no code, test, fixture, or workflow changed because of it.
+
+#### What the decision accepts
+
+- D6 is closed in the narrowed sense that D6-01 actually delivered: text-native PDFs are accepted unchanged, and image-only and mixed/ambiguous text layers are classified and rejected explicitly, so missing text is never promoted to source-verifiable success.
+- D6-01's Verified, Not Verified, and Remaining Risks entries above stand exactly as recorded. This decision does not upgrade any of them.
+
+#### What the decision does not accept or claim
+
+- D6 as originally worded aimed to improve input robustness *beyond* text-native PDFs. That broader aim is **not** met: no mixed, scanned, or image-only input is usable. The destination is closed at the fail-closed boundary, not at input recovery.
+- No OCR is implemented, authorized, or evaluated. No D6-02 is opened.
+- The two medium risks recorded under D6-01 remain open and accepted as-is: conservative false rejection of text-native PDFs that contain a text-empty page, and the embedded-OCR blind spot.
+
+#### OCR deferral
+
+OCR/scanned-input recovery is recorded as a **candidate** future destination, not a selected one. The OCR Gate above remains the entry condition: a proposal must first show, with executable evidence on real-public mixed or scanned input, that fail-closed handling is insufficient and that OCR is the smallest remaining blocker. OCR-derived text must never be silently promoted to canonical source evidence.
+
+#### Exact Next Action
+
+`FIRST WRAP-UP CHECKPOINT — see Section 16.`
+
+No D6 milestone is active. Do not open another automatic progression milestone; the next destination requires a new Human Review decision.
