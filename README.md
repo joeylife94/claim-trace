@@ -131,7 +131,7 @@ Checked on the `f59f4df` tree during the first wrap-up; details in [`CLAIMTRACE_
 
 - Alembic head is `0009` (single linear chain `0001 → 0009`).
 - Backend database-free tier (`pytest -m "not integration"`): **798 passed, 144 deselected**, run locally.
-- PostgreSQL integration tier: 144 tests. **Not run locally in the wrap-up** (no Docker or pgvector available); it runs in General CI on the pull request.
+- PostgreSQL integration tier: 144 tests. **Not run locally in the wrap-up** (no Docker or pgvector available); General CI runs it on pull requests.
 - Ruff lint and format: passed. Web ESLint: 0 errors, 2 warnings. TypeScript `tsc --noEmit`: passed.
 - **Evaluation-artifact caveat.** The committed result files (`apps/api/evals/results/results.json` and `apps/api/evals/results/grounded/results-deterministic.json`) were generated on 2026-07-26 with the `intfloat/multilingual-e5-small` profile. Lexical retrieval changed afterwards. The tables above therefore describe that earlier run. The enforced gate `make verify-deterministic-regression` pins a fake-provider baseline in which `g01-single-storage` must succeed. **Current real-embedding numbers were not re-measured.**
 
