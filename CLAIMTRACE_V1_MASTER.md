@@ -1,14 +1,15 @@
 # ClaimTrace v1.0 Master
 
-> **Authoritative execution contract for ClaimTrace v1.0.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records broader possibilities. **This file controls the frozen v1.0 Proof boundary.**
+> **Authoritative execution contract and evidence ledger for ClaimTrace.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records the phase history and candidate directions. **This file controls the frozen v1.0 Proof boundary and records the post-v1 progression.**
 
-**Last execution update:** 2026-09-02  
-**Current target:** L4 Controlled Pilot  
-**Current active batch:** V1-07 — Final Validation + Wishket Proof  
-**Current batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
+**Last execution update:** 2026-11-12  
+**v1.0 target:** L4 Controlled Pilot  
+**v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
+**v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **ENABLED — D6 selected/current / D6-01 accepted / D6 destination review held for Human Review**
+**Post-v1 progression state:** **FIRST WRAP-UP CHECKPOINT (2026-11-11) — D1-D6 closed / no active milestone / next destination requires Human Review**  
+**Where to start reading:** Section 16 for the current state; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
 
@@ -1370,7 +1371,7 @@ Under the human-approved long-term destination envelope dated `2026-09-09`, D6 i
 ## 15. D6 — Mixed-PDF Controlled Pilot
 
 **Human pre-authorization date:** `2026-09-09`
-**Destination state:** `SELECTED / CURRENT — D6-01 ACCEPTED; DESTINATION REVIEW HELD FOR HUMAN DECISION`
+**Destination state:** `DESTINATION REACHED AT THE FAIL-CLOSED BOUNDARY — OCR DEFERRED` (Human Review decision `2026-11-11`, recorded below)
 **Accepted bounded milestone:** `D6-01 — classify mixed-PDF input and fail closed before OCR`
 **Issue:** #70
 **PR:** #71
@@ -1513,9 +1514,9 @@ Against the D6-01 Acceptance list above:
 - **Synthetic-only negative evidence (low):** synthetic fixtures must not be generalized into PDF/OCR quality claims.
 - All frozen Sections 6-7 limitations and accepted D1-D5 non-claims remain in force.
 
-### D6 Destination Review
+### D6 Destination Review (held 2026-11-08; superseded by the Human Review decision below)
 
-**Status:** `HOLD — HUMAN REVIEW REQUIRED`
+**Status at 2026-11-08:** `HOLD — HUMAN REVIEW REQUIRED`
 
 D6-01 closes the classification/fail-closed gap: unsupported and ambiguous text layers are now explicit and never promoted to source-verifiable success. D6's stated purpose, however, is to improve input robustness *beyond* text-native PDFs. D6-01 makes no mixed or scanned input usable; it rejects such input truthfully.
 
@@ -1526,8 +1527,149 @@ Whether that satisfies the D6 destination is a product decision that this reconc
 
 This reconciliation therefore does **not** declare D6 reached, does **not** open D6-02, does **not** authorize OCR, and does **not** select D7.
 
-### Exact Next Action
+### Exact Next Action at 2026-11-08 (superseded below)
 
 `HUMAN REVIEW — D6 DESTINATION DECISION`
 
 Decide whether D6 is reached with truthful fail-closed handling of mixed and image-only input, or whether a further bounded D6 milestone is warranted. Any further milestone must first be justified by executable evidence under the OCR Gate. Until then, preserve `v1.0-proof`, accepted D1-D5 evidence, D6-01 fail-closed behavior, and all legal and non-claim limitations.
+
+### D6 Human Review Decision — 2026-11-11
+
+**Status:** `DESTINATION REACHED AT THE FAIL-CLOSED BOUNDARY — OCR DEFERRED`
+**Decided by:** Human Review (repository owner), `2026-11-11`
+**Decision:** close D6 with D6-01 as its only milestone; defer OCR/scanned-input recovery to a separately selected future destination.
+
+This decision answers the question the 2026-11-08 review left open. It is a product decision, not new evidence: no code, test, fixture, or workflow changed because of it.
+
+#### What the decision accepts
+
+- D6 is closed in the narrowed sense that D6-01 actually delivered: text-native PDFs are accepted unchanged, and image-only and mixed/ambiguous text layers are classified and rejected explicitly, so missing text is never promoted to source-verifiable success.
+- D6-01's Verified, Not Verified, and Remaining Risks entries above stand exactly as recorded. This decision does not upgrade any of them.
+
+#### What the decision does not accept or claim
+
+- D6 as originally worded aimed to improve input robustness *beyond* text-native PDFs. That broader aim is **not** met: no mixed, scanned, or image-only input is usable. The destination is closed at the fail-closed boundary, not at input recovery.
+- No OCR is implemented, authorized, or evaluated. No D6-02 is opened.
+- The two medium risks recorded under D6-01 remain open and accepted as-is: conservative false rejection of text-native PDFs that contain a text-empty page, and the embedded-OCR blind spot.
+
+#### OCR deferral
+
+OCR/scanned-input recovery is recorded as a **candidate** future destination, not a selected one. The OCR Gate above remains the entry condition: a proposal must first show, with executable evidence on real-public mixed or scanned input, that fail-closed handling is insufficient and that OCR is the smallest remaining blocker. OCR-derived text must never be silently promoted to canonical source evidence.
+
+#### Exact Next Action
+
+`FIRST WRAP-UP CHECKPOINT — see Section 16.`
+
+No D6 milestone is active. Do not open another automatic progression milestone; the next destination requires a new Human Review decision.
+
+## 16. First Wrap-up Checkpoint — 2026-11-11
+
+**Status:** `CHECKPOINT RECORDED — NO ACTIVE MILESTONE`
+**Base commit:** `main` at `f59f4df1587233dda7efaba2d4a3e053ff8e760d`
+**Scope:** documentation reconciliation and re-verification only. No product code, migration, test, fixture, workflow, script, or Proof asset changed.
+**Dates:** the D6 decision and the local verification below are dated 2026-11-11, which is the checkpoint date used throughout the reconciled documents. The document reconciliation itself was completed on 2026-11-12.
+
+This section is the current-state entry point. It summarizes what the ledger above already records and adds only what the wrap-up itself did. Where this summary and a detailed ledger entry differ, the ledger entry is authoritative.
+
+### State at the checkpoint
+
+| Item | State | Recorded in |
+| --- | --- | --- |
+| v1.0 Proof | Closed and frozen. Tag `v1.0-proof` → `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d` | Sections 1-9 |
+| P1-P13 | Accepted and merged | Section 10 |
+| D1 — Controlled pilot | Reached | Section 11 |
+| D2 — Delivery-ready handoff (P14) | Reached | Section 11 |
+| D3 — Real-document controlled pilot | Reached | Section 12 |
+| D4 — Description-aware evidence retrieval | Reached | Section 13 |
+| D5 — Persistent analyst Case workspace | Reached | Section 14 |
+| D6 — Mixed-PDF controlled pilot | Closed at the fail-closed boundary; OCR deferred | Section 15 |
+| Next destination | Not selected. Requires Human Review | — |
+
+### What `main` contains beyond the frozen v1.0 Proof
+
+Each line is a pointer, not a new claim. Limits and non-claims are those of the cited ledger entry.
+
+- failed-ingestion terminalization and operator retry from the persisted original, in the API and the Documents UI (P2-P4, P8-P10);
+- recovered g01 evidence and a bounded Korean term-level lexical fallback (P11, P12);
+- terminalized recoverable claim-graph persistence failures (P13);
+- a one-command controlled-pilot handoff verifier (P14);
+- a manifest-driven real-public corpus verifier over two hash-pinned public Korean patent PDFs that are downloaded at run time and not committed (D3-01);
+- description-evidence derivation, indexing, and retrieval, migration `0007` (D4-01);
+- persistent analyst Cases and persisted, reopenable Case-grounded results, migrations `0008` and `0009` (D5-01, D5-02);
+- PDF text-layer classification that fails closed for mixed or ambiguous input (D6-01).
+
+Alembic head is `0009`.
+
+### Changed by the wrap-up
+
+- this file: the header, the D6 Human Review decision in Section 15, and this section;
+- outward-facing documents reconciled with current `main`: `README.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/CONTROLLED_PILOT_HANDOFF.md`, `docs/D4_DESCRIPTION_AWARE_EVIDENCE.md`, `apps/api/README.md`, `apps/api/evals/README.md`, `tests/README.md`, `infra/README.md`, `packages/README.md`;
+- comment and help text only in `.env.example`, `docker-compose.yml`, and `Makefile`. No key, value, port mapping, target, or recipe changed.
+
+The v1.0 evidence numbers quoted in those documents are kept and labelled as recorded at the freeze. They were not re-measured and are not presented as current.
+
+`docs/proof/` was deliberately left untouched, including `docs/proof/README.md`. The directory is the reviewed v1.0 Proof package and stays byte-identical to the tag. That README's references to "current application code" are therefore tag-time wording; the application has changed since, as this section and `README.md` record.
+
+### Actually executed in the wrap-up
+
+On the `f59f4df` tree, locally, on 2026-11-11:
+
+- backend database-free tier, `pytest -m "not integration"`: **798 passed, 144 deselected**;
+- `ruff check` and `ruff format --check`: **passed** (178 files);
+- web `eslint`: **0 errors, 2 warnings** (two unused parameters);
+- web `tsc --noEmit`: **passed**;
+- `git diff v1.0-proof -- docs/proof`: **empty**, so the committed Proof package, its README included, is byte-identical to the tag;
+- remote `refs/tags/v1.0-proof` still resolves to tag object `19260bff8e90be7eda23fcef88ef1950a83cce65` → commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
+
+The reconciled documents were checked against the code by a read-only audit before editing and by an independent review pass after editing. That review ran `make help` and `docker compose config`; it ran no test suite, script, evaluation, or stack, so every runtime statement in the reconciled documents rests on reading code and configuration. The wrap-up PR's own exact-head workflow results are recorded on that PR, not in this file.
+
+### Not executed / not verified in the wrap-up
+
+- **PostgreSQL integration tier (144 tests): not run locally.** The wrap-up environment had no Docker daemon and no pgvector. That tier runs in General CI on the wrap-up PR.
+- No browser golden path, handoff verifier, clean-start, real-public corpus acquisition, or evaluation was run locally.
+- No evaluation was re-measured. See the evaluation-artifact item below.
+- Every item under Section 6 and every Not Verified entry in Sections 10-15 remains unverified.
+
+### Open items carried forward
+
+These are recorded so they are not mistaken for closed work. None is a selected milestone.
+
+1. **Issue #65 — Firebat Proof runtime host exposure: open.** PRs #72 and #73 pin the Proof runtime's host ports to loopback, but they were merged into the deployment-lineage branch `agent/proof-dataset-spec`, not `main`. The issue's host-side acceptance criteria (backup, exact-SHA apply, listener check, smoke, fleet audit) cannot be checked from the repository and are not verified here.
+2. **Development Compose publishes on all interfaces.** `docker-compose.yml` on `main` publishes the postgres, api, web, and (under the `llm` profile) ollama ports without a host address. It is a local-development stack with no authentication. This is documented, not changed.
+3. **Cases and description retrieval are API-only.** No page, component, or browser test in `apps/web` calls the Case or description endpoints. A description result is navigable only through the `source_url` deep link into the existing document page.
+4. **Grounded answers remain claim-only.** Description evidence is retrievable but is not an input to grounded generation. D4-02 was never opened. No reranker exists.
+5. **Committed evaluation result files predate a retrieval change.** `apps/api/evals/results/results.json` and `apps/api/evals/results/grounded/results-deterministic.json` were generated on 2026-07-26 with the `multilingual-e5-small` profile. `retrieval/lexical.py` changed afterwards (P11, P12). The enforced gate, `make verify-deterministic-regression`, pins a fake-provider baseline in which g01 succeeds. Current real-embedding numbers were not re-measured, so the v1.0 figures in Section 4 are tag-time figures.
+6. **Real-local-model quality: not rerun since v1.0.** Unchanged from Section 6.
+7. **D6-01 accepted risks: open.** Conservative false rejection of text-native PDFs that contain a text-empty page, and the embedded-OCR blind spot.
+8. **Migration tooling gap (by inspection, not executed).** The tables created by migrations `0007`-`0009` have no ORM model, while `alembic/env.py` autogenerates against `Base.metadata` with no include filter, and Compose mounts `apps/api/alembic` read-only. `make migration` should therefore not be relied on without first checking its output.
+9. **Workflow hygiene.** The D3 and D4 workflows list the path filter `scripts/verify-deterministic-regression.sh`, a file that does not exist (the gate is a Makefile target). A change limited to `README.md` or `docs/**` does not trigger General CI. D5 and D6 have no dedicated workflow; their tests run inside General CI.
+10. **Expired evidence artifacts.** Exact-head artifacts for D3-01 and D6-01 have passed their retention period. Run conclusions and logged results remain the retained evidence.
+11. **Stale remote branches.** Merged milestone branches remain on the remote. None was deleted by the wrap-up.
+12. **Code-level findings from the documentation review (by reading; not executed, not fixed).** Checking the documents against the code surfaced behaviour that differs from what the API declares or what code comments say. Each was confirmed by reading the source only. None was changed, because the wrap-up changes no product code.
+    - `EmbeddingError` is caught only in `services/claim_indexing.py`. On the claim search, claim comparison, and description search paths, which declare `503` in their OpenAPI responses, an embedding-provider failure at query time would reach the generic handler and return `500`. No test drives that path through HTTP.
+    - The description routes take `document_id` as a string and parse it by hand, so a malformed id raises `ValueError` and returns the generic `500` instead of a `422`.
+    - Running `make verify-deterministic-regression` locally rewrites the committed files under `apps/api/evals/results`, because the recipe runs both evaluations with the fake provider against a writable mount.
+    - Two code comments are stale: the `db/models.py` module docstring still says description sections and claim elements are out of scope, and the weight comment in `retrieval/lexical.py` says exact containment is weighted highest while the constants weight it lowest.
+
+### Candidate next destinations (not selected)
+
+Listed without order or commitment. Each needs its own Human Review decision and bounded acceptance contract.
+
+- OCR / scanned-input recovery, behind the OCR Gate in Section 15;
+- a web surface for Cases and description retrieval;
+- description evidence in grounded analysis, with or without reranking;
+- real-local-model quality re-measurement and refreshed evaluation artifacts;
+- relaxing the conservative mixed-PDF rejection for text-native PDFs with blank or drawing-only pages;
+- deployment hardening for a shared-network host, starting from Issue #65.
+
+Authentication, RBAC, multi-tenancy, public cloud, Kubernetes, private or customer corpora, and any legal-conclusion capability remain out of scope unless a human explicitly brings them in.
+
+### Preserved boundary
+
+The wrap-up adds no capability and no claim. ClaimTrace still provides no legal advice and determines nothing about infringement, validity, novelty, equivalence, inventive step, or patentability. Citation resolvability is still not semantic entailment. `v1.0-proof` is not moved or reinterpreted.
+
+### Exact Next Action
+
+`HUMAN REVIEW — NEXT DESTINATION DECISION`
+
+Do not open an automatic progression milestone. Select a destination from the candidates above or name a different one, then define its bounded acceptance contract before any implementation.

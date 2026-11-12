@@ -1,9 +1,12 @@
 # ClaimTrace Architecture
 
-Status: **Phase 4A-2 - evidence-grounded generation.** This document describes
-what exists today and the boundaries where later phases will attach. It
-intentionally does not specify the internals of reranking or of claim
-decomposition.
+Status: **`main` after the v1.0 Proof (tag `v1.0-proof`), as of the 2026-11-11
+first wrap-up. Alembic head `0009`; no milestone is active.** This document
+describes what exists today and the boundaries where later work attaches.
+Reranking is not built, so it is not specified here. Claim element decomposition
+and a retrieval-only claim comparison are built (sections 12 and 13). Sections 1-11
+describe the original phases; sections 12-16 cover what was added after them,
+section 17 the extension points, and section 18 the known gaps.
 
 Phase 4A-2 connects the Phase 4A-1 model boundary to Phase 3A retrieval and
 answers questions from stored claim text. Every returned statement carries a
@@ -11,6 +14,12 @@ citation that resolves to a canonical stored source locator, because the model
 selects from server-issued evidence identifiers and never names a source itself
 (section 11). It still reaches no legal conclusion: claim decomposition and
 claim-to-claim comparison are Phase 5.
+
+> **Update (2026-11-11 wrap-up):** Both now exist on `main`. Deterministic claim
+> element decomposition with append-only human review is described in section 12,
+> and claim comparison in section 13. Comparison is retrieval-only: it ranks the
+> claims of one reference document against one target claim, and it still reaches
+> no legal conclusion.
 
 ---
 
@@ -20,8 +29,12 @@ claim-to-claim comparison are Phase 5.
                     ┌──────────────────────────────┐
    browser ────────▶│ web (Next.js, App Router)    │
                     │ apps/web                     │
-                    │ - landing page               │
-                    │ - live system status panel   │
+                    │ - /  system status panel     │
+                    │ - /documents, /documents/[id]│
+                    │ - /search, /grounded         │
+                    │ - /compare, /reviews/[runId] │
+                    │ - /llm diagnostics           │
+                    │ - server actions run POSTs   │
                     └───────────────┬──────────────┘
                                     │ HTTP (JSON), CORS-controlled
                                     ▼
@@ -30,15 +43,27 @@ claim-to-claim comparison are Phase 5.
                     │ apps/api                     │
                     │ - /health   liveness         │
                     │ - /ready    readiness        │
-                    │ - /api/v1/* versioned API    │
+                    │ - /api/v1/* versioned API:   │
+                    │   system, documents, cases,  │
+                    │   claims, claim_elements,    │
+                    │   claim_element_reviews,     │
+                    │   descriptions, search,      │
+                    │   comparison, llm, grounded  │
+                    │ - embedding model, in-process│
                     └───────────────┬──────────────┘
                                     │ SQLAlchemy 2.x async + psycopg 3
                                     ▼
                     ┌──────────────────────────────┐
                     │ postgres 17 + pgvector       │
-                    │ - app_metadata               │
-                    │ - vector extension enabled   │
+                    │ - 20 tables (0001 to 0009)   │
+                    │ - extensions: vector, pg_trgm│
                     └──────────────────────────────┘
+
+   the api container also mounts two named volumes and holds the embedding model:
+
+   document_storage ──▶ /data/uploads   original PDFs      (STORAGE_ROOT)
+   model_cache      ──▶ /models         embedding weights   (EMBEDDING_CACHE_DIR)
+   embedding model      in-process: sentence-transformers, or "fake" (tests, offline)
 
    the API additionally speaks to one optional, configurable model server:
 
@@ -53,7 +78,9 @@ claim-to-claim comparison are Phase 5.
 
 The three core services run as containers described by `docker-compose.yml`. There
 is no message broker, cache, or object store yet; none is needed by the current
-scope.
+scope. Original uploads sit on a local named volume (section 7), and the embedding
+model runs inside the api process with its weights in a second named volume
+(section 9).
 
 The model server is *optional and out of band*. `docker compose up` starts the
 stack with `LLM_PROVIDER=fake`, which needs no model, no weights, and no network;
@@ -85,9 +112,16 @@ apps/api/src/claimtrace_api/
 │   └── v1/
 │       ├── router.py    aggregates every v1 router
 │       ├── system.py    GET /api/v1/system/info
+│       ├── documents.py document upload, retry, listing, detail, page text
+│       ├── claims.py    claim parsing, claim reads, claim indexing
+│       ├── search.py    POST /api/v1/search/claims
+│       ├── claim_elements.py         element decomposition (section 12)
+│       ├── claim_element_reviews.py  append-only review of a run (section 12)
+│       ├── comparison.py             POST /api/v1/compare/claims (section 13)
+│       ├── descriptions.py           description derive, index, search (section 14)
+│       ├── cases.py                  analyst Cases and their results (section 15)
 │       ├── llm.py       LLM status + development generation diagnostics
-│       ├── grounded.py  POST /api/v1/grounded/answers
-│       └── documents.py document upload, listing, detail, page text
+│       └── grounded.py  POST /api/v1/grounded/answers
 ├── services/
 │   ├── ingestion.py     the ingestion use case: validate → store → parse → persist
 │   ├── claim_parsing.py the claim structural parsing use case
@@ -95,7 +129,13 @@ apps/api/src/claimtrace_api/
 │   ├── claim_search.py  the search use case: profile → retrieve → fuse → hydrate
 │   ├── llm_generation.py the generation use case: validate → bound → generate
 │   ├── grounded_generation.py  retrieval + generation: the Phase 4A-2 use case
-│   └── source_resolution.py    locator → the stored page text it addresses
+│   ├── source_resolution.py    locator → the stored page text it addresses
+│   ├── claim_comparison.py     one target claim against one reference document
+│   ├── claim_elements.py       the element decomposition use case
+│   ├── claim_element_reviews.py  append and read review records
+│   ├── description_evidence.py derive, index and search description segments
+│   ├── cases.py                analyst Cases and document association
+│   └── case_grounded_results.py  persist and reopen Case grounded results
 ├── llm/                 the LLM boundary (Phase 4A-1). Imports no web framework
 │   ├── base.py          LLMProvider protocol, StructuredGeneration
 │   ├── models.py        messages, options, response, capabilities, metadata
@@ -127,17 +167,30 @@ apps/api/src/claimtrace_api/
 │   └── fusion.py        Reciprocal Rank Fusion
 ├── parsing/
 │   ├── base.py          DocumentParser protocol, ParsedDocument/ParsedPage
-│   └── pymupdf_parser.py PyMuPDF implementation for digital PDFs
+│   ├── pymupdf_parser.py PyMuPDF implementation for digital PDFs
+│   ├── claims/
+│   │   ├── base.py      ClaimParser protocol and the parsed-claim dataclasses
+│   │   └── korean_rules.py  KoreanRuleBasedClaimParser
+│   └── elements.py      DeterministicElementParser (section 12)
 ├── storage/
 │   ├── base.py          FileStorage protocol, storage-key validation
 │   └── local.py         local filesystem implementation
 ├── db/
 │   ├── base.py          DeclarativeBase, Alembic's target metadata
 │   ├── session.py       async engine + session factory
-│   ├── models.py        ORM models (documents, pages, claims, index runs, search records)
+│   ├── models.py        ORM models (app_metadata, documents, pages, claims, index runs,
+│   │                    search records)
+│   ├── element_models.py ORM models for decomposition runs, elements and spans
+│   ├── review_models.py ORM model for decomposition reviews
 │   └── health.py        SELECT 1 probe
 └── schemas/             Pydantic request/response models, including locators.py
 ```
+
+ORM models are split over three modules: `models.py` (the baseline, ingestion,
+claim parsing, and claim indexing tables), `element_models.py`, and
+`review_models.py`. The tables added by revisions 0007 to 0009 - description
+evidence and analyst Cases - have no ORM model; their services read and write
+them with raw SQL.
 
 Two rules keep this layout honest:
 
@@ -155,6 +208,18 @@ Two rules keep this layout honest:
    `ClaimType` enum, and no provider. That is what lets the citation-integrity
    tests run with no database, no model, and no network - which in turn is what
    makes it affordable to test them exhaustively.
+
+> **Update (2026-11-11 wrap-up):** Both rules were written for the layout at
+> Phase 4A-2, and the later modules depart from them in five places. The routes in
+> `api/v1/cases.py` construct `AnalystCaseService` and `CaseGroundedResultService`
+> inline instead of taking them from `api/deps.py`, and the same module imports the
+> private `_answer_response` mapper from `api/v1/grounded.py`.
+> `api/v1/claim_elements.py` checks the document, the claim parse snapshot, and the
+> claim number in the route before calling its service, which is orchestration in
+> `api/`. `api/v1/descriptions.py` reads `service._settings` to get the RRF `k`.
+> And `services/description_evidence.py` implements dense, lexical, and rank-fusion
+> retrieval in raw SQL itself instead of composing `retrieval/` (section 14). They
+> are listed so that the rules above are not read as stricter than the code.
 
 ---
 
@@ -207,8 +272,10 @@ client → route: read_upload() streams the body, aborting past UPLOAD_MAX_BYTES
          5. register    INSERT documents (status=uploaded) → commit
                         UPDATE status=processing              → commit
          6. parse       LocalFileStorage.read(storage_key)
-                        → PyMuPDFDocumentParser.parse(bytes) → ordered pages
-         7. persist     INSERT every page + UPDATE status=completed  → ONE commit
+                        → PyMuPDFDocumentParser.parse(bytes) → ordered pages,
+                          after its per-page text-layer classification
+         7. persist     reject a document-wide total below MIN_EXTRACTED_CHARACTERS,
+                        then INSERT every page + UPDATE status=completed → ONE commit
               ↓
          201 Created + DocumentResponse
 ```
@@ -218,9 +285,11 @@ Failure branches:
 | When | Result |
 | --- | --- |
 | Validation (step 1) | 4xx, nothing stored, no record |
+| Original cannot be written (4) | `storage_failure`, 500; nothing is registered, so no document record exists |
 | `uploaded → processing` commit fails (5) | The session is rolled back and the already-registered document is terminalized as `failed` with `internal_error` when failure-state persistence succeeds; client receives a safe 500 ingestion failure. P4 verified this service contract with deterministic fault injection, not a real PostgreSQL commit fault. |
 | Stored-file read fails after registration (6) | The document is terminalized as `failed` with `storage_failure` when failure-state persistence succeeds; the raw storage exception is not returned to the client. |
-| Parse or no-text (6) | Document marked `failed` with an error code, 422, and the record is returned inside the error envelope |
+| Parser rejection (6): unreadable, encrypted, or a mixed text layer | Document marked `failed` with the parser's error code (`malformed_pdf`, `encrypted_pdf`, or `no_extractable_text` for a mixed layer), 422, and the record is returned inside the error envelope |
+| Document-wide text below `MIN_EXTRACTED_CHARACTERS` (7) | Document marked `failed` with `no_extractable_text`, 422, record returned in the same envelope |
 | Page/completion persistence fails (7) | The page/completion transaction rolls back, so no partial page set is accepted as `completed`; the document is then terminalized as `failed` with `internal_error` when failure-state persistence succeeds. |
 | Concurrent identical upload | Unique digest violation is caught and resolved to the winner's record, 200 |
 
@@ -240,6 +309,16 @@ second commit records `processing`; accepted P4 handling attempts to persist
 `failed` if that transition commit itself fails. This does not establish crash
 recovery: process termination between commits or during parsing has no automatic
 resume path.
+
+> **Update (2026-11-11 wrap-up):** Explicit retry now exists.
+> `POST /api/v1/documents/{id}/retry` re-runs parsing and persistence for a
+> document whose status is `failed`, from its stored original and under the same
+> document id (section 7, "Failure terminalization and retry"). It is
+> operator-driven. There is still no automatic or background retry, and
+> re-uploading identical bytes still returns the failed row unchanged. A row
+> stranded in `uploaded` or `processing` after a crash is not recoverable this
+> way: retry accepts only `failed` rows and answers 409 `document_retry_not_allowed`
+> for any other status.
 
 Parsing is synchronous. A 20 MB text PDF parses in well under a second, and a queue
 would add a broker, a worker, and a retry policy to buy nothing at this size. When
@@ -275,13 +354,33 @@ for server-side fetches; `NEXT_PUBLIC_API_BASE_URL` (`http://localhost:8000`) is
 the fallback and the value any future browser-side call would use. Only
 `NEXT_PUBLIC_*` values are compiled into the client bundle.
 
+> **Update (2026-11-11 wrap-up):** The flow above is the home page only. The web
+> app now has eight routes under `apps/web/app/`: `/`, `/documents`,
+> `/documents/[id]`, `/search`, `/grounded`, `/compare`, `/llm`, and
+> `/reviews/[runId]`. Pages still read through server components that use `lib/`.
+> Every mutation, and every POST-based query, goes through a Next.js server action
+> that runs in the web runtime and calls the API from there:
+>
+> | Area | Server actions |
+> | --- | --- |
+> | Upload and retry | `uploadDocumentAction`, `retryDocumentAction` (`app/documents/actions.ts`) |
+> | Claim parsing and indexing | `parseClaimsAction`, `indexClaimsAction` (`app/documents/[id]/actions.ts`) |
+> | Decomposition and review | `decomposeAndReviewAction` (`app/documents/[id]/review-actions.ts`), `submitElementReviewAction` (`app/reviews/[runId]/actions.ts`) |
+> | Search, grounded answers, comparison | `searchClaimsAction`, `askGroundedAction`, `compareClaimsAction` |
+> | LLM diagnostics | `generateTextAction`, `generateStructuredAction` |
+>
+> No file marked `"use client"` calls `fetch`, and none imports a `lib/` function
+> that does, so the API still does not have to be exposed to browsers. The flows
+> for decomposition, review, comparison, description evidence, and Cases are in
+> sections 12 to 15; they are not repeated here.
+
 ---
 
 ## 4. Service responsibilities
 
 | Service | Owns | Does not own |
 | --- | --- | --- |
-| `web` | Presentation, server-side status fetching | Business rules, database access, secrets |
+| `web` | Presentation, server-side reads, and server actions that proxy mutations to the API | Business rules, database access, secrets |
 | `api` | HTTP contract, configuration, validation, persistence, migrations | Rendering, UI state |
 | `postgres` | Durable state, `vector` extension | Application logic |
 
@@ -316,7 +415,7 @@ Ingestion adds these keys:
 | `STORAGE_ROOT` | Where originals are written. Must be outside the source tree. |
 | `UPLOAD_MAX_BYTES` | Hard ceiling, enforced while streaming (default 20 MB). |
 | `UPLOAD_ALLOWED_CONTENT_TYPES` / `UPLOAD_ALLOWED_EXTENSIONS` | Accepted upload types. |
-| `MIN_EXTRACTED_CHARACTERS` | Below this total, a PDF counts as having no text layer. |
+| `MIN_EXTRACTED_CHARACTERS` | Below this total, a PDF counts as having no text layer. A mixed text layer is rejected separately, by the parser (section 7). |
 
 ### Error handling
 
@@ -327,6 +426,13 @@ serialised into a response.
 Ingestion failures are different: they are expected outcomes with a stable
 `error_code` from `core/errors.py`, which is both the API contract and the value
 persisted on failed documents. Clients branch on the code, never on the message.
+
+> **Update (2026-11-11 wrap-up):** The Cases API (section 15) is the exception. It
+> raises FastAPI `HTTPException`, so its error bodies are `{"detail": ...}` with no
+> `error_code`, and a client of those routes can branch only on the status code
+> and the `detail` string. Request-validation failures elsewhere also keep
+> FastAPI's default 422 list shape rather than the envelope; an unknown review
+> status (section 12) is one example.
 
 | Code | Status | Meaning |
 | --- | --- | --- |
@@ -339,6 +445,24 @@ persisted on failed documents. Clients branch on the code, never on the message.
 | `storage_failure` | 500 | The stored original cannot be read during an already-registered ingestion |
 | `internal_error` | 500 | A processing-transition or page/completion persistence failure is mapped to a client-safe ingestion failure |
 | `document_not_found` | 404 | Unknown document id |
+| `document_not_completed` | 409 | The document's ingestion has not completed; claim parsing, claim indexing, and description derivation refuse it |
+| `document_retry_not_allowed` | 409 | Retry was requested for a document whose status is not `failed` |
+| `claim_parse_failed` | 422 | Claim parsing ran and failed; the failed result is recorded |
+| `claim_parse_not_found` | 404 | The document has no claim parse result |
+| `claim_not_found` | 404 | The claim number is not in the document's claim set |
+| `comparison_invalid_request` | 400 | Target and reference document are the same. The request schema normally rejects this first, with a 422, so the code comes from the service only |
+| `element_decomposition_run_not_found` | 404 | No element decomposition run has this id |
+| `grounded_generation_unavailable` | 503 | Grounded answering is switched off by `GROUNDED_GENERATION_ENABLED=false` (default `true`) |
+
+The retrieval, LLM, and grounded phases add further codes, listed in sections 9, 10,
+and 11.
+
+> **Update (2026-11-11 wrap-up):** Two rows above are broader than they read.
+> `storage_failure` is also raised before any document is registered, when the
+> original cannot be written; the response is then an ordinary
+> `{detail, error_code}` body with no `document`, because no record exists.
+> `no_extractable_text` is also returned for a mixed text layer, not only for a
+> total below `MIN_EXTRACTED_CHARACTERS` (section 7).
 
 ---
 
@@ -349,10 +473,22 @@ persisted on failed documents. Clients branch on the code, never on the message.
   schema is always reproducible from `alembic/versions/`.
 - The baseline revision `0001` enables the `vector` extension and creates
   `app_metadata` (`key`, `value`, `created_at`, `updated_at`). It exists to prove
-  the pipeline works; no domain table is defined yet.
+  the pipeline works; it defines no domain table.
 - Revision `0002` adds the two ingestion tables described in section 7,
   revision `0003` the four claim-parsing tables in section 8, and revision
   `0004` the two retrieval tables in section 9. `0004` also enables `pg_trgm`.
+
+> **Update (2026-11-11 wrap-up):** Five further revisions follow, and the chain is
+> linear from `0001` to the head, `0009`. Across it `op.create_table` creates 20
+> tables.
+>
+> | Revision | Tables | Described in |
+> | --- | --- | --- |
+> | `0005` | `element_decomposition_runs`, `claim_elements`, `claim_element_spans` | section 12 |
+> | `0006` | `element_decomposition_reviews` | section 12 |
+> | `0007` | `description_derivation_runs`, `description_segments`, `description_search_records` | section 14 |
+> | `0008` | `analyst_cases`, `analyst_case_documents` | section 15 |
+> | `0009` | `analyst_case_results`, `analyst_case_evidence` | section 15 |
 - `infra/postgres/init/10-extensions.sql` also creates the extension at initdb
   time. That covers on-premise installations where the migration role is not a
   superuser; both paths are idempotent.
@@ -360,8 +496,26 @@ persisted on failed documents. Clients branch on the code, never on the message.
   restart can never trigger a surprise schema change.
 - Timestamps are `TIMESTAMPTZ` with `server_default now()`; `updated_at` is
   maintained by SQLAlchemy's `onupdate`.
+
+> **Update (2026-11-11 wrap-up):** That holds for the ORM-mapped tables that carry
+> `updated_at`: `app_metadata`, `documents`, `claim_parse_results`, `claims`,
+> `claim_index_runs`, and `claim_search_records`. Among the tables added since,
+> only `analyst_cases` has an `updated_at`, and it has no ORM model, so the services
+> set it with an explicit `UPDATE ... SET updated_at = now()` when a document is
+> associated or removed and when a result is stored. The other tables from `0005` on
+> are immutable or append-only and carry only `created_at`; the exceptions are
+> `analyst_case_documents`, which has `associated_at`, and `analyst_case_evidence`,
+> which has no timestamp.
 - The application engine is async (psycopg 3); Alembic uses a synchronous engine
   against the same URL.
+
+> **Update (2026-11-11 wrap-up):** `alembic/env.py` imports only three ORM modules
+> (`models`, `element_models`, `review_models`) and sets `target_metadata` to
+> `Base.metadata` with no `include_object` filter. The seven tables from `0007` to
+> `0009` are not in that metadata (section 2). `make migration` (autogenerate) was
+> not run against this state while writing this note; by reading only, it would be
+> expected to propose dropping those tables, so an autogenerated revision needs
+> review before it is applied.
 
 ---
 
@@ -398,12 +552,18 @@ Decisions worth stating:
 - **`text_sha256` per page** lets a future re-parse detect whether a page's text
   actually changed, and therefore whether existing citations into it still hold.
 - **No sections, claims, chunks, or embeddings tables.** Those are Phase 2B and 3.
+  This was the decision at revision `0002`; section 6 lists what followed.
 
 ### Lifecycle
 
 `uploaded → processing → completed | failed`. All four states are used: `uploaded`
 is committed as soon as the bytes are stored, so a crash during parsing leaves a
 traceable record rather than an unreferenced file.
+
+> **Update (2026-11-11 wrap-up):** A `failed` document can re-enter `processing`
+> through explicit retry, so the lifecycle also has the path
+> `failed → processing → completed | failed`. See "Failure terminalization and
+> retry" below.
 
 ### Duplicate policy: content-addressed idempotency
 
@@ -421,6 +581,75 @@ resolve to one record rather than racing.
 The trade-off: a document that is genuinely revised produces different bytes and is
 therefore a different document, with no version link between them. Versioning is a
 later concern and would be a new relation, not a relaxation of this constraint.
+
+> **Update (2026-11-11 wrap-up):** A failed row is no longer a dead end. Explicit
+> retry re-runs it in place, under the same id, digest, and stored original;
+> re-uploading identical bytes still returns the failed row unchanged. See
+> "Failure terminalization and retry" below.
+
+### Failure terminalization and retry
+
+This subsection was added after the original chapter text, in P2–P4 (failure
+terminalization) and P8–P10 (explicit retry). It extends the lifecycle above with one
+edge: `failed → processing`, taken only by an explicit retry. `completed` is never
+re-entered.
+
+Every failure after the original is stored and its `uploaded` row committed ends in
+`failed`, with an `error_code`, a fixed client-safe `error_message` (cut to 512
+characters), and null `page_count` and `extracted_character_count`. The failed row
+travels back inside the ingestion error envelope.
+
+| Failure | `error_code` | HTTP |
+| --- | --- | --- |
+| Commit of `uploaded → processing` fails | `internal_error` | 500 |
+| Stored original cannot be read | `storage_failure` | 500 |
+| Parser rejects the bytes (malformed, encrypted, mixed text layer) | the parser's code | 422 |
+| Document-wide total below `MIN_EXTRACTED_CHARACTERS` | `no_extractable_text` | 422 |
+| Commit of the pages and `completed` fails | `internal_error` | 500 |
+| Retry only: commit of `failed → processing` fails | `internal_error` | 500 |
+
+(Failing to write the original at all happens before any row exists: a plain 500
+`storage_failure`, no document record.)
+
+`_mark_failed` does the recording. It rolls the session back first, which discards a
+half-built page set, then writes the failed state and commits. If that commit also fails,
+nothing catches it: the client gets the generic 500 without the envelope, and the row
+keeps whatever was last committed, normally `processing`. This is by reading; no test
+injects a failure into the recovery commit.
+
+`POST /api/v1/documents/{id}/retry` takes no body and returns the document with 200. It
+loads the row `FOR UPDATE`; answers 404 `document_not_found` for a missing row and 409
+`document_retry_not_allowed` for any status other than `failed`; sets `processing`, clears
+the error fields and counts, and commits (if that commit fails the row is re-marked
+`failed` and the client gets 500); then runs the same `_parse_and_persist` path as a
+first upload.
+
+Decisions worth stating:
+
+- **Retry is operator-driven and reads the stored bytes.** The route accepts no upload.
+  Identity is the digest, so different bytes would be a different document. Retry keeps the
+  row id, `sha256` and `storage_key`, and never creates a second row.
+- **The success path is shared**: the gates, the single page-plus-`completed` commit, and
+  the failure handling are those of a first attempt.
+- **A failed row never has pages.** Pages are written only in the commit that sets
+  `completed`, and a failed commit is rolled back, so retry inserts pages fresh.
+- **The lock covers the status check and the move to `processing`.** The intent is that two
+  concurrent retries serialise there and the second gets 409. That is by reading only: the
+  unit test asserts that `with_for_update=True` is passed, and no test runs two retries at
+  once.
+
+Not provided: automatic or background retry, backoff, an attempt limit or counter; recovery
+for a row stranded in `uploaded` or `processing` by a crash (it is not `failed`, so retry
+answers 409); and any change to the duplicate rule, so re-uploading identical bytes still
+returns the failed row. A deterministic failure fails again, because retry re-runs the same
+gates (by reading; not tested).
+
+Evidence: the terminalization paths are tested with fault-injected stub sessions, not real
+PostgreSQL faults. Same-row recovery and the 409 for a completed document run against
+PostgreSQL in the integration tier; the browser and real-stack checks are in section 16.
+The web offers retry only on `/documents`, as a "Retry ingestion" button on failed rows;
+the detail page shows the error without a button. Claim-graph persistence failures are a
+separate lifecycle, described in section 8.
 
 ### Storage strategy
 
@@ -468,9 +697,67 @@ document-wide total is used rather than a per-page rule because a legitimate pat
 PDF often has a near-empty drawing page, and rejecting the document for that would be
 wrong.
 
+> **Update (2026-11-11 wrap-up):** Since D6-01 a per-page classification runs in the
+> parser as well. A PDF with at least one text-bearing page and at least one
+> text-empty page (no text, or whitespace only) is rejected with
+> `no_extractable_text` as a mixed or ambiguous text layer, so a text patent with
+> one truly blank page is now rejected. A page that yields any non-whitespace
+> character still counts as text-bearing. The document-wide total check above still
+> applies as well. See "Text-layer classification: mixed PDFs fail closed (D6-01)"
+> below.
+
 No OCR is attempted, and none is silently substituted. An empty result is reported as
 a failure rather than ingested as a document with no text, because a document that
 looks ingested but has nothing to cite is worse than a clear rejection.
+
+### Text-layer classification: mixed PDFs fail closed (D6-01)
+
+D6-01 postdates the original text of this chapter and **reverses one decision in it**. The
+subsection above chose a document-wide total over a per-page rule, because a patent PDF often
+has a near-empty drawing page. That is no longer how ingestion behaves: a PDF in which some
+pages carry text and at least one carries none is rejected, so a text patent with one truly
+empty page fails. The document-wide total still exists, as the second of two gates.
+
+1. **Classification, inside the parser.** After the encrypted and zero-page checks and once
+   every page is extracted, `classify_pdf_text_layer` asks only whether `page.text.strip()`
+   is non-empty. `text_native`: every page has text. `image_only_or_no_text`: none does.
+   `mixed_or_ambiguous`: some do. Only the mixed class raises, as `ParserError` with code
+   `no_extractable_text` and a message that the layer is mixed or ambiguous and OCR is not
+   used.
+2. **The document-wide total, in the service.** `character_count` sums page text lengths,
+   whitespace included. Below `MIN_EXTRACTED_CHARACTERS` (default 32) the service raises
+   `no_extractable_text` with the scanned-or-image-only message. A PDF with no text at all
+   is stopped here, not by the classifier.
+
+Both end the same way: 422 `no_extractable_text`, the document persisted as `failed` with
+null `page_count`, and no pages. The two causes share the code and differ only in message.
+The code gives its reason: a document with both text-bearing and text-empty pages "is
+ambiguous for the text-native evidence contract", so it fails closed "instead of silently
+presenting a partial source-verifiable document".
+
+Decisions worth stating:
+
+- **No OCR, no image inspection.** One non-whitespace character makes a page text-bearing,
+  so a drawing page with a figure label passes and a truly blank one does not.
+- **Embedded-OCR blind spot.** A scan whose every page already carries a text layer is
+  classed `text_native` and its text is extracted as it stands. ClaimTrace does not decide
+  whether a layer is native.
+- **The classification is not stored or returned.** It is not on `documents`, in
+  `ParsedDocument`, or in any response. Outside the parser only tests call it; the D3
+  acceptance test recomputes it that way.
+- **Parser identity did not change.** `parser_version` is the installed PyMuPDF version and
+  `parser_name` is unchanged, so rows cannot be told apart as before or after D6-01.
+  Documents completed earlier are not re-validated: no migration or backfill touches them,
+  and the parser runs only at upload and retry, which takes only `failed` rows. A mixed PDF
+  fails again on retry, since retry re-runs both gates (by reading; not tested).
+
+The false rejection and the blind spot are the accepted D6-01 risks in
+`CLAIMTRACE_V1_MASTER.md`, section 16, item 7. One edge was found by reading and is
+untested: a PDF whose pages are all whitespace but total 32 characters or more classifies
+as `image_only_or_no_text`, which does not raise, and the total counts whitespace, so
+nothing in ingestion rejects it. Evidence is synthetic: tests use a generated PDF with one
+text page and one graphics-only page, and the D3 acceptance test requires both pinned real
+public PDFs to classify `text_native`. No real mixed or image-only PDF was exercised.
 
 ### Source locator semantics
 
@@ -675,6 +962,15 @@ with the rows.
 
 If that commit fails, everything rolls back and the status stays `processing`.
 
+> **Update (2026-11-11 wrap-up):** Since P13 that is no longer the whole story. When
+> the graph commit fails, the service rolls back and then commits the result as
+> `failed` with `internal_error` and a fixed message, and raises
+> `ClaimParsingFailed`, which maps to 422 `claim_parse_failed`. The status stays
+> `processing` only if that second commit also fails. The same result row is reused
+> by the next parse request, as for any failed attempt. The test for this
+> (`test_progression_claim_persistence_terminalization.py`) injects a failure into
+> the first commit only; the second-commit branch is known from reading the code.
+
 ### Schema (revision 0003)
 
 ```
@@ -743,6 +1039,11 @@ inference of an implicit dependency from wording alone, no OCR. Parsing is
 synchronous, and a document with unusual formatting may produce
 `no_claims_found` rather than a partial guess - which is the intended behaviour.
 
+> **Update (2026-11-11 wrap-up):** Claim element decomposition now exists, as a
+> separate use case over persisted claims (section 12). `ClaimParser` itself still
+> does not decompose, and nothing in claim parsing, retrieval, grounding,
+> comparison, or Cases consumes elements.
+
 ---
 
 ## 9. Claim indexing and hybrid retrieval (Phase 3A)
@@ -750,6 +1051,10 @@ synchronous, and a document with unusual formatting may produce
 Retrieval only. No generation, no summarisation, no reranking, and no legal
 reasoning: a search returns claims that already exist in the corpus, each
 carrying the page coordinates it came from.
+
+> **Update (2026-11-11 wrap-up):** A second retrieval surface exists:
+> `POST /api/v1/search/descriptions` searches description segments, separately from
+> claim search (section 14). This section describes claim retrieval.
 
 ```
 completed claim parse result
@@ -935,6 +1240,10 @@ So the lexical channel retrieves through three indexed branches at once:
 | `normalized_text LIKE '%q%'` | GIN trigram | verbatim substrings |
 | `q <% normalized_text` | GIN trigram | approximate substrings - Korean compounds and josa-suffixed forms |
 
+> **Update (2026-11-11 wrap-up):** For claims there is now a fourth, term-level
+> eligibility predicate, OR-ed with these three. See "Term-level lexical fallback"
+> below.
+
 The tsquery is an **OR** of one `plainto_tsquery` call per normalised term. AND
 semantics would mean a single unmatched word suppresses the whole result, which
 is fatal here because particle attachment guarantees some words will not match
@@ -965,6 +1274,56 @@ It cannot resolve a synonym, and it will occasionally match a coincidental
 substring. Real Korean lexical search wants an analyser such as mecab-ko behind
 a custom text-search configuration, which is a database provisioning decision
 rather than an application change.
+
+### Term-level lexical fallback (P11)
+
+The fallback was added in P11, after the original text of this chapter; P12 added its
+boundary tests without changing runtime code. The lexical channel now admits candidates
+through four OR-ed branches, not the three listed above.
+
+**The problem.** A multi-word Korean question can fail every older gate even when one noun
+differs from the claim only by a particle. In the regression test the query
+`측정값은 완전히무관한질문토큰` meets a claim reciting `측정값을`: no full-text match, not a
+verbatim substring, and whole-query `word_similarity` below 0.25. The claim never reaches
+fusion.
+
+**The change.** One more eligibility predicate in `retrieval/lexical.py`:
+`GREATEST(word_similarity(:term_i, normalized_text), …) >= :term_similarity_threshold`,
+with the threshold fixed at 0.60 and passed as a bound parameter, so unlike the `<%` branch
+it does not depend on the session setting. The terms are those that already feed the
+tsquery: `query_terms()` splits the normalised query on whitespace and keeps the first 32.
+
+**What did not change.** The score formula and weights, the ordering, the `LIMIT`, fusion,
+the dense channel, and the stored search records. `LEXICAL_STRATEGY_VERSION` stayed `"v1"`,
+so `profile_key` is unchanged. The fallback is query-time only: it alters which stored
+records are eligible, no record is touched, and no index run needs rebuilding. The module
+states the contract: term-level checks "affect only candidate eligibility and do not
+introduce a second score scale".
+
+Decisions worth stating:
+
+- **0.60 here, 0.25 for the whole query.** The code says why: the permissive compound
+  threshold, applied per term, "admits too many unrelated multi-word-query candidates and
+  disturbs fusion". The fallback only recovers a locally near-identical token.
+- **Claims only.** `ClaimSearchService` calls the lexical retriever in `lexical` and
+  `hybrid` modes, so the fallback reaches `POST /search/claims`, grounded answers, claim
+  comparison, and Case grounded results (which wrap the grounded service). A comparison
+  query is the whole target claim, so only its first 32 terms feed the fallback. Description
+  search has its own lexical SQL, with three branches and no term fallback.
+
+It is still trigram and substring matching, not morphology, and cannot resolve a synonym.
+Coincidental matches can enter the candidate set, a risk P11 records; ordering decides
+whether they surface. The predicate is a function call, not the `<%` operator, and whether
+PostgreSQL serves it from the trigram index was not measured.
+
+**Verification.** `test_progression_term_lexical_fallback.py` runs on PostgreSQL with
+`pg_trgm`, against one synthetic claim. Positive: for the query above, full-text and phrase
+matches are false, whole-query similarity is under 0.25, term similarity is at least 0.60,
+and lexical-mode search returns the claim. Negative: for `측정가치는 …` term similarity is
+under 0.60 and the claim is not returned. Separately, `make verify-deterministic-regression`
+requires `g01-single-storage` to succeed with `collector#1` cited, under the fake embedding
+provider, the case P11 recorded this change as recovering. Both are regression evidence,
+not a measure of retrieval quality.
 
 ### Dense retrieval
 
@@ -1086,6 +1445,14 @@ Decisions worth stating:
 - **Everything CASCADEs from `documents`.** A search record must never outlive
   the claim it projects, or a query could return text an operator believes they
   deleted. Deleting a parse result likewise removes the index built from it.
+
+  > **Update (2026-11-11 wrap-up):** That is true of the retrieval tables this
+  > revision adds, but not of every table that references `documents`.
+  > `analyst_case_evidence.document_id` is `ON DELETE RESTRICT` (revision `0009`), so
+  > a document cited by a stored Case result cannot be deleted in SQL until that
+  > result, or its Case, is deleted (section 15). The description-evidence tables
+  > (`0007`) and the Case document associations (`0008`) do cascade from
+  > `documents`.
 - **`search_vector` is maintained by the application**, not a trigger, so the
   exact text that was embedded is also the text that was tokenised. The two
   channels can never disagree about what a record contains.
@@ -1102,6 +1469,8 @@ Decisions worth stating:
 | `POST /documents/{id}/claims/index` | Synchronous. `201` for a new completed run, `200` for an equivalent existing one |
 | `GET /documents/{id}/claims/index` | The most recent run, whatever profile it used |
 | `POST /search/claims` | `query`, `mode`, `document_ids`, `top_k`, candidate counts |
+| `POST /search/descriptions` | The same shape over description segments, not claims; separate from claim search (section 14) |
+| `POST /compare/claims` | One target claim against one reference document, by retrieval only (section 13) |
 
 Search is a POST rather than a GET with query parameters. The request has
 structure that does not flatten into a query string cleanly, and - the deciding
@@ -1120,6 +1489,15 @@ New error codes:
 
 `503` rather than `500` for a missing model is deliberate: the caller is being
 told to retry, not that their request was wrong.
+
+> **Update (2026-11-11 wrap-up):** Only the indexing path maps the provider failure
+> to this code: `ClaimIndexingService` catches `EmbeddingError` and records a failed
+> run. At query time - claim search, comparison, grounded answers, and description
+> indexing and search - the provider's exception is not an `AppError` and nothing
+> catches it, so by reading `main.py` the generic handler would answer 500
+> `{"detail": "Internal server error"}`. The search, comparison, and
+> description-search routes still declare 503 in their OpenAPI responses. This is
+> by reading; no test covers it.
 
 Every result carries `source_spans` in the canonical
 `(document_id, page_number, start_char, end_char)` form - the same coordinates
@@ -1149,6 +1527,9 @@ cache path or a URL with a token.
 - Korean lexical matching is token and trigram based, with no morphological
   analysis. See above; this is the largest quality gap.
 - One vector width. A wider model needs a migration.
+
+  > **Update (2026-11-11 wrap-up):** Two tables are now migrated at `vector(384)`:
+  > `claim_search_records` (`0004`) and `description_search_records` (`0007`).
 - Indexing is synchronous and holds a request open. Acceptable at claim scale -
   26 claims embed in 139 ms once the model is resident - but the first request
   after a restart pays the ~9.5 s model load.
@@ -1598,6 +1979,15 @@ domain data, and persisting prompts and completions would create a store of
 confidential patent text with no feature depending on it. No empty migration was
 created to advance the revision number.
 
+> **Update (2026-11-11 wrap-up):** The schema has moved on since this phase:
+> revisions `0005` to `0009` added domain tables (section 6). Prompts, raw
+> completions, and provider diagnostics are still not persisted. The Case path does
+> store model-derived text, however: `POST /api/v1/cases/{id}/grounded-results`
+> keeps the server-composed `answer` and its `statements`, whose wording comes from
+> the model's validated draft, together with generation metadata (provider, model,
+> token usage, duration), warnings, and per-evidence metadata. It does not store
+> quotes (section 15).
+
 ### The model this phase was validated with
 
 | | |
@@ -1777,6 +2167,12 @@ properties, each ruling out a class of bug:
 | **Positional** - `EV-001` is the first entry of this request's ordered evidence | An id derived from a primary key leaks database state; an id derived from the text lets a claim containing `EV-002` influence what `EV-002` means |
 | **Request-local** - never stored, never reused | Resolving an id from another request, which would be a cross-request citation |
 | **Exact** - matched against `\AEV-[0-9]{3}\Z`, with no trimming, case folding, or numeric fallback | Every convenience that lets output the server never issued become a citation |
+
+> **Update (2026-11-11 wrap-up):** Within a stored Case result (section 15) the ids
+> are stored: `analyst_case_evidence.evidence_id` is part of that table's primary
+> key together with `result_id`, and the ids also appear in the stored `statements`.
+> They stay scoped to one result row and are never resolved across results.
+> `POST /api/v1/grounded/answers` itself still stores nothing.
 
 `\A`/`\Z` rather than `^`/`$` because Python's `$` also matches before a trailing
 newline, so `"EV-001\n"` would pass the obvious check.
@@ -1973,6 +2369,20 @@ within one request, so there is nothing to look up later. An integration test
 asserts the live schema contains no table matching `grounded`, `answer`,
 `generation`, or `citation`, so adding one becomes a visible decision.
 
+> **Update (2026-11-11 wrap-up):** The text above stays as the Phase 4A-2 decision.
+> `POST /api/v1/grounded/answers` is still unpersisted, and
+> `GroundedGenerationService` still persists nothing. But a second endpoint wraps
+> the same service and does persist. `POST /api/v1/cases/{id}/grounded-results`
+> (section 15) stores the question, a snapshot of the request, the server-composed
+> answer and statements, retrieval and generation metadata, and per-evidence
+> metadata and locators, in `analyst_case_results` and `analyst_case_evidence`
+> (revision `0009`). It does not store quotes; they are re-resolved from
+> `document_pages` each time a result is read. The integration test described above
+> still passes, but only because those tables are named `analyst_case_results` and
+> `analyst_case_evidence`: neither name matches its patterns, so its stated purpose,
+> making a new table a visible decision, no longer holds. "Unchanged at revision
+> 0004" is likewise historical; the head is `0009`.
+
 ### Observability and privacy
 
 One structured event per answer, carrying counts, codes, and server-issued
@@ -1998,29 +2408,733 @@ server-resolved quote, and locator links into the existing page viewer, which
 highlights the exact stored range. Model text is rendered as plain text in
 ordinary elements - never `dangerouslySetInnerHTML`, never a Markdown renderer.
 
+> **Update (2026-11-11 wrap-up):** `/grounded` and `/search` accept a
+> `?document=<id>` query parameter that preselects the document scope in the form,
+> and the document detail page links to both pages with its own id.
+
 ---
 
-## 12. Extension points for later phases
+## 12. Claim element decomposition and human review (Phase 2C)
+
+Decomposition splits one persisted claim into ordered elements, each with the
+exact source spans it came from. It is deterministic and machine-produced: no
+model, no embedding, no similarity. Human review is a **separate record** that
+points at one decomposition run and never edits it. Neither says anything about
+claim scope, infringement, validity, novelty, equivalence, inventive step, or
+patentability; the review vocabulary is `accepted` and `needs_correction`, and no
+response contract has a field that could hold a legal conclusion.
+
+### Schema (revisions 0005 and 0006)
+
+```
+element_decomposition_runs                 claim_elements
+────────────────────────────────────       ───────────────────────────────────
+id              uuid PK                    id              uuid PK
+claim_id → claims.id CASCADE               run_id → runs.id CASCADE
+parser_name     varchar(64)                sequence_number integer ≥ 0
+parser_version  varchar(32)                text            text, length > 0
+element_count / warning_count  ≥ 0         UNIQUE (run_id, sequence_number)
+warnings        jsonb, default '[]'
+created_at                                 claim_element_spans
+UNIQUE (claim_id, parser_name,             element_id → elements.id CASCADE
+        parser_version)                    sequence_number ≥ 0, page_number ≥ 1
+                                           start_char ≥ 0, end_char > start_char
+element_decomposition_reviews              UNIQUE (element_id, sequence_number)
+run_id → runs.id CASCADE
+status  varchar(32)  CHECK IN ('accepted', 'needs_correction')
+id uuid PK, created_at
+```
+
+Decisions worth stating:
+
+- **A run is immutable and has no status column.** The service writes the run, its
+  elements, and their spans in one commit, and only after the parser has returned.
+  A run exists complete or not at all, and there is no `updated_at`.
+- **A run is identified by `(claim_id, parser_name, parser_version)`**, enforced by
+  a unique constraint. Re-running the same version is idempotent; a future parser
+  version creates a second run beside the first without rewriting its provenance.
+- **No `document_id` on any of these tables.** The document is reached through the
+  claim and its parse result rather than stored as a copy that could disagree.
+- **Reviews are append-only and attach to a run, not a claim.** A judgement is
+  meaningful only against the exact elements it was made about, so it stays on that
+  run id even after a later parser version yields a different run. The table holds
+  an id, the run, one of two statuses, and a timestamp: no reviewer identity, no
+  comment, no per-element verdict, no correction payload.
+- **Everything CASCADEs** down `documents → claim_parse_results → claims → runs →
+  elements → spans`, and `runs → reviews`. Reviews are immutable through the API
+  but not undeletable: removing a run, claim, parse result, or document in the
+  database removes them.
+
+### The parser
+
+`DeterministicElementParser` (`parsing/elements.py`) is named
+`deterministic-semicolon-elements`, version `"1"`. It is a pure function over a
+`ParsedClaim` and the document's `SourcePage`s. `deps.py` constructs it directly
+for each request; unlike the claim parser it is not a protocol and not on
+`app.state`.
+
+1. **Provenance check.** It rebuilds the claim text from the claim's spans, joined
+   with `PAGE_SPAN_SEPARATOR` (`"\n"`). If that differs from `claims.text` it raises
+   `ValueError` and nothing is stored.
+2. **Split on the ASCII `;` only.** An element is the whitespace-trimmed payload up
+   to and including its `;`; text after the last `;` is a final element if not blank.
+3. **Map back to pages** by intersecting each element's range with the claim's span
+   chunks.
+
+Warnings are recorded on the run, never silently repaired. `no_structural_delimiter`:
+the claim has no `;` and is kept as one element rather than inventing structure.
+`empty_segment`: an empty segment between semicolons, or an empty trailing one, was
+dropped; a claim with no non-whitespace text yields zero elements and this warning.
+
+### Locator preservation
+
+Every element span is a half-open sub-span of an existing claim span on one page. An
+element crossing a page break gets **one span per page**. Its `text` contains the
+synthetic `"\n"` that joined the pages, but no span includes it, so each span still
+resolves to exact stored characters. Responses add a `SourceLocator` per span; the
+`document_id` comes from the request path (decompose) or the claim's parse result
+(review).
+
+### Endpoints
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `POST /documents/{id}/claims/{n}/elements/decompose` | `201` new run; `200` when a run for this parser version exists |
+| `POST /element-decomposition-runs/{run_id}/reviews` | Body `{"status": …}`; `201` with the full snapshot |
+| `GET /element-decomposition-runs/{run_id}/reviews` | `200` snapshot: elements, spans, review history |
+
+The snapshot lists reviews by `(created_at, id)` and marks none as current. **No
+endpoint reads or lists runs by claim**: a run is re-read by id through the reviews
+endpoint, or by repeating the decompose request. Decompose works from the document's
+newest claim parse result (any parser version), the one the claims endpoints show.
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `document_not_found`, `claim_parse_not_found`, `claim_not_found` | 404 | Decompose: unknown document, no parse result, no such claim number |
+| `claim_parse_not_completed` | 409 | The newest parse result is not `completed` (including `no_claims_found`) |
+| `element_decomposition_run_not_found` | 404 | Reviews: unknown run id |
+| (FastAPI validation) | 422 | Unknown review status or extra field: a `detail` list, not the `error_code` envelope |
+
+The decompose route declares a `422` in the `ApiErrorResponse` shape, but no code
+path raises one (by reading). A provenance mismatch raises a plain `ValueError`, not an
+`AppError`, so it surfaces as the generic `500` `{"detail": "Internal server error"}`.
+
+### Idempotency and concurrency
+
+Decompose looks up a run for `(claim, parser name, version)` and returns it with
+`created=False`; otherwise it inserts and commits once. If two requests race, the
+loser's commit fails on the unique constraint, rolls back, and returns the winner's
+run with `200` (an `IntegrityError` with no winner is re-raised). Tests cover the
+stale-lookup path and a second parser version coexisting with the first.
+
+Review is the opposite on purpose. `add_review` checks the run, inserts one row,
+commits, and returns a fresh snapshot. There is no unique constraint and no
+idempotency key, so **each POST appends a row**; a double-submit records two
+reviews. What keeps the table append-only is the API surface (no PUT, PATCH, or
+DELETE on the path) and the service. There is no database trigger and no revoked
+privilege. There is no state machine and no "current status": the history is the
+list. A test snapshots the machine rows before and after two reviews and after a
+second parser version's run is inserted for the same claim; the machine rows do
+not change and the reviews stay on the first run.
+
+### Web
+
+Each claim card has a **Decompose & review** button ("Machine decomposition remains
+unchanged by review."). It posts to a server action that calls the decompose
+endpoint and redirects to `/reviews/{run id}`, or back to the document page with
+`?review_error=`.
+
+`/reviews/[runId]` shows the parser name and version, element and review counts, each
+element with links to its exact spans in the original document, two buttons,
+**Accept decomposition** and **Mark needs correction**, and the review history. The
+action redirects back with `?review_saved=<status>` or `?review_error=`. The page does
+not show the run's warnings, because the review snapshot has no `warnings` field.
+
+### Known limitations
+
+- Only the ASCII `;` splits: no full-width `；`, no comma, particle, or "포함하는"
+  grammar, no preamble/body split, no claim construction.
+- No reviewer identity or comment, and a review covers a whole run, not one element.
+- Elements are not read by retrieval, grounded generation, comparison, or Cases; no
+  module outside the decomposition and review code imports them.
+- A later claim-parser version would create new `claims` rows. By reading
+  `ClaimParsingService.snapshot` (newest parse result of any version) and the run
+  key, decompose would then start fresh runs for those claims while existing runs and
+  reviews stay on the old claim ids. Only one claim parser version exists (`0.1.0`),
+  so no test exercises this.
+
+---
+
+## 13. Claim comparison (Phase 5A)
+
+Claim comparison ranks the claims of **one reference document** by textual
+correspondence to **one stored claim** of a target document. It is retrieval only:
+no LLM, no evidence catalog, no citation validator, no described relationship, no
+verdict. It persists nothing and adds no table or migration.
+
+This differs from the seam the original extension-points section predicted for
+Phase 5A, "a service over the grounded pipeline … reusing the evidence catalog and
+the citation validator". `ClaimComparisonService` composes `ClaimParsingService` and
+`ClaimSearchService` only. The constraint that prediction named still holds: no
+response field can hold "anticipated" or "infringes", and a test asserts that none
+of the legal-conclusion keys appear.
+
+### Composition
+
+One request runs these steps in order:
+
+1. Reject a target equal to the reference (`comparison_invalid_request`).
+2. Require that both documents exist (`document_not_found`).
+3. Read the target's **newest** claim parse result, any parser version: none is
+   `claim_parse_not_found`, a status other than `completed` is
+   `claim_parse_not_completed`.
+4. Find the claim by number (`claim_not_found`).
+5. Call `ClaimSearchService.search` with the target claim's stored text verbatim,
+   `document_ids=[reference]`, `top_k` (already clamped by the route to
+   `search_top_k_max`), and the candidate counts from settings.
+6. **Second scope check.** A returned claim from any other document raises
+   `internal_error`. Search already restricts by index run; one foreign claim would
+   turn a comparison into a provenance leak, so the service checks again.
+7. Derive `no_correspondence_reason`: `reference_not_indexed` if search covered zero
+   index runs, `no_matches` if it covered some and returned nothing.
+
+Search uses the newest completed index run per document under the active profile, so
+a reference indexed under another embedding profile counts as not indexed.
+
+### Endpoint
+
+`POST /api/v1/compare/claims`. The body rejects unknown fields (`extra="forbid"`):
+`target_document_id`, `target_claim_number` (≥ 1), `reference_document_id` (must
+differ), `mode` (`hybrid` default, `dense`, `lexical`), `top_k` (1 to 50, default 5).
+**Callers cannot supply query text or candidate counts**: the query is always the
+target claim as stored, so the target side always has source locators.
+
+| Status | When |
+| --- | --- |
+| `200` | Matches, or `no_correspondence_found: true` with a reason |
+| `404` | `document_not_found`, `claim_parse_not_found`, `claim_not_found` |
+| `409` | `claim_parse_not_completed`: raised by the service, **not in the route's `responses`** |
+| `422` | Same document twice, an extra field, or a bound violated; Pydantic validation runs first |
+| `500` | `internal_error` from the step 6 scope check |
+
+The route also declares `400` and `503`. The `400` (`comparison_invalid_request`) is
+not reachable over HTTP, because the request schema rejects a same-document request
+first; only a direct service test reaches it. For `503`: nothing on this path maps an embedding
+failure to an `AppError`, so it would surface as the generic `500` (by reading; no
+test covers it; see section 9). Tests check the `422` by status code only.
+
+### Response invariants
+
+The schema enforces these again, so no future caller can serialise a contradiction:
+target and reference differ and every match belongs to the reference;
+`match_count == len(matches)`; `no_correspondence_found` is true exactly when
+`matches` is empty; `no_correspondence_reason` is null with matches and required
+without them, with `reference_not_indexed` needing zero searched index runs and
+`no_matches` at least one; the target and every match carry at least one
+`source_span`, all on their own document. `no_correspondence_found` means retrieval
+returned no claim from the reference. It says nothing about novelty or equivalence.
+
+### Locator preservation
+
+Target and matches carry one `SourceLocator` per stored `claim_spans` row in
+`sequence_number` order, so a multi-page claim keeps one span per page. An integration
+test resolves every span against stored page text, joined with `"\n"`, and expects the
+claim text exactly.
+
+### Known limitations
+
+- The target needs a completed parse but no index. The reference needs a completed
+  index run for the active profile; without one the answer is `200` with
+  `reference_not_indexed`, not an error.
+- **Query length.** `/search/claims` caps `query` at 512 characters. Comparison has no
+  query field, so a long claim is passed whole. The lexical channel uses at most 32
+  whitespace terms (`query_terms`) for the full-text OR and the term-level fallback;
+  the whole-query trigram and `LIKE` predicates use the complete normalised text. The
+  dense channel passes the full text to the embedding provider; whether a model
+  truncates it is not shown here and is unverified.
+- One target claim against one reference document: no claim-to-claim matrix, no
+  element-level comparison (section 12 elements are unused), no description evidence
+  (section 14).
+
+### Web
+
+`/compare?target=<id>` lists up to 100 `completed` documents and fetches claims for
+those whose parse is `completed`; it needs at least two. The panel offers a target
+document and claim, a reference document (the target is disabled there), a mode, and
+**Matches** of 3, 5, 10, or 20 (default 5; other values fall back to 5). Results show
+the target card and one card per match with dense, lexical, and fused rank and score,
+a source link per span into `/documents/{id}?page&start&end`, and a message per
+no-match reason. The page does not check that the reference is indexed.
+
+The entry point is **Compare against another document →** in the document page's
+"Analyze this document" panel, shown only when that document's index run is
+`completed`. No other page or component links to `/compare`.
+
+---
+
+## 14. Description-evidence derivation and retrieval (D4-01)
+
+Retrieval over the description part of a patent, as a second kind of evidence.
+Every hit is `evidence_kind = "description"` and is a span of stored page text: a
+page number and a character range into `document_pages.text`, the same
+coordinate system as claims. Nothing is summarised.
+
+This is API-only. No page, component or e2e test in `apps/web` calls these
+endpoints. The one contact with the web app is each hit's `source_url`, a deep link
+into the existing document page, which already reads `page`, `start` and `end`
+and highlights that range. Description evidence is **not** an input to grounded
+answers (section 11), claim comparison (section 13) or Cases (section 15); those
+remain claim-only.
+
+### The segmenter
+
+`korean-patent-description-sections`, version `v1`: a pure function over the
+persisted pages. It never re-reads the PDF.
+
+- **A heading is mandatory.** A line is a heading when, after removing whitespace,
+  brackets, angle and parenthesis marks, digits, periods, middle dots and hyphens,
+  at most 40 characters remain and they equal or start with a known heading.
+- **Start:** 발명의설명, 발명의상세한설명, 기술분야, 배경기술, 발명의내용,
+  도면의간단한설명, 발명을실시하기위한구체적인내용.
+- **Stop:** 특허청구의범위, 청구범위, 청구항. A stop before any start is ignored, so a
+  claims block ahead of the description does not end the search. A stop after a
+  start ends derivation for the whole document, on every later page.
+- **Regions are page-local.** A region closes at each page end and reopens at
+  offset 0 on the next, so a segment never spans a page break.
+- **Chunking.** At most 700 characters per chunk, cut at the rightmost of a blank
+  line, newline, `다. `, `. ` or space, never within a chunk's first 40 characters;
+  otherwise a hard cut. Surrounding whitespace is excluded from the span. A chunk
+  under 40 characters is dropped.
+- **Two `unsupported` outcomes, both with zero segments:**
+  `description_heading_not_found`, and
+  `description_heading_found_but_no_substantive_text`.
+
+There is deliberately no fallback of "everything that is not a claim". The code's
+reason: it would silently turn front matter or an ambiguous structure into
+accepted description evidence, so missing structure is an explicit `unsupported`.
+A document with no recognised heading is not searchable here.
+
+Matching is by prefix, so a short body line that begins with a heading word reads
+as a heading (from the code; untested). The unit tests cover a clean description,
+claims before it, a stop after it, and no heading.
+
+### Schema (revision 0007)
+
+```
+description_derivation_runs        description_segments
+document_id → documents CASCADE    run_id, document_id → CASCADE (both)
+status  completed | unsupported    segment_index ≥ 0, section_heading null
+segmenter_name / _version          page_number ≥ 1, start_char ≥ 0, end_char > start_char
+segment_count ≥ 0, warnings jsonb  text, evidence_kind CHECK = 'description'
+UNIQUE (document_id, name, version)  UNIQUE (run_id, segment_index)
+
+description_search_records
+segment_id → segments CASCADE, document_id → documents CASCADE
+segment_index, profile_key varchar(512), normalized_text
+search_vector tsvector, embedding vector(384)
+UNIQUE (segment_id, profile_key)
+HNSW (embedding, cosine) · GIN (search_vector) · GIN (normalized_text, trigram)
+```
+
+Decisions worth stating:
+
+- **No ORM models; raw SQL.** Only `services/description_evidence.py` touches
+  these tables, through `text()` statements.
+- **No index-run table.** The profile sits on each record as `profile_key`, so
+  "indexed for this profile" is a count of records, not a lifecycle row. That is
+  why there is no `processing` or `failed` state, unlike section 9.
+- **A second `vector(384)` column**, with its own HNSW index. The width is the
+  fixed dimension section 9 explains; a wider model needs a migration here too.
+- **Everything CASCADEs**, from `documents` to runs, segments and records, so no
+  record outlives the text it was built from.
+
+### Locator preservation
+
+A segment's `text` is the slice `page.text[start_char:end_char]`, not a
+normalised form. The unit tests assert that identity, and the acceptance test
+re-resolves every returned span against `/documents/{id}/pages`. Responses carry
+`source_span` and a `source_url` of
+`/documents/{id}?page={page}&start={start}&end={end}`. `normalized_text` serves
+matching only; it is never a coordinate and is not returned.
+
+### API
+
+Under `/api/v1`.
+
+| Endpoint | Behaviour |
+| --- | --- |
+| `POST /documents/{id}/descriptions/derive` | `201` new run; `200` existing, including a cached `unsupported`. `404 document_not_found`, `409 document_not_completed` |
+| `POST /documents/{id}/descriptions/index` | Derives first if needed. `201` when records were written; `200` when already indexed or `unsupported` (nothing embedded). `500 embedding_dimension_mismatch`; `422 claim_index_failed` on a vector-count mismatch |
+| `POST /search/descriptions` | `query` 1–512, `mode`, `document_ids` ≤ 50, `top_k` (10, ≤ 50), candidate counts (30, ≤ 200). `200`, with per-channel ranks and scores |
+
+`claim_index_failed` is the claim-indexing code, reused. The `document_id` path
+parameter of the first two routes is a `str` parsed by hand, so a malformed id
+raises `ValueError` and returns the generic `500`, not a `422`.
+
+### Retrieval behaviour
+
+A separate implementation in `services/description_evidence.py`, not a
+composition of `retrieval/`: it reuses `normalize_search_text`, `query_terms`,
+`profile_for` and the embedding provider, but not `dense.py`, `lexical.py`,
+`fusion.py` or `source_resolution.py`.
+
+- **Lexical:** the three branches of section 9 (OR of `plainto_tsquery`, `LIKE`,
+  `<%` at 0.25), with different weights: **0.55 / 0.30 / 0.15** for token,
+  trigram and containment, against 0.45 / 0.30 / 0.25 for claims. The code gives
+  no reason for the difference.
+- **No term-level fallback.** The bounded fallback claim search gained after v1.0
+  (section 9, "Term-level lexical fallback") does not apply here, yet the profile
+  reports the same `lexical_strategy` and version as claims, so it cannot tell the
+  two behaviours apart.
+- **RRF** is its own small implementation with the configured `rrf_k`; ties break
+  on `(segment_index, segment_id)`, not claim number.
+- **No `searched_index_run_count`.** "Nothing indexed" and "nothing matched" both
+  return an empty `results`.
+
+### Idempotency and concurrency
+
+- **Derive** looks for a run on `(document, segmenter, version)` and returns it;
+  otherwise it inserts the run and segments in one transaction. There is no
+  `IntegrityError` handling, so two simultaneous first derives of one document
+  could collide and surface as a `500`. By reading only; untested.
+- **Index** derives, then counts records for `(document, profile)`. Equal to the
+  segment count: `200`, nothing done. Otherwise it embeds, deletes that
+  document's records for the profile and reinserts them in one commit. Embedding
+  precedes the delete, so a failed embed keeps the old records. Derive commits
+  separately, so a failed index still leaves the segments.
+
+### Known limitations
+
+- **No logging.** The service and routes import no logger, so there is no
+  equivalent of section 9 "Query privacy": queries are not logged, but because
+  nothing is, including counts and timings.
+- **Embedding errors are unmapped.** Only claim indexing turns `EmbeddingError`
+  into `embedding_model_unavailable`. Here it reaches the generic `500`, although
+  the search route's OpenAPI lists `503`. By reading; no test covers it.
+- **Mechanics, not quality.** The acceptance test uses deterministic fake
+  embeddings and queries with the first 160 characters of the longest segment,
+  then asserts that segment comes back. Its own report says this proves
+  mechanics, not model quality. It runs one document, the first in the corpus
+  manifest.
+- **Not fused with claims.** A resolved span shows where text is, not that it
+  answers the query.
+
+---
+
+## 15. Analyst Cases and persisted grounded results (D5-01, D5-02)
+
+A Case is a durable workspace identity: a title and references to documents that
+already exist. A Case can also hold grounded results a reader can reopen later,
+whose quotes are **always re-read from canonical page text** rather than stored.
+This is API-only: nothing in `apps/web/app`, `components`, `lib` or `e2e` refers to
+Cases or `grounded-results`. There is no owner column and the routes check no
+identity.
+
+### Schema (revisions 0008 and 0009)
+
+```
+analyst_cases           id PK, title varchar(200) CHECK length(trim(title)) > 0,
+                        created_at, updated_at
+analyst_case_documents  PK (case_id, document_id); case_id → analyst_cases CASCADE;
+                        document_id → documents CASCADE; associated_at
+analyst_case_results    id PK; case_id → analyst_cases CASCADE;
+                        request_fingerprint varchar(64); query varchar(512) non-blank;
+                        request_snapshot jsonb; result_snapshot jsonb; created_at
+                        UNIQUE (case_id, request_fingerprint); INDEX (case_id, created_at, id)
+analyst_case_evidence   PK (result_id, evidence_id varchar(16));
+                        result_id → analyst_case_results CASCADE;
+                        document_id → documents ON DELETE RESTRICT;
+                        evidence_snapshot jsonb; locator_snapshot jsonb
+```
+
+Decisions worth stating:
+
+- **No ORM models; raw SQL.** Only `services/cases.py` and
+  `services/case_grounded_results.py` touch these tables, through `text()`.
+- **The title CHECK backs up the request model**, which strips the title and
+  rejects a blank one; the database refuses it as well. Titles are not unique.
+- **Composite primary keys** on the two association tables, with no surrogate id.
+- **`updated_at` is bumped by explicit SQL**, not by an ORM hook:
+  `UPDATE analyst_cases SET updated_at = now()` on a new association, a removal,
+  and a stored result. Only `analyst_cases` has the column; the other tables are
+  never updated.
+- **`analyst_case_evidence.document_id` is `ON DELETE RESTRICT`**, the only
+  reference in these tables that does not cascade. A document cited by any stored result
+  cannot be deleted until that result, or its Case, is gone. No API route deletes
+  documents or Cases today, so this is reachable only through direct SQL.
+
+### Modules and API
+
+`AnalystCaseService` (identity and association) and `CaseGroundedResultService`
+(scope, fingerprint, persistence, rehydration) are constructed inline in the
+routes of `api/v1/cases.py`, not through `deps.py`. The result route wraps the
+unchanged `GroundedGenerationService` (section 11) and reuses the private
+`_answer_response` mapper from `api/v1/grounded.py`. Under `/api/v1`:
+
+| Operation | Behaviour |
+| --- | --- |
+| `POST /cases` | `{title}`, stripped, non-blank, at most 200. `201` |
+| `GET /cases` | `200`, every Case with its documents, by `created_at`; no pagination |
+| `GET /cases/{id}` | `200`; `404` |
+| `PUT /cases/{id}/documents/{doc}` | `200 {case, changed}`; `changed` is `false` on a repeat. `404` for a missing Case or document |
+| `DELETE /cases/{id}/documents/{doc}` | `204`; `404` for a missing Case or a document not associated |
+| `POST /cases/{id}/grounded-results` | Body is `GroundedAnswerRequest`. `201`, **also** when it returns an already stored result. `404` Case; `409` scope; grounded `AppError`s pass through and nothing is stored |
+| `GET /cases/{id}/grounded-results` | `200` summaries `{id, case_id, query, created_at}`, oldest first |
+| `GET /cases/{id}/grounded-results/{rid}` | `200`; `404` if absent or in another Case; `409` if a locator no longer resolves |
+
+Errors here are FastAPI `HTTPException` bodies carrying `detail` **without**
+`error_code`, unlike the rest of the API (section 5); the tests assert on the
+`detail` strings. Association needs only that the document row exists, not that
+it completed. A Case cannot be renamed or deleted, nor a result deleted.
+
+### Scope rule and fingerprint
+
+`scope_document_ids` fixes what a result may search:
+
+- requested `document_ids` must be a subset of the Case's documents, else `409`;
+- an empty list means **all** associated documents, and a Case with none is `409`;
+- more than 50 documents (the grounded request limit) is `409`;
+- the list is sorted and written back into the request before anything else.
+
+The fingerprint is the SHA-256 of the canonical JSON (sorted keys, no spaces) of
+that scoped request, which is its four fields: `query`, `document_ids`, `mode`,
+`top_k`. The query is hashed as sent, so whitespace changes make a new result.
+With `document_ids` omitted, changing the Case's document set changes the
+fingerprint. `persist` then re-checks against a fresh read of the associations
+that the request's documents, every evidence document and every locator's
+document belong to the Case, so a change during generation is `409`, not a
+stored result.
+
+### What is stored, and what is re-derived
+
+**Stored:** the scoped request (and the question again in `query`); the
+server-composed `answer`, the model's `statements`, the insufficiency fields,
+retrieval and generation metadata and warnings; per evidence item its
+`evidence_id`, `document_id`, filename, claim number and type, dependencies,
+`crosses_pages`, ranks and scores, and its canonical locators.
+**Not stored:** any quote, page text or claim text.
+
+The integration test asserts that no returned quote appears anywhere in the stored
+JSON. Statement text is model-written and stored, and may repeat claim wording.
+
+On every read, including the one that builds the response to a new `POST`:
+
+1. each stored locator is validated as a `SourceLocator` and must name the row's
+   own `document_id`;
+2. its quote is read from `document_pages` by raw SQL, and a missing page or an
+   `end_char` beyond the page's `character_count` raises, which the route returns
+   as `409`;
+3. the quotes are merged back into the evidence, and the whole payload is
+   re-validated as `GroundedAnswerResponse`.
+
+The integration test asserts that a reopened result equals the original response.
+The check shows a range still fits inside stored text; it does not compare that
+text with what it was when the answer was written. No test drives the `409`.
+
+### Relation to section 11's "no persistence" policy
+
+`POST /grounded/answers` is unchanged and stores nothing. The Case path is an
+explicit, separate decision to persist: the question, the model-derived
+statements and the generation metadata are written to the database, and there is
+no retention policy and no way to delete a result. The section 11 test that scans the
+live schema for `grounded`, `answer`, `generation` or `citation` still passes
+only because these tables are named `analyst_case_*`.
+
+`EV-nnn` ids are now stored: `evidence_id` is half of the evidence primary key and
+appears inside `statements`. They stay scoped to one result and are never
+resolved across results.
+
+### Idempotency and concurrency
+
+The route looks for a stored result **before** generating. A match returns it,
+`201`, without contacting the model. Otherwise it generates, then `persist`
+re-checks, looks again, and inserts with `ON CONFLICT (case_id,
+request_fingerprint) DO NOTHING`, reopening the winner when the insert lost. By
+reading, two simultaneous identical requests both generate, one row is stored and
+both callers receive it. No test covers concurrency.
+
+A stored result is a snapshot. The same request later returns the old answer even
+if the index, the corpus or the model has changed; there is no regenerate
+operation, and only a changed request makes a new result.
+
+### Lifecycle consequences
+
+- **Removing a document does not invalidate stored results.** Reads consult no
+  association table, and the evidence rows keep the document. An identical `POST`
+  naming a removed document is refused by the scope check before lookup.
+- **Locators depend only on page rows.** No parse-result or index-run id is stored,
+  and `claim_number` is a plain number, not a reference.
+
+### Known limitations
+
+- No owner, authentication or multi-user model; no pagination; no rename or delete
+  of a Case, no delete of a result, no retention policy.
+- Claim-only. A Case holds no description evidence (section 14), comparison or
+  decomposition result, and a stored citation is checkable, not shown entailed.
+
+---
+
+## 16. Verification architecture
+
+This section describes how evidence is organised, not the outcome of any run; outcomes
+live on the pull requests and in `CLAIMTRACE_V1_MASTER.md`. No tier tests infringement,
+validity, novelty, equivalence, inventive step or patentability: ClaimTrace determines none
+of them.
+
+### Test tiers
+
+The backend suite has one pytest marker, `integration` (`apps/api/pyproject.toml`).
+
+- **Database-free tier.** `pytest -m "not integration"`, or `make test-unit`. It uses stub
+  sessions, generated PDFs and fake providers; the ingestion fault-injection, parser and
+  upload tests live here.
+- **Integration tier.** It needs PostgreSQL with `pg_trgm` and pgvector. The session
+  fixture creates a dedicated `<database>_test` database and runs Alembic to head from
+  empty. Embeddings are the fake provider. If PostgreSQL is unreachable the fixture calls
+  `pytest.skip`, so on a laptop the default suite passes with the whole tier skipped, and
+  a skip is not evidence. CI defeats it: General CI and the v1 gates require "N passed" in
+  the output and fail on "N skipped".
+- **Acceptance directories.** `d3_acceptance` and `d4_acceptance` are in `norecursedirs`,
+  so default collection ignores them; their workflows invoke the files explicitly. They
+  assert, not skip, when their corpus environment is missing.
+- **Web.** No unit tests and no test-runner configuration: ESLint, `tsc --noEmit` and the
+  browser scripts below.
+
+On 2026-11-11, on the `f59f4df` tree, the database-free tier ran locally with 798 passed
+and 144 deselected. The 144 integration tests were not run locally in the wrap-up (no
+Docker daemon, no pgvector); they run in General CI.
+
+### CI workflows
+
+There are 16 workflows in `.github/workflows`. All trigger on `pull_request`, filtered by
+path, and all but `progression-retry-ui` also by base branch `main`. Only `v1-02-verify`
+also runs on push to `main`; it, `v1-04-verify` and `v1-05-verify` also take
+`workflow_dispatch`. None deploys. The one with write access, `v1-07-proof-package`, can
+push proof assets to the pull-request branch, and only when none are committed yet. A
+change confined to `docs/` or `README.md` triggers no General CI: its path filter omits them.
+
+| Protects | Workflows | What runs |
+| --- | --- | --- |
+| General CI | `ci.yml` | Compose check, image build, database-free tests, integration tests with the no-skip assertion, Ruff lint and format check; a second job runs `npm ci`, ESLint and `tsc --noEmit` |
+| v1 feature gates | `v1-02-verify`, `v1-04-verify`, `v1-05-verify` | Comparison tests (`make verify-v1-02`); element parser, persistence and API tests; review tests. Integration steps are no-skip; each ends with Ruff |
+| Failure states, start-up | `v1-06-failure-states`, `v1-06-clean-start` | Five named tests with `--no-deps` (non-PDF, no-text PDF, empty grounded retrieval is 200, comparison `no_matches` and `reference_not_indexed`); the clean-start script |
+| Browser end to end | `v1-03-verify`, `v1-05-verify` (browser job), `v1-06-golden-path`, `v1-07-proof-package` | A compose stack on fake embeddings, a seed script, then a Playwright script. The proof workflow captures screenshots and a video into a temporary directory |
+| Evaluation | `progression-deterministic-regression`, `v1-07-final-evals` | The enforced gate; and both harnesses with no thresholds (see Evaluations) |
+| Retry | `progression-retry-ui`, `progression-retry-real` | The Documents-page retry against a stub API; and against the real API and PostgreSQL |
+| Handoff | `progression-controlled-pilot-handoff` | `scripts/verify-controlled-pilot-handoff.sh`, then a grep of its report for the non-claim sentences |
+| Real public corpus | `progression-d3-real-corpus`, `progression-d4-description-evidence` | See the real-public subsection |
+
+The D3 and D4 path filters name `scripts/verify-deterministic-regression.sh`, which does not
+exist; the gate is the Makefile target, and `apps/api/**` triggers them anyway.
+
+### Scripts and browser checks
+
+The four stack scripts (clean start, golden path, real retry, proof capture) each use their
+own Compose project name and host ports and tear down with `down -v --remove-orphans` on
+exit, so they can run beside the development stack. Clean start uses ephemeral ports, the
+others fixed defaults that environment variables override, and the handoff verifier runs
+three of them with distinct names and ports. They check migration from empty volumes to
+head, a seeded whole-product flow on fake providers, and a real-stack retry.
+
+The runners in `apps/web/e2e/*.mjs` are plain Node scripts with `node:assert` and
+Playwright, which is not in `package.json`: workflows and scripts install 1.55.0 on the
+spot with `npm install --no-save`. `progression-retry-ui` runs Next in development mode
+against a stub HTTP API inside the script. The stub's first retry answers 503
+`storage_failure` (the real endpoint answers 500 for that code); the script checks that the
+message appears and the button stays, then that a second retry succeeds and the button
+goes. It proves what the page does with an error envelope, not API behaviour.
+`progression-retry-real` uses the real API, then a Python verifier checks the same row,
+completed with two pages, an original that still hashes to its digest, and one document.
+
+### Evaluations
+
+Two harnesses in `apps/api/evals` drive the real HTTP pipeline through `TestClient` on
+databases they create. `evals.run` queries `POST /search/claims` in dense, lexical and
+hybrid modes over 26 synthetic claims. `evals.grounded_run` asks `POST /grounded/answers`
+over 23 synthetic claims and re-reads every returned citation from `/pages`; its
+deterministic tier swaps the model for an in-process oracle, so it measures the pipeline,
+and its `ollama` tier uses the configured local model. Neither harness calls the
+comparison, decomposition, review, description or Case endpoints.
+
+`make verify-deterministic-regression` is the only enforced evaluation. It runs both
+harnesses with the fake embedding provider, then asserts exact values: dense, lexical and
+hybrid Recall@5 and MRR@10; every grounded rate at 1.0 with no forbidden citation; every
+case successful and every guardrail refused; and `g01-single-storage` successful with
+`collector#1` cited. The baseline is fake-provider, so it guards plumbing and ranking logic
+against regression, not quality. It rewrites the result files in the working tree; CI uploads
+them as artifacts. `v1-07-final-evals` has no thresholds and succeeds if both harnesses run;
+its retrieval run uses the `.env.example` provider, `sentence-transformers`.
+
+The committed `apps/api/evals/results/results.json` and
+`results/grounded/results-deterministic.json` carry `generated_at` 2026-07-26 with the
+`intfloat/multilingual-e5-small` profile, and `results-ollama.json` the same date.
+`retrieval/lexical.py` changed on 2026-09-03 (P11). The files record that earlier run and
+are not current measurements; the committed grounded file still records
+`g01-single-storage` as not succeeding, which the gate now requires. Current real-embedding
+numbers were not re-measured.
+
+### Real-public corpus tier (D3, D4)
+
+`docs/real-public-corpus/manifest.json` lists two public Korean patent PDFs, each with a
+pinned SHA-256 and the status `not_asserted_do_not_commit_pdf`. The workflow downloads them
+at run time and nothing commits them; `.gitignore` excludes `*.pdf`.
+`scripts/verify-d3-real-corpus-inputs.sh` fails closed unless each file exists, begins with
+`%PDF-`, matches its pinned hash, passes `pdftotext`, contains its publication display
+number, and yields at least 500 non-space characters, 50 Hangul characters and a claim
+marker. The acceptance tests re-check the hash, require `text_native`, and drive the product
+path through the API. D4 does this for one document: description derivation, indexing, and a
+search whose query is a prefix of its own longest segment, with every result resolved
+against page text. Both run on fake embeddings, so they prove mechanics and provenance, not
+retrieval quality or correctness.
+
+### What this structure does not establish
+
+- **Model quality.** No tier measures an embedding model or an LLM. Integration, browser and
+  real-public tiers use fake providers; the gate uses an oracle; the one CI run with the real
+  embedding provider has no thresholds and is not committed, and real-embedding numbers
+  were not re-measured since v1.0.
+- **Description search over HTTP, outside the D4 acceptance.** Only that test calls the
+  description endpoints; the general suite tests the pure segmenter on synthetic text.
+- **Cases beyond one file.** `test_analyst_cases_integration.py` (General CI, integration
+  tier) is the only coverage; no browser script or workflow touches Cases.
+- **Concurrency and real database faults.** Retry serialisation is untested, and the
+  terminalization paths use stub sessions. Citation resolvability is not semantic
+  entailment.
+
+---
+
+## 17. Extension points for later phases
 
 Each item below names the seam, not the implementation. The intent is that adding a
 capability means adding a module behind an existing boundary, not reshaping the
 application.
 
-### Document and claim parsing (Phases 2A and 2B - built)
+> **Update (2026-11-11 wrap-up):** This section was rewritten at the wrap-up. Each
+> heading says whether its seam is built, partly built, or not built, and where an
+> earlier prediction proved wrong the correction is recorded in place.
+
+### Document and claim parsing (Phases 2A and 2B - built; header and abstract not built)
 
 - The `DocumentParser` protocol and the PyMuPDF implementation exist (section 7);
   the `ClaimParser` protocol and the Korean rule-based implementation exist
   (section 8). Implementations register against a protocol; no route branches on
   file format or language.
-- A second language's claim conventions would be another `ClaimParser`, selected
-  in `deps.py`. Nothing above the boundary changes.
-- Bibliographic header, abstract, and description sections remain unparsed.
-  When they arrive they attach the same way claims did: new tables, new revision,
-  spans on pages, page tables untouched.
-- OCR would arrive as another `DocumentParser` implementation. It needs the
-  asynchronous path that the `processing` state already anticipates.
+- A second language's claim conventions would be another `ClaimParser`, wired where
+  `main.py` builds the application state and handed out by `deps.py`. Nothing above
+  the boundary changes.
+- The description is now segmented for retrieval, as a derived layer over stored
+  page text (section 14). That is not a structural parse of the description. The
+  bibliographic header and the abstract remain unparsed; when they arrive they attach
+  the same way claims did: new tables, new revision, spans on pages, page tables
+  untouched.
+- OCR is not built. What was added instead is a fail-closed rule: a PDF with some
+  text-bearing and some text-empty pages is rejected rather than ingested partially
+  (section 7). OCR would arrive as another `DocumentParser` implementation, and it
+  needs the asynchronous path that the `processing` state anticipates; there is no
+  background worker yet (section 18). It is a deferred candidate for a later
+  destination, not a selected one.
 
-### Embedding providers and retrieval (Phase 3A - built)
+### Embedding providers and retrieval (Phase 3A - built; description retrieval built, element-level not built)
 
 - The `EmbeddingProvider` protocol and both implementations exist (section 9), as
   do the dense, lexical, and fusion retrievers. Swapping the model is a settings
@@ -2028,16 +3142,29 @@ application.
 - Provider identity, model version, dimension, and normalisation policy are
   recorded on every index run and combined into a `profile_key`, so incompatible
   indexes can coexist without ever being ranked against each other.
-- Description-level and element-level retrieval would attach the same way claims
-  did: new tables, new revision, spans on pages, existing tables untouched.
-  Nothing in the retrieval layer assumes a claim is the only indexable unit
-  beyond the table it reads from.
+- Description retrieval exists (section 14). Element-level retrieval is not built.
 
-### Reranking (Phase 3B-5)
+> **Update (2026-11-11 wrap-up):** This section originally predicted that
+> description-level and element-level retrieval "would attach the same way claims
+> did: new tables, new revision, spans on pages, existing tables untouched", and
+> that "nothing in the retrieval layer assumes a claim is the only indexable unit
+> beyond the table it reads from". That proved wrong. `retrieval/` is claim-shaped:
+> `Candidate` carries `claim_id` and `claim_number`, and the dense and lexical
+> retrievers read `claim_search_records` directly. Description retrieval was built by
+> duplicating that code: `DescriptionEvidenceService` runs its own dense, lexical,
+> and rank-fusion SQL over `description_search_records` (section 14). The profile
+> is stored on each description record, because there is no description index-run
+> table.
+
+### Reranking (Phase 3B - not built)
 
 - Seam: an optional `Reranker` - `query + candidates → reordered candidates`.
 - Absence of a reranker is a valid configuration; the pipeline must produce results
-  without one.
+  without one. That is the only configuration that exists: no reranker type or
+  reranking code is present in `src/`.
+- `docs/ROADMAP.md` groups description retrieval and reranking in Phase 3B. The first
+  is built (section 14); the second is not. An earlier version of this document
+  labelled the seam "3B-5".
 
 ### LLM providers (Phase 4A-1 - built)
 
@@ -2047,62 +3174,141 @@ application.
 - Local, self-hosted inference is the target; the protocol exists so the choice of
   runtime is a deployment decision rather than a code dependency.
 
-### Evidence-grounded generation (Phase 4A-2 - built)
+### Evidence-grounded generation (Phase 4A-2 - built, claim-only)
 
 - Built as predicted: `GroundedGenerationService` composes `ClaimSearchService`
   and `LLMGenerationService`, and neither changed. See section 11 above for the
-  design and section 12 for what it does not do.
+  design and section 18 for what it does not do.
+- Its evidence is claim text only. Description segments (section 14) and
+  decomposition elements (section 12) are not given to it. A Case result
+  (section 15) stores the output of the same service; `POST /grounded/answers` still
+  stores nothing.
 
-### Claim comparison workspace (Phase 5A)
+### Claim comparison (Phase 5A - built, retrieval-only)
 
-- Seam: a service over the grounded pipeline that takes *two* selected documents
-  and maps claim to claim, reusing the evidence catalog and the citation
-  validator unchanged.
-- Constraint that shapes the design: a mapping is a pair of citations plus a
-  described relationship, never a verdict. The moment an output field can hold
-  "anticipated" or "infringes", the system is making a legal conclusion, and
-  there is no such field.
+- Built as `ClaimComparisonService` (section 13). It composes `ClaimParsingService`
+  and `ClaimSearchService`: one stored target claim is the retrieval query,
+  retrieval is restricted to one reference document, and the result is that
+  document's ranked claims with their source locators.
+- There is no LLM call, no evidence catalog, no citation validator, and no
+  "described relationship". One target claim is compared against one reference
+  document, not two documents mapped claim to claim.
+- The constraint that shaped the design is kept: there is no output field that can
+  hold a verdict. A test asserts that the response carries no `infringement`,
+  `validity`, `novelty`, `equivalence`, or `patentability` key.
 
-### Claim analysis (Phase 5)
+> **Update (2026-11-11 wrap-up):** The seam as first written read: "a service over
+> the grounded pipeline that takes *two* selected documents and maps claim to claim,
+> reusing the evidence catalog and the citation validator unchanged", with the
+> constraint that "a mapping is a pair of citations plus a described relationship,
+> never a verdict. The moment an output field can hold 'anticipated' or 'infringes',
+> the system is making a legal conclusion, and there is no such field." What was built
+> is the narrower service above. A comparison built over the grounded pipeline is not
+> built.
 
-- Seam: a service layer over retrieval that decomposes claims into elements and
-  attaches retrieved evidence per element.
+### Claim analysis (Phase 5 - decomposition and review built; per-element evidence not built)
+
+- Deterministic decomposition and append-only human review exist (section 12).
+  `DeterministicElementParser` splits one persisted claim into ordered elements, and
+  each element span is a sub-span of the claim's own spans, so every element keeps a
+  stored source locator.
+- Not built: attaching retrieved evidence per element. Nothing in retrieval,
+  grounding, comparison, or Cases reads elements.
 - Constraint that shapes the design: every produced statement must be traceable to
   a stored source locator. Output without evidence is a bug, not a degraded mode.
 
-### Evaluation (Phase 6)
+### Evaluation (Phase 6 - built; the CI gate is deterministic)
 
-- Seam: an offline harness that consumes fixed datasets and reports retrieval and
-  grounding metrics.
-- Runs outside the request path, reads the same provider protocols, and never
-  requires a network model provider in CI.
+- The harness exists in `apps/api/evals` and is described in section 16: a retrieval
+  evaluation and a grounded-answer evaluation. It runs outside the request path and
+  reads the same provider protocols.
+- A deterministic regression gate runs in CI: `make verify-deterministic-regression`,
+  from the workflow `progression-deterministic-regression.yml`, runs both evaluations
+  with the fake embedding provider and an in-process oracle instead of a model, then
+  asserts pinned values. It guards the plumbing, not retrieval or answer quality.
+- "Never requires a network model provider in CI" means an LLM provider. The
+  `v1-07-final-evals.yml` workflow runs `python -m evals.run` with the
+  `.env.example` default `EMBEDDING_PROVIDER=sentence-transformers`, so that job
+  loads the real embedding model, which by reading downloads its weights on the
+  runner. It sets no metric thresholds; it uploads the results.
+
+### Persistent workspaces (Analyst Cases - built, deliberately small)
+
+- Seam: a Case is a durable identity that references existing documents and stores
+  grounded results whose quotes are re-read from canonical page text (section 15).
+  Source text stays in `document_pages`.
+- What a Case does not yet hold: an owner or any access control; description
+  evidence, comparison results, or decomposition results (the only Case tables are
+  `analyst_cases`, `analyst_case_documents`, `analyst_case_results`, and
+  `analyst_case_evidence`); a way to rename or delete a Case or a result; or
+  pagination of Cases or of results. It has no web UI; it is reachable only through
+  the API.
 
 ---
 
-## 13. Known architectural gaps
+## 18. Known architectural gaps
 
-Deliberate as of Phase 4A-2, listed so they are not mistaken for oversights:
+Recorded as of the 2026-11-11 wrap-up, listed so they are not mistaken for
+oversights. Most are deliberate scope limits; a few, such as the unmapped query-time
+embedding failure, are known defects that remain unfixed.
 
-- No authentication, authorisation, or multi-tenancy; no rate limiting.
-- No request-ID propagation or tracing.
-- No background worker. Ingestion, claim parsing, and claim indexing are all
-  synchronous, which is fine until OCR - and already means the first index
-  request after a restart holds a connection open for the model load.
+Not built, stated plainly:
+
+- **No reranker.** Hybrid retrieval ranks claims and description segments; nothing
+  reorders the fused list.
+- **No OCR.** Image-only and mixed PDFs are rejected, not read; a scan that already
+  carries an embedded text layer is ingested as text (section 7).
+- **No background worker.** Everything runs in the request.
+- **No web UI for Cases or for description search.** Both are API-only. A description
+  hit carries a `source_url` that opens the existing document page at the exact
+  range.
+- **No description evidence in grounded answers.** Grounded generation is
+  claim-only.
+- **No ORM models for the `0007` to `0009` tables.** Their services use raw SQL, and
+  they sit outside the metadata that Alembic autogenerate reads (section 6).
+
+The remaining gaps:
+
+- No authentication, authorisation, or multi-tenancy; no rate limiting. Cases have no
+  owner column, no pagination, and no rename or delete. Review rows carry no
+  reviewer identity or comment.
+- No request-ID propagation or tracing. The only middleware is CORS.
+- Ingestion, retry, claim parsing, claim indexing, element decomposition,
+  description derivation and indexing, and Case result generation are all
+  synchronous in the request. The first index request after a restart still holds a
+  connection open for the model load. The description service has no logging and
+  no `processing` or `failed` status lifecycle.
 - No virus scanning of uploads.
-- No delete endpoint. Rows can be removed in SQL (pages, parse results, claims,
-  spans, edges, index runs, and search records all cascade), but the stored
-  original is not garbage-collected by the application.
-- Claim parsing is Korean-only apart from a minimal English heading fallback,
-  and lexical retrieval has no Korean morphological analysis (section 9).
-- One embedding width. A model of a different dimension needs a migration.
-- No reranking, and no evaluation gate in CI.
-- Grounded answering has no reranking: the claims that reach the model are the
-  ones hybrid retrieval ranked, and a claim ranked just outside the evidence
-  budget is simply absent (section 11, and the g01 case in the evaluation).
-- No claim element decomposition, so a grounded answer cites whole claims. An
-  answer about one limitation still points at the entire claim it sits in.
+- No document, Case, or result delete endpoint. The one DELETE route removes a
+  Case-document association. Rows can be removed in SQL, and most derived tables
+  cascade from `documents`, but a document cited by a stored Case result cannot be
+  deleted (sections 9 and 15). The stored original is not garbage-collected by the
+  application.
+- Claim parsing is Korean-only apart from a minimal English heading fallback.
+  Lexical retrieval has no Korean morphological analysis; the term-level fallback is
+  trigram matching, not morphology (section 9). Element decomposition splits only on
+  the ASCII `;`.
+- One embedding width. Two tables are migrated at it, so a model of a different
+  dimension needs a migration that touches both (section 9). A failure to embed a
+  query is also unmapped and, by reading, would surface as a generic 500; no test
+  covers it (section 9).
+- Grounded answering has no reranking: the claims that reach the model are the ones
+  hybrid retrieval ranked, and a claim ranked just outside the evidence budget is
+  simply absent (section 11). The g01 case in the evaluation was the recorded
+  example. The deterministic gate now pins g01 to succeed: the `Makefile` target
+  asserts that `g01-single-storage` succeeds with `collector#1` cited. The committed
+  result files were generated on 2026-07-26, before the term-level lexical change,
+  and still show g01 failing. Whether g01 passes with the real embedding model has not
+  been re-measured.
+- A grounded answer still cites whole claims. Decomposition exists (section 12), but
+  grounding does not use elements, so an answer about one limitation points at the
+  entire claim it sits in.
 - Prompt injection is bounded, not prevented (section 11).
 - No streaming anywhere, and generation is synchronous and in-request.
-- No production web image (the container runs `next dev`); no CI pipeline.
-- The whole upload is held in memory while hashing and parsing. Bounded by
-  `UPLOAD_MAX_BYTES`, so it is a known ceiling rather than an open-ended one.
+- No production web image: the container runs `next dev`. Sixteen workflows in
+  `.github/workflows` verify the repository; none deploys anything. The evaluation
+  gate they include is the deterministic fake-provider tier (section 16), which
+  guards plumbing rather than quality.
+- The whole upload is held in memory while hashing and parsing, and a retry reads
+  the whole stored original back. Bounded by `UPLOAD_MAX_BYTES`, so it is a known
+  ceiling rather than an open-ended one.

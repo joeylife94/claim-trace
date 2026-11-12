@@ -33,7 +33,7 @@ up: ## Build and start postgres, api, and web in the foreground
 up-detached: ## Same as up, in the background
 	$(COMPOSE) up --build -d
 
-down: ## Stop and remove containers (keeps the postgres volume)
+down: ## Stop and remove containers (keeps every named volume, not only postgres)
 	$(COMPOSE) down
 
 logs: ## Follow logs from all services
@@ -100,7 +100,7 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
 
-verify-deterministic-regression: init ## Re-run and enforce public-safe deterministic regressions
+verify-deterministic-regression: init ## Run both evaluations with the fake provider, enforce the pinned baseline (rewrites evals/results)
 	$(COMPOSE) config --quiet
 	$(COMPOSE) build api
 	$(COMPOSE) up -d postgres
@@ -135,9 +135,15 @@ web-lint: ## Lint the web app (eslint)
 web-typecheck: ## Type-check the web app (tsc)
 	cd $(WEB_DIR) && npm run typecheck
 
-check: lint fmt-check test web-lint web-typecheck ## Run every quality gate
+check: lint fmt-check test web-lint web-typecheck ## Run lint, format check, host tests, web lint and typecheck
 
-## --- Retrieval evaluation ---------------------------------------------------
+## --- Evaluation -------------------------------------------------------------
+# The two targets below run the retrieval evaluation only. The grounded
+# evaluation has no target of its own; run it with
+#   docker compose run --rm api python -m evals.grounded_run
+# (see apps/api/evals/README.md). verify-deterministic-regression, above, runs
+# both evaluations with the fake provider and overwrites the committed files
+# under apps/api/evals/results.
 
 eval: ## Run the retrieval evaluation with the configured embedding model
 	$(COMPOSE) run --rm api python -m evals.run
