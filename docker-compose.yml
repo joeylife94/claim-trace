@@ -3,12 +3,27 @@
 #   cp .env.example .env
 #   docker compose up --build
 #
-# Ports (host -> container):
-#   web       3000 -> 3000   Next.js dev server
-#   api       8000 -> 8000   FastAPI (docs at http://localhost:8000/docs)
-#   postgres  5432 -> 5432   PostgreSQL 17 + pgvector
+# Ports (host -> container; the host side is overridable through the *_PORT
+# variables in .env):
+#   web       3000 -> 3000     Next.js dev server
+#   api       8000 -> 8000     FastAPI (docs at http://localhost:8000/docs)
+#   postgres  5432 -> 5432     PostgreSQL 17 + pgvector
+#   ollama   11434 -> 11434    optional, only under `--profile llm`
 #
-# Every value comes from .env; nothing secret is committed.
+# Host ports are published without a host address, so Docker's default applies
+# and they listen on all network interfaces, not only on loopback. This is a
+# local-development stack: it runs reload/dev servers, mounts source into the
+# containers, uses a placeholder database password, and has no authentication.
+# On a shared or untrusted network, bind the ports to loopback (for example
+# "127.0.0.1:8000:8000") or restrict access with a firewall before starting it.
+#
+# Values are interpolated from .env (or the shell) with the defaults shown below;
+# no real secret is committed. Only variables listed under a service's
+# `environment:` reach that container - the api service has no env_file - so
+# CORS_ALLOW_CREDENTIALS, DATABASE_URL, UPLOAD_ALLOWED_CONTENT_TYPES and
+# UPLOAD_ALLOWED_EXTENSIONS from .env.example have no effect in this stack, and
+# the application's built-in defaults apply instead. The api service's
+# POSTGRES_HOST and POSTGRES_PORT are fixed below.
 
 name: claimtrace
 
@@ -57,7 +72,9 @@ services:
       STORAGE_ROOT: ${STORAGE_ROOT:-/data/uploads}
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-20971520}
       MIN_EXTRACTED_CHARACTERS: ${MIN_EXTRACTED_CHARACTERS:-32}
-      # Claim indexing and retrieval
+      # Indexing and retrieval. These settings are shared by claim indexing and
+      # search, claim comparison, grounded answers, and description-evidence
+      # indexing and search.
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-sentence-transformers}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       EMBEDDING_CACHE_DIR: ${EMBEDDING_CACHE_DIR:-/models}

@@ -4,7 +4,11 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state: **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, and 5A complete within the accepted controlled-pilot boundary; Phase 3B remains future/unverified.**
+Current state (updated 2026-11-11): **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, and 5A complete within the accepted controlled-pilot boundary. Phase 3B and Phase 6 are partially delivered; each phase section below says what exists and what does not.** Work after the v1.0 freeze is summarised in [Post-v1 progression](#post-v1-progression). No milestone is active, and the next destination needs a human decision (see [Candidate next destinations](#candidate-next-destinations-not-selected)).
+
+The phase sections below are the plan and delivery record as written; where later work
+makes a sentence read as contradicted, a dated note under it says so rather than
+rewriting it.
 
 Phase 3 was taken before 2C, and split. Claim-level retrieval needs only the
 claim graph that 2B already produces, so it could be built and measured
@@ -59,6 +63,11 @@ Delivered:
   `completed` status written in one transaction.
 - Explicit lifecycle (`uploaded → processing → completed | failed`) with persisted
   error codes, so failures stay traceable.
+
+  > Note (2026-11-11): since the v1.0 freeze an operator can retry a `failed`
+  > document from its persisted original (`POST /api/v1/documents/{id}/retry`), which
+  > moves it `failed → processing` and on to `completed` or `failed` again. Retry is
+  > explicit and operator-driven; there is still no queue or background worker.
 - `SourceLocator` — `(document_id, page_number, start_char, end_char)` over stored
   page text — defined, validated, and returned with every page.
 - Minimal upload + document status + page text UI.
@@ -70,6 +79,12 @@ documented.
 
 Explicit non-goals honoured: no OCR, no section detection, no claim parsing, no
 chunking, no queue.
+
+> Note (2026-11-11): true when this phase closed. Description section detection and
+> segmentation were added later as a separate derived layer (see Phase 3B), not in
+> ingestion. There is still no OCR and no queue; since the later PDF text-layer
+> classification, a PDF in which any page has no extractable text is rejected rather
+> than ingested partially.
 
 ### Phase 2B - Deterministic claim structural parsing (complete)
 
@@ -155,6 +170,11 @@ Delivered:
   HNSW cosine index, and GIN indexes for full-text and trigram matching.
 - Dense retrieval over pgvector; lexical retrieval over PostgreSQL `simple`
   full-text plus trigram, tuned for Korean compounds and josa attachment.
+
+  > Note (2026-11-11): after the freeze, lexical retrieval gained a bounded
+  > term-level trigram eligibility fallback for multi-word queries (a
+  > `word_similarity` threshold of 0.60 per term; it admits candidates and adds no
+  > second ranking score). See `retrieval/lexical.py`.
 - Reciprocal Rank Fusion with configurable `k`, per-channel ranks and scores
   preserved, and `hybrid` / `dense` / `lexical` modes.
 - `POST /api/v1/search/claims`, indexing endpoints, a `/search` UI, and a
@@ -169,7 +189,10 @@ measured.
 
 Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
 
-### Phase 3B - Description retrieval and reranking (future / unverified)
+> Note (2026-11-11): true when this phase closed. Description segmentation and
+> retrieval were added afterwards under Phase 3B; there is still no reranker.
+
+### Phase 3B - Description retrieval and reranking (partially delivered)
 
 **Goal:** widen retrieval past claims, and improve precision at the top.
 
@@ -182,8 +205,22 @@ Explicit non-goals honoured: no reranking, no chunking of descriptions, no LLM.
 Exit criteria: description passages are retrievable alongside claims, and a
 reranker can be switched on without touching the retrieval or API layers.
 
-This phase is not part of the accepted v1.0 capability boundary and remains
-unverified.
+This phase was not part of the accepted v1.0 capability boundary. Status as of
+2026-11-11, by item:
+
+- **Description retrieval: exists (post-v1, destination D4).** A structure-aware
+  segmenter derives description segments from persisted page text, and they are
+  indexed and searched through separate endpoints (migration `0007`;
+  `POST /api/v1/documents/{id}/descriptions/derive`, `.../descriptions/index`,
+  `POST /api/v1/search/descriptions`). It is not merged into claim search: a
+  description search returns description evidence only. It has no dedicated UI. See
+  [D4_DESCRIPTION_AWARE_EVIDENCE.md](D4_DESCRIPTION_AWARE_EVIDENCE.md).
+- **Retrieval regression gate in CI: exists.** The `Progression Deterministic
+  Regression` workflow runs `make verify-deterministic-regression`, which pins a
+  fake-provider baseline (see Phase 6).
+- **`Reranker` seam: not built.** Nothing in `apps/api/src` implements reranking.
+- The exit criterion "retrievable alongside claims" is therefore not met as
+  written: claims and descriptions are retrieved through separate endpoints.
 
 ---
 
@@ -216,6 +253,7 @@ unverified.
 
 Exit criteria met: generation works against a locally hosted model
 (`qwen2.5:1.5b`, warm 0.18-0.38 s, structured 0.61-0.94 s), and the 621-test suite
+(the count when this phase closed)
 runs with no model present. vLLM is contract-tested against a mocked transport;
 no real vLLM server was run. See
 [docs/ARCHITECTURE.md](ARCHITECTURE.md) section 10.
@@ -253,7 +291,15 @@ Delivered:
 - **No migration.** The output is request-scoped; the schema is unchanged at
   revision 0004.
 
-Verified: 876 backend tests; a deterministic evaluation tier (16 cases, 23 newly
+  > Note (2026-11-11): `POST /api/v1/grounded/answers` is still stateless and still
+  > writes nothing. Separately, the later persistent Case workspace (migrations
+  > `0008` and `0009`) can store a grounded result under an analyst Case through
+  > `POST /api/v1/cases/{case_id}/grounded-results` and reopen it later. Those Case
+  > endpoints are API-only (no UI), and grounded answers remain claim-only. The
+  > "no history, no memory" and "revision 0004" statements describe the original
+  > phase and `/grounded` itself; the Alembic head is now `0009`.
+
+Verified (as recorded when this phase closed): 876 backend tests; a deterministic evaluation tier (16 cases, 23 newly
 authored synthetic Korean claims across 3 documents) with citation resolution
 1.00 and 6/6 hostile payloads refused; and a real `qwen2.5:1.5b` tier with
 structured-output success 1.00, citation resolution 1.00, and zero scope leaks -
@@ -275,8 +321,9 @@ Delivered within the accepted v1.0 Proof boundary:
 
 - Select target/reference documents and compare claims under strict reference
   document scope.
-- Reuse the grounded evidence/citation contract so rendered correspondence is
-  backed by resolvable source evidence.
+- Retrieve correspondences through the existing claim retrieval pipeline
+  (`ClaimSearchService`), so every returned claim carries its canonical
+  page-relative source spans and resolves back to stored text.
 - Preserve explicit insufficient/no-supported-correspondence behavior rather than
   forcing a match.
 - Navigate comparison/review surfaces back to persisted source text.
@@ -285,6 +332,14 @@ Delivered within the accepted v1.0 Proof boundary:
 Exit criteria met within the accepted Proof boundary: target/reference claim
 comparison is source-verifiable and reviewable on the deterministic controlled
 pilot flow.
+
+> Correction (2026-11-11): an earlier version of this section, and the architecture
+> document, described comparison as reusing "the grounded evidence/citation
+> contract". As built (`services/claim_comparison.py`), comparison is
+> retrieval-only: the target claim's stored text is the query, retrieval is forced to
+> the one reference document, and the ranked stored claims are returned with their
+> spans. `claim_comparison.py` does not import or call `GroundedGenerationService`
+> or an LLM provider.
 
 Standing constraint: output describes textual correspondence only. ClaimTrace
 does not determine infringement, validity, novelty, inventive step, equivalence,
@@ -307,6 +362,77 @@ patentability, or any other legal conclusion.
 Exit criteria: metrics are reproducible from a clean checkout with one documented
 command.
 
+Status as of 2026-11-11: **partially delivered.**
+
+Exists:
+
+- the retrieval and grounded evaluation harnesses under `apps/api/evals/`
+  (`python -m evals.run`, `python -m evals.grounded_run`), with committed synthetic
+  datasets and committed result files;
+- a CI regression gate: `make verify-deterministic-regression` re-runs both
+  evaluations with the fake embedding provider and asserts a pinned baseline, run on
+  pull requests by the `Progression Deterministic Regression` workflow;
+- demonstration and verification scripts over the synthetic seed documents
+  (`scripts/verify-v1-06-golden-path.sh`, `scripts/capture-v1-07-proof.sh`,
+  `scripts/verify-controlled-pilot-handoff.sh`);
+- limitations recorded in `CLAIMTRACE_V1_MASTER.md` (Sections 6 and 7).
+
+Does not exist:
+
+- an ingestion-throughput performance characterisation. The retrieval evaluation
+  reports query latency; no ingestion-throughput measurement is committed.
+
+Caveat: the committed result files in `apps/api/evals/results/` were generated on
+2026-07-26 with the `intfloat/multilingual-e5-small` profile, before the later
+lexical fallback change. Current real-embedding numbers were not re-measured. The
+enforced gate pins fake-provider numbers instead; see
+[apps/api/evals/README.md](../apps/api/evals/README.md).
+
+---
+
+## Post-v1 progression
+
+After the `v1.0-proof` freeze, work continued as numbered milestones (P1-P14) toward
+numbered destinations (D1-D6). The authoritative record of each, with its evidence
+and non-claims, is `CLAIMTRACE_V1_MASTER.md` (milestones in Section 10, destinations
+in Sections 11-15, current state in Section 16). This table is only a map.
+
+| Milestone | What it added | Outcome |
+| --- | --- | --- |
+| P1 | `make verify-deterministic-regression` and a PR workflow for it | Accepted and merged |
+| P2, P3, P4, P13 | Ingestion and claim-graph persistence failures that previously could strand a record are terminalized as `failed` with client-safe error codes | Accepted and merged |
+| P5, P6, P7 | Documentation reconciliation: ingestion failure table, roadmap phase statuses, removal of a duplicate Phase 5 section | Accepted and merged |
+| P8, P9, P10 | Operator retry of a failed ingestion from the persisted original: API, Documents UI form, and a real web/API/PostgreSQL verifier | Accepted and merged |
+| P11, P12 | Evidence recovery for the known `g01` question, and a bounded Korean term-level lexical fallback with negative regression coverage | Accepted and merged |
+| P14 | One-command controlled-pilot handoff verifier (`scripts/verify-controlled-pilot-handoff.sh`) | Accepted and merged |
+
+| Destination | Scope | Outcome |
+| --- | --- | --- |
+| D1 | Controlled pilot for one analyst/reviewer on a trusted workstation | Reached |
+| D2 | Delivery-ready controlled-pilot handoff (P14) | Reached |
+| D3 | Real-document controlled pilot: manifest-driven verifier over two hash-pinned public Korean patent PDFs, downloaded at run time and not committed | Reached |
+| D4 | Description-aware evidence retrieval: derive, index and search description segments (API only; migration `0007`) | Reached |
+| D5 | Persistent analyst Cases and persisted, reopenable Case-grounded results (API only; migrations `0008`, `0009`) | Reached |
+| D6 | Mixed-PDF input: text-layer classification that fails closed (D6-01) | Closed at the fail-closed boundary by Human Review on 2026-11-11; OCR deferred, no D6-02 |
+
+No milestone is active. The Alembic head is `0009`.
+
+---
+
+## Candidate next destinations (not selected)
+
+These are candidates only, listed without order and without commitment. None is
+planned, scheduled, or started. Each would need its own Human Review decision and a
+bounded acceptance contract before any work begins. The list mirrors Section 16 of
+`CLAIMTRACE_V1_MASTER.md`, which is authoritative.
+
+- OCR / scanned-input recovery, behind the OCR Gate recorded in the MASTER (Section 15);
+- a web surface for Cases and description retrieval;
+- description evidence in grounded analysis, with or without reranking;
+- real-local-model quality re-measurement and refreshed evaluation artifacts;
+- relaxing the conservative mixed-PDF rejection for text-native PDFs with blank or drawing-only pages;
+- deployment hardening for a shared-network host, starting from Issue #65.
+
 ---
 
 ## Out of scope for all six phases
@@ -316,6 +442,11 @@ pipelines, cloud infrastructure, and hosted third-party model APIs. These are
 deliberate boundaries for a portfolio project that demonstrates retrieval
 engineering, not platform operations.
 
+Authentication, RBAC, multi-tenancy, public cloud, Kubernetes, private or customer
+corpora, and any legal-conclusion capability remain out of scope unless a human
+explicitly brings them in.
+
 The authoritative frozen v1.0 capability, evidence, limitations, and non-claims
-remain defined by `CLAIMTRACE_V1_MASTER.md`; this roadmap must not be read as a
-legal or production-readiness claim.
+remain defined by `CLAIMTRACE_V1_MASTER.md`, which also carries the post-v1 ledger
+and the current state (Section 16); this roadmap must not be read as a legal or
+production-readiness claim.

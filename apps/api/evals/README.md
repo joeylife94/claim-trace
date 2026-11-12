@@ -5,6 +5,22 @@ Two reproducible measurements, over separate corpora:
 - **Retrieval** (Phase 3A) - this page.
 - **Grounded generation** (Phase 4A-2) - [below](#grounded-generation-evaluation-phase-4a-2).
 
+Two further things sit alongside them: the enforced fake-provider
+[regression gate](#enforced-regression-gate-fake-provider) and the separate
+[real-public acceptance tests](#real-public-acceptance-tests-a-separate-evidence-tier).
+
+> **Committed results are a record of one earlier run.** The files under
+> `results/` carry `generated_at` timestamps of 2026-07-26
+> (`results/results.json`, 09:20 UTC; `results/grounded/results-deterministic.json`,
+> 23:24 UTC; `results/grounded/results-ollama.json`, 23:27 UTC).
+> `results/results.json` records the `intfloat/multilingual-e5-small` embedding
+> model; the grounded result files do not record an embedding profile. The lexical
+> channel (`retrieval/lexical.py`) was last changed after that, on 2026-09-03 (a
+> bounded term-level trigram fallback), so the committed numbers describe the code
+> as it was on the run date. They have not been re-measured against the current
+> lexical code, and the current real-embedding numbers are unknown. Do not quote
+> them as measurements of `main`.
+
 ---
 
 ## Retrieval evaluation (Phase 3A)
@@ -18,8 +34,9 @@ docker compose run --rm api python -m evals.run --provider fake
 ```
 
 Writes `results/results.json` (machine-readable) and `results/REPORT.md`
-(the summary), both committed so a change in retrieval behaviour shows up as a
-diff.
+(the summary). Both are committed, so re-running and diffing shows a change in
+retrieval behaviour; the committed copies are a record of the run dated in their
+`generated_at` field (see the note at the top), not a live measurement.
 
 ### What it actually runs
 
@@ -104,8 +121,9 @@ docker compose run --rm api python -m evals.grounded_run --tier ollama --limit 6
 ```
 
 Writes `results/grounded/results-<tier>.json` and
-`results/grounded/REPORT-<tier>.md`, both committed so a behaviour change shows
-up as a diff.
+`results/grounded/REPORT-<tier>.md`. Both are committed, so re-running and
+diffing shows a behaviour change; like the retrieval results they record the run
+dated in their `generated_at` field.
 
 ### What it actually runs
 
@@ -223,3 +241,58 @@ pipeline makes none.
 
 ClaimTrace does not provide legal advice and does not determine infringement,
 validity, novelty, inventive step, or patentability.
+
+---
+
+## Enforced regression gate (fake provider)
+
+The committed results above are not what CI enforces. The enforced gate is the
+`Makefile` target, run from the repository root (and by the
+`Progression Deterministic Regression` workflow on pull requests):
+
+```bash
+make verify-deterministic-regression
+```
+
+It builds the `api` image, starts PostgreSQL, then runs
+`python -m evals.run --provider fake` and
+`python -m evals.grounded_run --tier deterministic` with
+`EMBEDDING_PROVIDER=fake`, and asserts the following against the files those runs
+just wrote:
+
+- retrieval, fake provider (Recall@5 / MRR@10): dense `0.7255` / `0.6725`,
+  lexical `0.9118` / `0.9608`, hybrid `0.8824` / `0.8407`;
+- grounded, deterministic tier: structured-output rate, answerability accuracy,
+  citation resolution rate, statement citation coverage, evidence-selection recall,
+  and end-to-end success rate all `1.0`, with zero forbidden citations;
+- every grounded case succeeds end to end, and in particular
+  `g01-single-storage` succeeds and cites `collector#1` with no forbidden citation;
+- every guardrail case is refused;
+- `ruff check evals` and `ruff format --check evals` pass.
+
+These are plumbing numbers. The fake embedding provider is not semantic and the
+deterministic tier uses an in-process oracle instead of a model, so the gate shows
+that the pipeline is wired and that citations resolve; it says nothing about
+retrieval or answer quality with a real model.
+
+Because the evaluations write to `results/`, **running the gate overwrites the
+committed result files** with fake-provider output (the `api` service mounts
+`apps/api/evals` writable). Restore them with `git checkout -- apps/api/evals/results`
+if you do not intend to change the record.
+
+---
+
+## Real-public acceptance tests (a separate evidence tier)
+
+`apps/api/tests/d3_acceptance/test_real_public_corpus.py` and
+`apps/api/tests/d4_acceptance/test_real_public_description.py` are not part of
+these evaluations and are not measured retrieval. They are acceptance tests over
+two real public Korean patent PDFs pinned by SHA-256 in
+`docs/real-public-corpus/manifest.json`. The PDFs are downloaded at run time and
+never committed, and the test directories are excluded from default `pytest`
+collection. They run in the `Progression D3 Real Public Corpus` and
+`Progression D4 Description Evidence` workflows. Their role is to check that the
+product path (ingest, parse, claim and description evidence, citation
+resolution) works on real documents; they do not produce retrieval-quality
+metrics, and the synthetic corpora on this page remain the only labelled
+evaluation data in the repository.
