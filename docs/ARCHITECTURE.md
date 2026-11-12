@@ -4,7 +4,7 @@ Status: **`main` after the v1.0 Proof (tag `v1.0-proof`), as of the 2026-11-11
 first wrap-up. Alembic head `0009`; no milestone is active.** This document
 describes what exists today and the boundaries where later work attaches.
 Reranking is not built, so it is not specified here. Claim element decomposition
-and claim-to-claim comparison are built (sections 12 and 13). Sections 1-11
+and a retrieval-only claim comparison are built (sections 12 and 13). Sections 1-11
 describe the original phases; sections 12-16 cover what was added after them,
 section 17 the extension points, and section 18 the known gaps.
 
@@ -457,10 +457,12 @@ persisted on failed documents. Clients branch on the code, never on the message.
 The retrieval, LLM, and grounded phases add further codes, listed in sections 9, 10,
 and 11.
 
-> **Update (2026-11-11 wrap-up):** `storage_failure` is also raised before any
-> document is registered, when the original cannot be written. In that case the
-> response is an ordinary `{detail, error_code}` body with no `document`, because no
-> record exists.
+> **Update (2026-11-11 wrap-up):** Two rows above are broader than they read.
+> `storage_failure` is also raised before any document is registered, when the
+> original cannot be written; the response is then an ordinary
+> `{detail, error_code}` body with no `document`, because no record exists.
+> `no_extractable_text` is also returned for a mixed text layer, not only for a
+> total below `MIN_EXTRACTED_CHARACTERS` (section 7).
 
 ---
 
@@ -941,6 +943,10 @@ Retrieval only. No generation, no summarisation, no reranking, and no legal
 reasoning: a search returns claims that already exist in the corpus, each
 carrying the page coordinates it came from.
 
+> **Update (2026-11-11 wrap-up):** A second retrieval surface exists:
+> `POST /api/v1/search/descriptions` searches description segments, separately from
+> claim search (section 14). This section describes claim retrieval.
+
 ```
 completed claim parse result
   → deterministic search representation   (indexing/normalization.py)
@@ -1125,6 +1131,10 @@ So the lexical channel retrieves through three indexed branches at once:
 | `normalized_text LIKE '%q%'` | GIN trigram | verbatim substrings |
 | `q <% normalized_text` | GIN trigram | approximate substrings - Korean compounds and josa-suffixed forms |
 
+> **Update (2026-11-11 wrap-up):** For claims there is now a fourth, term-level
+> eligibility predicate, OR-ed with these three. See "Term-level lexical fallback"
+> below.
+
 The tsquery is an **OR** of one `plainto_tsquery` call per normalised term. AND
 semantics would mean a single unmatched word suppresses the whole result, which
 is fatal here because particle attachment guarantees some words will not match
@@ -1155,6 +1165,8 @@ It cannot resolve a synonym, and it will occasionally match a coincidental
 substring. Real Korean lexical search wants an analyser such as mecab-ko behind
 a custom text-search configuration, which is a database provisioning decision
 rather than an application change.
+
+<!-- ARCH-INSERT: 9-term-fallback -->
 
 ### Dense retrieval
 
@@ -1276,6 +1288,14 @@ Decisions worth stating:
 - **Everything CASCADEs from `documents`.** A search record must never outlive
   the claim it projects, or a query could return text an operator believes they
   deleted. Deleting a parse result likewise removes the index built from it.
+
+  > **Update (2026-11-11 wrap-up):** That is true of the retrieval tables this
+  > revision adds, but not of every table that references `documents`.
+  > `analyst_case_evidence.document_id` is `ON DELETE RESTRICT` (revision `0009`), so
+  > a document cited by a stored Case result cannot be deleted in SQL until that
+  > result, or its Case, is deleted (section 15). The description-evidence tables
+  > (`0007`) and the Case document associations (`0008`) do cascade from
+  > `documents`.
 - **`search_vector` is maintained by the application**, not a trigger, so the
   exact text that was embedded is also the text that was tokenised. The two
   channels can never disagree about what a record contains.
@@ -1292,6 +1312,8 @@ Decisions worth stating:
 | `POST /documents/{id}/claims/index` | Synchronous. `201` for a new completed run, `200` for an equivalent existing one |
 | `GET /documents/{id}/claims/index` | The most recent run, whatever profile it used |
 | `POST /search/claims` | `query`, `mode`, `document_ids`, `top_k`, candidate counts |
+| `POST /search/descriptions` | The same shape over description segments, not claims; separate from claim search (section 14) |
+| `POST /compare/claims` | One target claim against one reference document, by retrieval only (section 13) |
 
 Search is a POST rather than a GET with query parameters. The request has
 structure that does not flatten into a query string cleanly, and - the deciding
@@ -1310,6 +1332,15 @@ New error codes:
 
 `503` rather than `500` for a missing model is deliberate: the caller is being
 told to retry, not that their request was wrong.
+
+> **Update (2026-11-11 wrap-up):** Only the indexing path maps the provider failure
+> to this code: `ClaimIndexingService` catches `EmbeddingError` and records a failed
+> run. At query time - claim search, comparison, grounded answers, and description
+> indexing and search - the provider's exception is not an `AppError` and nothing
+> catches it, so by reading `main.py` the generic handler would answer 500
+> `{"detail": "Internal server error"}`. The search, comparison, and
+> description-search routes still declare 503 in their OpenAPI responses. No test
+> drives the query-time case through the HTTP layer.
 
 Every result carries `source_spans` in the canonical
 `(document_id, page_number, start_char, end_char)` form - the same coordinates
@@ -1339,6 +1370,9 @@ cache path or a URL with a token.
 - Korean lexical matching is token and trigram based, with no morphological
   analysis. See above; this is the largest quality gap.
 - One vector width. A wider model needs a migration.
+
+  > **Update (2026-11-11 wrap-up):** Two tables are now migrated at `vector(384)`:
+  > `claim_search_records` (`0004`) and `description_search_records` (`0007`).
 - Indexing is synchronous and holds a request open. Acceptable at claim scale -
   26 claims embed in 139 ms once the model is resident - but the first request
   after a restart pays the ~9.5 s model load.
@@ -1788,6 +1822,15 @@ domain data, and persisting prompts and completions would create a store of
 confidential patent text with no feature depending on it. No empty migration was
 created to advance the revision number.
 
+> **Update (2026-11-11 wrap-up):** The schema has moved on since this phase:
+> revisions `0005` to `0009` added domain tables (section 6). Prompts, raw
+> completions, and provider diagnostics are still not persisted. The Case path does
+> store model-derived text, however: `POST /api/v1/cases/{id}/grounded-results`
+> keeps the server-composed `answer` and its `statements`, whose wording comes from
+> the model's validated draft, together with generation metadata (provider, model,
+> token usage, duration), warnings, and per-evidence metadata. It does not store
+> quotes (section 15).
+
 ### The model this phase was validated with
 
 | | |
@@ -1967,6 +2010,12 @@ properties, each ruling out a class of bug:
 | **Positional** - `EV-001` is the first entry of this request's ordered evidence | An id derived from a primary key leaks database state; an id derived from the text lets a claim containing `EV-002` influence what `EV-002` means |
 | **Request-local** - never stored, never reused | Resolving an id from another request, which would be a cross-request citation |
 | **Exact** - matched against `\AEV-[0-9]{3}\Z`, with no trimming, case folding, or numeric fallback | Every convenience that lets output the server never issued become a citation |
+
+> **Update (2026-11-11 wrap-up):** Within a stored Case result (section 15) the ids
+> are stored: `analyst_case_evidence.evidence_id` is part of that table's primary
+> key together with `result_id`, and the ids also appear in the stored `statements`.
+> They stay scoped to one result row and are never resolved across results.
+> `POST /api/v1/grounded/answers` itself still stores nothing.
 
 `\A`/`\Z` rather than `^`/`$` because Python's `$` also matches before a trailing
 newline, so `"EV-001\n"` would pass the obvious check.
@@ -2163,6 +2212,20 @@ within one request, so there is nothing to look up later. An integration test
 asserts the live schema contains no table matching `grounded`, `answer`,
 `generation`, or `citation`, so adding one becomes a visible decision.
 
+> **Update (2026-11-11 wrap-up):** The text above stays as the Phase 4A-2 decision.
+> `POST /api/v1/grounded/answers` is still unpersisted, and
+> `GroundedGenerationService` still persists nothing. But a second endpoint wraps
+> the same service and does persist. `POST /api/v1/cases/{id}/grounded-results`
+> (section 15) stores the question, a snapshot of the request, the server-composed
+> answer and statements, retrieval and generation metadata, and per-evidence
+> metadata and locators, in `analyst_case_results` and `analyst_case_evidence`
+> (revision `0009`). It does not store quotes; they are re-resolved from
+> `document_pages` each time a result is read. The integration test described above
+> still passes, but only because those tables are named `analyst_case_results` and
+> `analyst_case_evidence`: neither name matches its patterns, so its stated purpose,
+> making a new table a visible decision, no longer holds. "Unchanged at revision
+> 0004" is likewise historical; the head is `0009`.
+
 ### Observability and privacy
 
 One structured event per answer, carrying counts, codes, and server-issued
@@ -2188,29 +2251,48 @@ server-resolved quote, and locator links into the existing page viewer, which
 highlights the exact stored range. Model text is rendered as plain text in
 ordinary elements - never `dangerouslySetInnerHTML`, never a Markdown renderer.
 
+> **Update (2026-11-11 wrap-up):** `/grounded` and `/search` accept a
+> `?document=<id>` query parameter that preselects the document scope in the form,
+> and the document detail page links to both pages with its own id.
+
 ---
 
-## 12. Extension points for later phases
+<!-- ARCH-INSERT: sections 12-16 -->
+
+---
+
+## 17. Extension points for later phases
 
 Each item below names the seam, not the implementation. The intent is that adding a
 capability means adding a module behind an existing boundary, not reshaping the
 application.
 
-### Document and claim parsing (Phases 2A and 2B - built)
+> **Update (2026-11-11 wrap-up):** This section was rewritten at the wrap-up. Each
+> heading says whether its seam is built, partly built, or not built, and where an
+> earlier prediction proved wrong the correction is recorded in place.
+
+### Document and claim parsing (Phases 2A and 2B - built; header and abstract not built)
 
 - The `DocumentParser` protocol and the PyMuPDF implementation exist (section 7);
   the `ClaimParser` protocol and the Korean rule-based implementation exist
   (section 8). Implementations register against a protocol; no route branches on
   file format or language.
-- A second language's claim conventions would be another `ClaimParser`, selected
-  in `deps.py`. Nothing above the boundary changes.
-- Bibliographic header, abstract, and description sections remain unparsed.
-  When they arrive they attach the same way claims did: new tables, new revision,
-  spans on pages, page tables untouched.
-- OCR would arrive as another `DocumentParser` implementation. It needs the
-  asynchronous path that the `processing` state already anticipates.
+- A second language's claim conventions would be another `ClaimParser`, wired where
+  `main.py` builds the application state and handed out by `deps.py`. Nothing above
+  the boundary changes.
+- The description is now segmented for retrieval, as a derived layer over stored
+  page text (section 14). That is not a structural parse of the description. The
+  bibliographic header and the abstract remain unparsed; when they arrive they attach
+  the same way claims did: new tables, new revision, spans on pages, page tables
+  untouched.
+- OCR is not built. What was added instead is a fail-closed rule: a PDF with some
+  text-bearing and some text-empty pages is rejected rather than ingested partially
+  (section 7). OCR would arrive as another `DocumentParser` implementation, and it
+  needs the asynchronous path that the `processing` state anticipates; there is no
+  background worker yet (section 18). It is a deferred candidate for a later
+  destination, not a selected one.
 
-### Embedding providers and retrieval (Phase 3A - built)
+### Embedding providers and retrieval (Phase 3A - built; description retrieval built, element-level not built)
 
 - The `EmbeddingProvider` protocol and both implementations exist (section 9), as
   do the dense, lexical, and fusion retrievers. Swapping the model is a settings
@@ -2218,16 +2300,29 @@ application.
 - Provider identity, model version, dimension, and normalisation policy are
   recorded on every index run and combined into a `profile_key`, so incompatible
   indexes can coexist without ever being ranked against each other.
-- Description-level and element-level retrieval would attach the same way claims
-  did: new tables, new revision, spans on pages, existing tables untouched.
-  Nothing in the retrieval layer assumes a claim is the only indexable unit
-  beyond the table it reads from.
+- Description retrieval exists (section 14). Element-level retrieval is not built.
 
-### Reranking (Phase 3B-5)
+> **Update (2026-11-11 wrap-up):** This section originally predicted that
+> description-level and element-level retrieval "would attach the same way claims
+> did: new tables, new revision, spans on pages, existing tables untouched", and
+> that "nothing in the retrieval layer assumes a claim is the only indexable unit
+> beyond the table it reads from". That proved wrong. `retrieval/` is claim-shaped:
+> `Candidate` carries `claim_id` and `claim_number`, and the dense and lexical
+> retrievers read `claim_search_records` directly. Description retrieval was built by
+> duplicating that code: `DescriptionEvidenceService` runs its own dense, lexical,
+> and rank-fusion SQL over `description_search_records` (section 14). The profile
+> is stored on each description record, because there is no description index-run
+> table.
+
+### Reranking (Phase 3B - not built)
 
 - Seam: an optional `Reranker` - `query + candidates → reordered candidates`.
 - Absence of a reranker is a valid configuration; the pipeline must produce results
-  without one.
+  without one. That is the only configuration that exists: no reranker type or
+  reranking code is present in `src/`.
+- `docs/ROADMAP.md` groups description retrieval and reranking in Phase 3B. The first
+  is built (section 14); the second is not. An earlier version of this document
+  labelled the seam "3B-5".
 
 ### LLM providers (Phase 4A-1 - built)
 
@@ -2237,62 +2332,138 @@ application.
 - Local, self-hosted inference is the target; the protocol exists so the choice of
   runtime is a deployment decision rather than a code dependency.
 
-### Evidence-grounded generation (Phase 4A-2 - built)
+### Evidence-grounded generation (Phase 4A-2 - built, claim-only)
 
 - Built as predicted: `GroundedGenerationService` composes `ClaimSearchService`
   and `LLMGenerationService`, and neither changed. See section 11 above for the
-  design and section 12 for what it does not do.
+  design and section 18 for what it does not do.
+- Its evidence is claim text only. Description segments (section 14) and
+  decomposition elements (section 12) are not given to it. A Case result
+  (section 15) stores the output of the same service; `POST /grounded/answers` still
+  stores nothing.
 
-### Claim comparison workspace (Phase 5A)
+### Claim comparison (Phase 5A - built, retrieval-only)
 
-- Seam: a service over the grounded pipeline that takes *two* selected documents
-  and maps claim to claim, reusing the evidence catalog and the citation
-  validator unchanged.
-- Constraint that shapes the design: a mapping is a pair of citations plus a
-  described relationship, never a verdict. The moment an output field can hold
-  "anticipated" or "infringes", the system is making a legal conclusion, and
-  there is no such field.
+- Built as `ClaimComparisonService` (section 13). It composes `ClaimParsingService`
+  and `ClaimSearchService`: one stored target claim is the retrieval query,
+  retrieval is restricted to one reference document, and the result is that
+  document's ranked claims with their source locators.
+- There is no LLM call, no evidence catalog, no citation validator, and no
+  "described relationship". One target claim is compared against one reference
+  document, not two documents mapped claim to claim.
+- The constraint that shaped the design is kept: there is no output field that can
+  hold a verdict. A test asserts that the response carries no `infringement`,
+  `validity`, `novelty`, `equivalence`, or `patentability` key.
 
-### Claim analysis (Phase 5)
+> **Update (2026-11-11 wrap-up):** The seam as first written read: "a service over
+> the grounded pipeline that takes *two* selected documents and maps claim to claim,
+> reusing the evidence catalog and the citation validator unchanged", with the
+> constraint that "a mapping is a pair of citations plus a described relationship,
+> never a verdict. The moment an output field can hold 'anticipated' or 'infringes',
+> the system is making a legal conclusion, and there is no such field." What was built
+> is the narrower service above. A comparison built over the grounded pipeline is not
+> built.
 
-- Seam: a service layer over retrieval that decomposes claims into elements and
-  attaches retrieved evidence per element.
+### Claim analysis (Phase 5 - decomposition and review built; per-element evidence not built)
+
+- Deterministic decomposition and append-only human review exist (section 12).
+  `DeterministicElementParser` splits one persisted claim into ordered elements, and
+  each element span is a sub-span of the claim's own spans, so every element keeps a
+  stored source locator.
+- Not built: attaching retrieved evidence per element. Nothing in retrieval,
+  grounding, comparison, or Cases reads elements.
 - Constraint that shapes the design: every produced statement must be traceable to
   a stored source locator. Output without evidence is a bug, not a degraded mode.
 
-### Evaluation (Phase 6)
+### Evaluation (Phase 6 - built; the CI gate is deterministic)
 
-- Seam: an offline harness that consumes fixed datasets and reports retrieval and
-  grounding metrics.
-- Runs outside the request path, reads the same provider protocols, and never
-  requires a network model provider in CI.
+- The harness exists in `apps/api/evals` and is described in section 16: a retrieval
+  evaluation and a grounded-answer evaluation. It runs outside the request path and
+  reads the same provider protocols.
+- A deterministic regression gate runs in CI: `make verify-deterministic-regression`,
+  from the workflow `progression-deterministic-regression.yml`, runs both evaluations
+  with the fake embedding provider and an in-process oracle instead of a model, then
+  asserts pinned values. It guards the plumbing, not retrieval or answer quality.
+- "Never requires a network model provider in CI" means an LLM provider. The
+  `v1-07-final-evals.yml` workflow runs `python -m evals.run` with the
+  `.env.example` default `EMBEDDING_PROVIDER=sentence-transformers`, so that job
+  loads the real embedding model, which by reading downloads its weights on the
+  runner. It sets no metric thresholds; it uploads the results.
+
+### Persistent workspaces (Analyst Cases - built, deliberately small)
+
+- Seam: a Case is a durable identity that references existing documents and stores
+  grounded results whose quotes are re-read from canonical page text (section 15).
+  Source text stays in `document_pages`.
+- What a Case does not yet hold: an owner or any access control; description
+  evidence, comparison results, or decomposition results (the only Case tables are
+  `analyst_cases`, `analyst_case_documents`, `analyst_case_results`, and
+  `analyst_case_evidence`); a way to rename or delete a Case or a result; or
+  pagination of Cases or of results. It has no web UI; it is reachable only through
+  the API.
 
 ---
 
-## 13. Known architectural gaps
+## 18. Known architectural gaps
 
-Deliberate as of Phase 4A-2, listed so they are not mistaken for oversights:
+Deliberate as of the 2026-11-11 wrap-up, listed so they are not mistaken for
+oversights.
 
-- No authentication, authorisation, or multi-tenancy; no rate limiting.
-- No request-ID propagation or tracing.
-- No background worker. Ingestion, claim parsing, and claim indexing are all
-  synchronous, which is fine until OCR - and already means the first index
-  request after a restart holds a connection open for the model load.
+Not built, stated plainly:
+
+- **No reranker.** Hybrid retrieval ranks claims and description segments; nothing
+  reorders the fused list.
+- **No OCR.** Scanned or mixed PDFs are rejected, not read (section 7).
+- **No background worker.** Everything runs in the request.
+- **No web UI for Cases or for description search.** Both are API-only. A description
+  hit carries a `source_url` that opens the existing document page at the exact
+  range.
+- **No description evidence in grounded answers.** Grounded generation is
+  claim-only.
+- **No ORM models for the `0007` to `0009` tables.** Their services use raw SQL, and
+  they sit outside the metadata that Alembic autogenerate reads (section 6).
+
+The remaining gaps:
+
+- No authentication, authorisation, or multi-tenancy; no rate limiting. Cases have no
+  owner column, no pagination, and no rename or delete. Review rows carry no
+  reviewer identity or comment.
+- No request-ID propagation or tracing. The only middleware is CORS.
+- Ingestion, retry, claim parsing, claim indexing, element decomposition,
+  description derivation and indexing, and Case result generation are all
+  synchronous in the request. The first index request after a restart still holds a
+  connection open for the model load. The description service has no logging and
+  no `processing` or `failed` status lifecycle.
 - No virus scanning of uploads.
-- No delete endpoint. Rows can be removed in SQL (pages, parse results, claims,
-  spans, edges, index runs, and search records all cascade), but the stored
-  original is not garbage-collected by the application.
-- Claim parsing is Korean-only apart from a minimal English heading fallback,
-  and lexical retrieval has no Korean morphological analysis (section 9).
-- One embedding width. A model of a different dimension needs a migration.
-- No reranking, and no evaluation gate in CI.
-- Grounded answering has no reranking: the claims that reach the model are the
-  ones hybrid retrieval ranked, and a claim ranked just outside the evidence
-  budget is simply absent (section 11, and the g01 case in the evaluation).
-- No claim element decomposition, so a grounded answer cites whole claims. An
-  answer about one limitation still points at the entire claim it sits in.
+- No document, Case, or result delete endpoint. The one DELETE route removes a
+  Case-document association. Rows can be removed in SQL, and most derived tables
+  cascade from `documents`, but a document cited by a stored Case result cannot be
+  deleted (sections 9 and 15). The stored original is not garbage-collected by the
+  application.
+- Claim parsing is Korean-only apart from a minimal English heading fallback.
+  Lexical retrieval has no Korean morphological analysis; the term-level fallback is
+  trigram matching, not morphology (section 9). Element decomposition splits only on
+  the ASCII `;`.
+- One embedding width. Two tables are migrated at it, so a model of a different
+  dimension needs a migration that touches both (section 9). A failure to embed a
+  query is also unmapped and would surface as a generic 500 (section 9).
+- Grounded answering has no reranking: the claims that reach the model are the ones
+  hybrid retrieval ranked, and a claim ranked just outside the evidence budget is
+  simply absent (section 11). The g01 case in the evaluation was the recorded
+  example. The deterministic gate now pins g01 to succeed: the `Makefile` target
+  asserts that `g01-single-storage` succeeds with `collector#1` cited. The committed
+  result files were generated on 2026-07-26, before the term-level lexical change,
+  and still show g01 failing. Whether g01 passes with the real embedding model has not
+  been re-measured.
+- A grounded answer still cites whole claims. Decomposition exists (section 12), but
+  grounding does not use elements, so an answer about one limitation points at the
+  entire claim it sits in.
 - Prompt injection is bounded, not prevented (section 11).
 - No streaming anywhere, and generation is synchronous and in-request.
-- No production web image (the container runs `next dev`); no CI pipeline.
-- The whole upload is held in memory while hashing and parsing. Bounded by
-  `UPLOAD_MAX_BYTES`, so it is a known ceiling rather than an open-ended one.
+- No production web image: the container runs `next dev`. Sixteen workflows in
+  `.github/workflows` verify the repository; none deploys anything. The evaluation
+  gate they include is the deterministic fake-provider tier (section 17), which
+  guards plumbing rather than quality.
+- The whole upload is held in memory while hashing and parsing, and a retry reads
+  the whole stored original back. Bounded by `UPLOAD_MAX_BYTES`, so it is a known
+  ceiling rather than an open-ended one.
