@@ -415,7 +415,7 @@ Ingestion adds these keys:
 | `STORAGE_ROOT` | Where originals are written. Must be outside the source tree. |
 | `UPLOAD_MAX_BYTES` | Hard ceiling, enforced while streaming (default 20 MB). |
 | `UPLOAD_ALLOWED_CONTENT_TYPES` / `UPLOAD_ALLOWED_EXTENSIONS` | Accepted upload types. |
-| `MIN_EXTRACTED_CHARACTERS` | Below this total, a PDF counts as having no text layer. |
+| `MIN_EXTRACTED_CHARACTERS` | Below this total, a PDF counts as having no text layer. A mixed text layer is rejected separately, by the parser (section 7). |
 
 ### Error handling
 
@@ -426,6 +426,13 @@ serialised into a response.
 Ingestion failures are different: they are expected outcomes with a stable
 `error_code` from `core/errors.py`, which is both the API contract and the value
 persisted on failed documents. Clients branch on the code, never on the message.
+
+> **Update (2026-11-11 wrap-up):** The Cases API (section 15) is the exception. It
+> raises FastAPI `HTTPException`, so its error bodies are `{"detail": ...}` with no
+> `error_code`, and a client of those routes can branch only on the status code
+> and the `detail` string. Request-validation failures elsewhere also keep
+> FastAPI's default 422 list shape rather than the envelope; an unknown review
+> status (section 12) is one example.
 
 | Code | Status | Meaning |
 | --- | --- | --- |
@@ -438,6 +445,22 @@ persisted on failed documents. Clients branch on the code, never on the message.
 | `storage_failure` | 500 | The stored original cannot be read during an already-registered ingestion |
 | `internal_error` | 500 | A processing-transition or page/completion persistence failure is mapped to a client-safe ingestion failure |
 | `document_not_found` | 404 | Unknown document id |
+| `document_not_completed` | 409 | The document's ingestion has not completed; claim parsing, claim indexing, and description derivation refuse it |
+| `document_retry_not_allowed` | 409 | Retry was requested for a document whose status is not `failed` |
+| `claim_parse_failed` | 422 | Claim parsing ran and failed; the failed result is recorded |
+| `claim_parse_not_found` | 404 | The document has no claim parse result |
+| `claim_not_found` | 404 | The claim number is not in the document's claim set |
+| `comparison_invalid_request` | 400 | Target and reference document are the same. The request schema normally rejects this first, with a 422, so the code comes from the service only |
+| `element_decomposition_run_not_found` | 404 | No element decomposition run has this id |
+| `grounded_generation_unavailable` | 503 | Grounded answering is switched off by `GROUNDED_GENERATION_ENABLED=false` (default `true`) |
+
+The retrieval, LLM, and grounded phases add further codes, listed in sections 9, 10,
+and 11.
+
+> **Update (2026-11-11 wrap-up):** `storage_failure` is also raised before any
+> document is registered, when the original cannot be written. In that case the
+> response is an ordinary `{detail, error_code}` body with no `document`, because no
+> record exists.
 
 ---
 
@@ -448,10 +471,22 @@ persisted on failed documents. Clients branch on the code, never on the message.
   schema is always reproducible from `alembic/versions/`.
 - The baseline revision `0001` enables the `vector` extension and creates
   `app_metadata` (`key`, `value`, `created_at`, `updated_at`). It exists to prove
-  the pipeline works; no domain table is defined yet.
+  the pipeline works; it defines no domain table.
 - Revision `0002` adds the two ingestion tables described in section 7,
   revision `0003` the four claim-parsing tables in section 8, and revision
   `0004` the two retrieval tables in section 9. `0004` also enables `pg_trgm`.
+
+> **Update (2026-11-11 wrap-up):** Five further revisions follow, and the chain is
+> linear from `0001` to the head, `0009`. Across it `op.create_table` creates 20
+> tables.
+>
+> | Revision | Tables | Described in |
+> | --- | --- | --- |
+> | `0005` | `element_decomposition_runs`, `claim_elements`, `claim_element_spans` | section 12 |
+> | `0006` | `element_decomposition_reviews` | section 12 |
+> | `0007` | `description_derivation_runs`, `description_segments`, `description_search_records` | section 14 |
+> | `0008` | `analyst_cases`, `analyst_case_documents` | section 15 |
+> | `0009` | `analyst_case_results`, `analyst_case_evidence` | section 15 |
 - `infra/postgres/init/10-extensions.sql` also creates the extension at initdb
   time. That covers on-premise installations where the migration role is not a
   superuser; both paths are idempotent.
@@ -459,8 +494,26 @@ persisted on failed documents. Clients branch on the code, never on the message.
   restart can never trigger a surprise schema change.
 - Timestamps are `TIMESTAMPTZ` with `server_default now()`; `updated_at` is
   maintained by SQLAlchemy's `onupdate`.
+
+> **Update (2026-11-11 wrap-up):** That holds for the ORM-mapped tables that carry
+> `updated_at`: `app_metadata`, `documents`, `claim_parse_results`, `claims`,
+> `claim_index_runs`, and `claim_search_records`. Among the tables added since,
+> only `analyst_cases` has an `updated_at`, and it has no ORM model, so the services
+> set it with an explicit `UPDATE ... SET updated_at = now()` when a document is
+> associated or removed and when a result is stored. The other tables from `0005` on
+> are immutable or append-only and carry only `created_at`; the exceptions are
+> `analyst_case_documents`, which has `associated_at`, and `analyst_case_evidence`,
+> which has no timestamp.
 - The application engine is async (psycopg 3); Alembic uses a synchronous engine
   against the same URL.
+
+> **Update (2026-11-11 wrap-up):** `alembic/env.py` imports only three ORM modules
+> (`models`, `element_models`, `review_models`) and sets `target_metadata` to
+> `Base.metadata` with no `include_object` filter. The seven tables from `0007` to
+> `0009` are not in that metadata (section 2). `make migration` (autogenerate) was
+> not run against this state while writing this note; by reading only, it would be
+> expected to propose dropping those tables, so an autogenerated revision needs
+> review before it is applied.
 
 ---
 
@@ -497,12 +550,18 @@ Decisions worth stating:
 - **`text_sha256` per page** lets a future re-parse detect whether a page's text
   actually changed, and therefore whether existing citations into it still hold.
 - **No sections, claims, chunks, or embeddings tables.** Those are Phase 2B and 3.
+  This was the decision at revision `0002`; section 6 lists what followed.
 
 ### Lifecycle
 
 `uploaded → processing → completed | failed`. All four states are used: `uploaded`
 is committed as soon as the bytes are stored, so a crash during parsing leaves a
 traceable record rather than an unreferenced file.
+
+> **Update (2026-11-11 wrap-up):** A `failed` document can re-enter `processing`
+> through explicit retry, so the lifecycle also has the path
+> `failed → processing → completed | failed`. See "Failure terminalization and
+> retry" below.
 
 ### Duplicate policy: content-addressed idempotency
 
@@ -520,6 +579,13 @@ resolve to one record rather than racing.
 The trade-off: a document that is genuinely revised produces different bytes and is
 therefore a different document, with no version link between them. Versioning is a
 later concern and would be a new relation, not a relaxation of this constraint.
+
+> **Update (2026-11-11 wrap-up):** A failed row is no longer a dead end. Explicit
+> retry re-runs it in place, under the same id, digest, and stored original;
+> re-uploading identical bytes still returns the failed row unchanged. See
+> "Failure terminalization and retry" below.
+
+<!-- ARCH-INSERT: 7-retry -->
 
 ### Storage strategy
 
@@ -567,9 +633,20 @@ document-wide total is used rather than a per-page rule because a legitimate pat
 PDF often has a near-empty drawing page, and rejecting the document for that would be
 wrong.
 
+> **Update (2026-11-11 wrap-up):** Since D6-01 a per-page classification runs in the
+> parser as well. A PDF with at least one text-bearing page and at least one
+> text-empty page (no text, or whitespace only) is rejected with
+> `no_extractable_text` as a mixed or ambiguous text layer, so a text patent with
+> one truly blank page is now rejected. A page that yields any non-whitespace
+> character still counts as text-bearing. The document-wide total check above still
+> applies as well. See "Text-layer classification: mixed PDFs fail closed (D6-01)"
+> below.
+
 No OCR is attempted, and none is silently substituted. An empty result is reported as
 a failure rather than ingested as a document with no text, because a document that
 looks ingested but has nothing to cite is worse than a clear rejection.
+
+<!-- ARCH-INSERT: 7-text-layer -->
 
 ### Source locator semantics
 
@@ -774,6 +851,15 @@ with the rows.
 
 If that commit fails, everything rolls back and the status stays `processing`.
 
+> **Update (2026-11-11 wrap-up):** Since P13 that is no longer the whole story. When
+> the graph commit fails, the service rolls back and then commits the result as
+> `failed` with `internal_error` and a fixed message, and raises
+> `ClaimParsingFailed`, which maps to 422 `claim_parse_failed`. The status stays
+> `processing` only if that second commit also fails. The same result row is reused
+> by the next parse request, as for any failed attempt. The test for this
+> (`test_progression_claim_persistence_terminalization.py`) injects a failure into
+> the first commit only; the second-commit branch is known from reading the code.
+
 ### Schema (revision 0003)
 
 ```
@@ -841,6 +927,11 @@ else is attempted: no other language, no claim element decomposition, no
 inference of an implicit dependency from wording alone, no OCR. Parsing is
 synchronous, and a document with unusual formatting may produce
 `no_claims_found` rather than a partial guess - which is the intended behaviour.
+
+> **Update (2026-11-11 wrap-up):** Claim element decomposition now exists, as a
+> separate use case over persisted claims (section 12). `ClaimParser` itself still
+> does not decompose, and nothing in claim parsing, retrieval, grounding,
+> comparison, or Cases consumes elements.
 
 ---
 
