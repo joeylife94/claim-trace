@@ -1620,7 +1620,7 @@ On the `f59f4df` tree, locally, on 2026-11-11:
 - `git diff v1.0-proof -- docs/proof`: **empty**, so the committed Proof package, its README included, is byte-identical to the tag;
 - remote `refs/tags/v1.0-proof` still resolves to tag object `19260bff8e90be7eda23fcef88ef1950a83cce65` → commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
 
-The reconciled documents were checked against the code by read-only audit before and after editing. The wrap-up PR's own exact-head workflow results are recorded on that PR, not in this file.
+The reconciled documents were checked against the code by a read-only audit before editing and by an independent review pass after editing. That review ran `make help` and `docker compose config`; it ran no test suite, script, evaluation, or stack, so every runtime statement in the reconciled documents rests on reading code and configuration. The wrap-up PR's own exact-head workflow results are recorded on that PR, not in this file.
 
 ### Not executed / not verified in the wrap-up
 
@@ -1644,6 +1644,11 @@ These are recorded so they are not mistaken for closed work. None is a selected 
 9. **Workflow hygiene.** The D3 and D4 workflows list the path filter `scripts/verify-deterministic-regression.sh`, a file that does not exist (the gate is a Makefile target). A change limited to `README.md` or `docs/**` does not trigger General CI. D5 and D6 have no dedicated workflow; their tests run inside General CI.
 10. **Expired evidence artifacts.** Exact-head artifacts for D3-01 and D6-01 have passed their retention period. Run conclusions and logged results remain the retained evidence.
 11. **Stale remote branches.** Merged milestone branches remain on the remote. None was deleted by the wrap-up.
+12. **Code-level findings from the documentation review (by reading; not executed, not fixed).** Checking the documents against the code surfaced behaviour that differs from what the API declares or what code comments say. Each was confirmed by reading the source only. None was changed, because the wrap-up changes no product code.
+    - `EmbeddingError` is caught only in `services/claim_indexing.py`. On the claim search, claim comparison, and description search paths, which declare `503` in their OpenAPI responses, an embedding-provider failure at query time would reach the generic handler and return `500`. No test drives that path through HTTP.
+    - The description routes take `document_id` as a string and parse it by hand, so a malformed id raises `ValueError` and returns the generic `500` instead of a `422`.
+    - Running `make verify-deterministic-regression` locally rewrites the committed files under `apps/api/evals/results`, because the recipe runs both evaluations with the fake provider against a writable mount.
+    - Two code comments are stale: the `db/models.py` module docstring still says description sections and claim elements are out of scope, and the weight comment in `retrieval/lexical.py` says exact containment is weighted highest while the constants weight it lowest.
 
 ### Candidate next destinations (not selected)
 
