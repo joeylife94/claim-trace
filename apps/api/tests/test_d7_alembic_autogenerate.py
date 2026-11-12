@@ -41,9 +41,7 @@ def _autogenerate(url: str, scratch: Path) -> str:
     from alembic.config import Config
 
     scripts = scratch / "alembic"
-    shutil.copytree(
-        API_ROOT / "alembic", scripts, ignore=shutil.ignore_patterns("__pycache__")
-    )
+    shutil.copytree(API_ROOT / "alembic", scripts, ignore=shutil.ignore_patterns("__pycache__"))
     config = Config(str(API_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(scripts))
     config.attributes["sqlalchemy_url"] = url
@@ -66,12 +64,13 @@ def test_autogenerate_proposes_no_removal_of_hand_managed_tables(
 ) -> None:
     upgrade = _upgrade_ops(_autogenerate(integration_database_url, tmp_path))
 
-    dropped = sorted(
-        table for table in HAND_MANAGED_TABLES if f'op.drop_table("{table}")' in upgrade
-        or f"op.drop_table('{table}')" in upgrade
+    # Any operation naming one of the tables counts, not only ``drop_table``: the
+    # table's indexes are dropped through separate ``drop_index`` calls.
+    touched = sorted(
+        table for table in HAND_MANAGED_TABLES if re.search(rf"""['"]{table}['"]""", upgrade)
     )
-    assert not dropped, (
-        f"autogenerate would drop hand-managed tables {dropped}; "
+    assert not touched, (
+        f"autogenerate would drop hand-managed tables {touched}; "
         f"full proposed upgrade():\n{upgrade}"
     )
 
@@ -83,4 +82,4 @@ def test_hand_managed_tables_exist_in_migrated_database(integration_database_url
         present = set(sa.inspect(engine).get_table_names())
     finally:
         engine.dispose()
-    assert HAND_MANAGED_TABLES <= present, sorted(HAND_MANAGED_TABLES - present)
+    assert present >= HAND_MANAGED_TABLES, sorted(HAND_MANAGED_TABLES - present)

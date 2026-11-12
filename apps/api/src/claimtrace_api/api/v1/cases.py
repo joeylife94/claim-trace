@@ -21,6 +21,7 @@ from claimtrace_api.schemas.cases import (
     CaseListResponse,
     CaseResponse,
 )
+from claimtrace_api.schemas.errors import ApiErrorResponse
 from claimtrace_api.schemas.grounded import GroundedAnswerRequest
 from claimtrace_api.services.case_grounded_results import (
     CaseGroundedResultNotFoundError,
@@ -119,6 +120,7 @@ async def disassociate_document(
     "/{case_id}/grounded-results",
     response_model=CaseGroundedResultResponse,
     status_code=status.HTTP_201_CREATED,
+    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ApiErrorResponse}},
 )
 async def create_case_grounded_result(
     case_id: uuid.UUID,

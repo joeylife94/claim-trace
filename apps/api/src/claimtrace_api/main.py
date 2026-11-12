@@ -15,10 +15,10 @@ from fastapi.responses import JSONResponse
 from claimtrace_api.api.health import router as health_router
 from claimtrace_api.api.v1.router import api_router
 from claimtrace_api.core.config import Settings, get_settings
-from claimtrace_api.core.errors import AppError
+from claimtrace_api.core.errors import AppError, ErrorCode
 from claimtrace_api.core.logging import configure_logging
 from claimtrace_api.db.session import create_engine, create_session_factory
-from claimtrace_api.indexing.embeddings.base import EmbeddingProvider
+from claimtrace_api.indexing.embeddings.base import EmbeddingError, EmbeddingProvider
 from claimtrace_api.indexing.embeddings.fake import FakeEmbeddingProvider
 from claimtrace_api.llm.registry import build_llm_provider
 from claimtrace_api.parsing.claims.korean_rules import KoreanRuleBasedClaimParser
@@ -127,6 +127,25 @@ async def app_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content=jsonable_encoder(payload))
 
 
+async def embedding_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Map an embedding failure raised while serving a request onto the API contract.
+
+    Indexing converts the same exception inside ``ClaimIndexingService`` so the failure
+    is recorded on the index run. Every other path - embedding a search query,
+    comparing, grounded retrieval, indexing description segments - reaches here, so one
+    mapping covers them all. The code and message are the provider's own, exactly as
+    indexing reports them; providers write that message to be shown to a client and
+    keep paths and URLs in their logs only.
+    """
+    assert isinstance(exc, EmbeddingError)  # noqa: S101 - handler is registered for this type
+    try:
+        code = ErrorCode(exc.code)
+    except ValueError:
+        # Same fallback ClaimIndexingService applies to a code outside the taxonomy.
+        code = ErrorCode.CLAIM_INDEX_FAILED
+    return await app_error_handler(request, AppError(code, exc.message))
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Return a generic 500 while keeping the traceback server-side only."""
     logger.exception(
@@ -164,6 +183,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(EmbeddingError, embedding_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
     app.include_router(health_router)
