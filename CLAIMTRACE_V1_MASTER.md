@@ -1602,10 +1602,12 @@ Alembic head is `0009`.
 ### Changed by the wrap-up
 
 - this file: the header, the D6 Human Review decision in Section 15, and this section;
-- outward-facing documents reconciled with current `main`: `README.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/CONTROLLED_PILOT_HANDOFF.md`, `docs/D4_DESCRIPTION_AWARE_EVIDENCE.md`, `docs/proof/README.md`, `apps/api/README.md`, `apps/api/evals/README.md`, `tests/README.md`, `infra/README.md`, `packages/README.md`;
+- outward-facing documents reconciled with current `main`: `README.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/CONTROLLED_PILOT_HANDOFF.md`, `docs/D4_DESCRIPTION_AWARE_EVIDENCE.md`, `apps/api/README.md`, `apps/api/evals/README.md`, `tests/README.md`, `infra/README.md`, `packages/README.md`;
 - comment and help text only in `.env.example`, `docker-compose.yml`, and `Makefile`. No key, value, port mapping, target, or recipe changed.
 
 The v1.0 evidence numbers quoted in those documents are kept and labelled as recorded at the freeze. They were not re-measured and are not presented as current.
+
+`docs/proof/` was deliberately left untouched, including `docs/proof/README.md`. The directory is the reviewed v1.0 Proof package and stays byte-identical to the tag. That README's references to "current application code" are therefore tag-time wording; the application has changed since, as this section and `README.md` record.
 
 ### Actually executed in the wrap-up
 
@@ -1615,7 +1617,7 @@ On the `f59f4df` tree, locally, on 2026-11-11:
 - `ruff check` and `ruff format --check`: **passed** (178 files);
 - web `eslint`: **0 errors, 2 warnings** (two unused parameters);
 - web `tsc --noEmit`: **passed**;
-- `git diff v1.0-proof HEAD -- docs/proof`: **empty**, so the committed Proof assets are byte-identical to the tag;
+- `git diff v1.0-proof -- docs/proof`: **empty**, so the committed Proof package, its README included, is byte-identical to the tag;
 - remote `refs/tags/v1.0-proof` still resolves to tag object `19260bff8e90be7eda23fcef88ef1950a83cce65` → commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
 
 The reconciled documents were checked against the code by read-only audit before and after editing. The wrap-up PR's own exact-head workflow results are recorded on that PR, not in this file.
