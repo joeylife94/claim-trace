@@ -8,6 +8,8 @@ The product is deliberately bounded: **ClaimTrace does not provide legal advice 
 
 ![ClaimTrace v1.0 architecture](docs/proof/architecture-v1.svg)
 
+*The diagram above shows the v1.0 Proof boundary. `main` has since added capabilities it does not show; see [What `main` adds since the v1.0 Proof](#what-main-adds-since-the-v10-proof).*
+
 ## Why this exists
 
 Patent-analysis tooling is only useful when a reviewer can verify where an analytical statement came from. ClaimTrace treats source provenance as a first-class constraint rather than a UI afterthought.
@@ -16,9 +18,11 @@ Every supported analytical surface is designed around a canonical locator:
 
 `document_id → page_number → start_char → end_char`
 
-That locator is persisted with document text and reused by claim parsing, retrieval, grounded Q&A, comparison, decomposition, and review. The model is not allowed to invent page numbers or arbitrary citations: grounded generation selects from server-issued evidence identifiers that the server resolves back to stored source spans.
+That locator is persisted with document text and reused by claim parsing, retrieval, grounded Q&A, comparison, decomposition, and review (and, on `main`, by description-evidence retrieval). The model is not allowed to invent page numbers or arbitrary citations: grounded generation selects from server-issued evidence identifiers that the server resolves back to stored source spans.
 
 ## What the v1.0 controlled pilot can do
+
+This is the capability list recorded at the v1.0 freeze (tag `v1.0-proof`). Later additions are listed in the next section.
 
 1. Upload a text-based Korean patent PDF.
 2. Validate, store, and extract page text.
@@ -32,13 +36,25 @@ That locator is persisted with document text and reused by claim parsing, retrie
 10. Record human review as `accepted` or `needs_correction` without overwriting machine output.
 11. Navigate review output back to the original highlighted source text.
 
-The frozen workflow is:
+The v1.0 workflow is:
 
 `ingest → parse → index → retrieve → ask → compare → decompose → review → verify source evidence`
 
+## What `main` adds since the v1.0 Proof
+
+The `v1.0-proof` tag is frozen and unchanged, and the committed assets under `docs/proof/` are byte-identical to the tag (checked 2026-11-11). `main` has moved on. The additions below are described in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md), whose Section 16 is the current-state summary. Each keeps the product boundary above.
+
+- **Failed-ingestion retry.** A document whose ingestion failed can be retried from its persisted original through the API (`POST /api/v1/documents/{id}/retry`) and a form on the Documents page. Retry is allowed only for failed documents; otherwise the API answers `409 DOCUMENT_RETRY_NOT_ALLOWED`.
+- **Korean term-level lexical fallback.** Lexical retrieval can recover a near-identical token (for example a noun carrying a different particle) through a stricter trigram threshold. It is deliberately bounded and is not a general Korean morphological analyser.
+- **Controlled-pilot handoff verifier.** `scripts/verify-controlled-pilot-handoff.sh` runs the clean-start, real-retry, and golden-path verifications and records hashes of the proof assets. See [`docs/CONTROLLED_PILOT_HANDOFF.md`](docs/CONTROLLED_PILOT_HANDOFF.md). It does not exercise the description, Case, real-public-corpus, or mixed-PDF additions below.
+- **Real-public corpus verifier.** `scripts/verify-d3-real-corpus-inputs.sh` and hash-pinned acceptance tests use two public Korean patent PDFs listed in [`docs/real-public-corpus/manifest.json`](docs/real-public-corpus/manifest.json). The PDFs are downloaded at run time and are not committed.
+- **Description evidence.** Description text can be derived into segments, indexed, and searched (`POST /api/v1/documents/{id}/descriptions/derive`, `.../descriptions/index`, `POST /api/v1/search/descriptions`). **API only, no dedicated UI:** a result carries a `source_url` that opens the existing document page at the source range. Grounded answers remain claim-only. See [`docs/D4_DESCRIPTION_AWARE_EVIDENCE.md`](docs/D4_DESCRIPTION_AWARE_EVIDENCE.md).
+- **Analyst Cases.** A Case groups documents and stores grounded results that can be listed and reopened (`/api/v1/cases...`). **API only, no UI.** The stateless `POST /api/v1/grounded/answers` endpoint is unchanged.
+- **Mixed-PDF classification.** The text layer is classified per page; a PDF with any text-empty page is rejected as mixed or ambiguous rather than ingested partially. This is conservative: it can reject a text-native PDF that contains a blank or drawings-only page. There is still no OCR.
+
 ## Product proof
 
-The following assets are generated from the deterministic whole-product runtime used by the repository verification path, not hand-authored mockups.
+The assets in this section are the **v1.0 Proof snapshot**, generated at the v1.0 freeze and unchanged since (see [`docs/proof/README.md`](docs/proof/README.md)). They show the v1.0 application, not the later additions above. They are generated from the deterministic whole-product runtime used by the repository verification path, not hand-authored mockups.
 
 ### Documents and persisted corpus
 
@@ -68,9 +84,9 @@ A concise recorded golden-path run is committed at [`docs/proof/demo/claimtrace-
 
 ## Executed evidence
 
-These numbers come from executed GitHub-visible verification recorded in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md). They are proof of the current pipeline and repository state, not claims about general patent-analysis accuracy.
+These numbers come from executed GitHub-visible verification recorded in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md). **They were recorded at the v1.0 freeze (tag `v1.0-proof`) and are kept unchanged as a historical record. They are not current measurements of `main`** and are not claims about general patent-analysis accuracy. Current-state facts are in the next subsection.
 
-### Operational verification
+### Operational verification (recorded at the v1.0 freeze)
 
 - clean checkout + empty database migration: **GREEN**;
 - Alembic `0001 → 0006 (head)` from an empty PostgreSQL database: **PASS**;
@@ -80,7 +96,7 @@ These numbers come from executed GitHub-visible verification recorded in [`CLAIM
 - Ruff lint/format and frontend ESLint/TypeScript: **GREEN**;
 - expected failure-state verification: **5 PASS**.
 
-### Retrieval evaluation
+### Retrieval evaluation (recorded at the v1.0 freeze)
 
 Synthetic regression corpus: **26 claims / 19 queries**.
 
@@ -92,7 +108,7 @@ Synthetic regression corpus: **26 claims / 19 queries**.
 
 This is a small synthetic regression set for reproducibility and ranking regressions, **not a benchmark-quality claim about patent retrieval**.
 
-### Grounded deterministic evaluation
+### Grounded deterministic evaluation (recorded at the v1.0 freeze)
 
 16 committed cases:
 
@@ -108,6 +124,16 @@ This is a small synthetic regression set for reproducibility and ranking regress
 - hostile grounding payloads refused: **6 / 6**.
 
 The known weak case `g01-single-storage` remains visible: retrieval did not supply the required labelled claim, so end-to-end success is intentionally not represented as `1.000`.
+
+### Current state (2026-11-11)
+
+Checked on the `f59f4df` tree during the first wrap-up; details in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md) Section 16.
+
+- Alembic head is `0009` (single linear chain `0001 → 0009`).
+- Backend database-free tier (`pytest -m "not integration"`): **798 passed, 144 deselected**, run locally.
+- PostgreSQL integration tier: 144 tests. **Not run locally in the wrap-up** (no Docker or pgvector available); it runs in General CI on the pull request.
+- Ruff lint and format: passed. Web ESLint: 0 errors, 2 warnings. TypeScript `tsc --noEmit`: passed.
+- **Evaluation-artifact caveat.** The committed result files (`apps/api/evals/results/results.json` and `apps/api/evals/results/grounded/results-deterministic.json`) were generated on 2026-07-26 with the `intfloat/multilingual-e5-small` profile. Lexical retrieval changed afterwards. The tables above therefore describe that earlier run. The enforced gate `make verify-deterministic-regression` pins a fake-provider baseline in which `g01-single-storage` must succeed. **Current real-embedding numbers were not re-measured.**
 
 ## Architecture
 
