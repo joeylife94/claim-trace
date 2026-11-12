@@ -155,14 +155,25 @@ FastAPI
 PostgreSQL 17 + pgvector + pg_trgm
 ```
 
-Detailed design and historical extension points live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The proof-facing architecture visual above is the current v1.0 boundary.
+Description evidence and analyst Cases (added after v1.0, API only) sit beside the claim pipeline. The block below is an addition since v1.0 and is not in the SVG:
+
+```text
+FastAPI (addition since v1.0)
+  ├─ description-evidence derive / index / search   → source_url deep link into the document page
+  └─ analyst Cases + persisted grounded results     (no UI)
+```
+
+Detailed design and historical extension points live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The architecture SVG at the top of this page shows the v1.0 boundary only.
 
 ## Reproduce the controlled pilot
 
 ### Prerequisites
 
 - Docker Engine / Docker Desktop with Compose v2
-- Node.js 22+ for browser proof capture
+- `make` (the scripts call `make init` when `.env` is missing) and `curl`
+- Node.js 22+ and network access for browser proof capture (`npm ci`, Playwright and Chromium download)
+- For the real-public corpus verifier only: `python3` and `pdftotext`, plus network access to download the PDFs
+- For `scripts/verify-controlled-pilot-handoff.sh` additionally: `git` and `sha256sum`. The real-retry step installs Chromium with `--with-deps`, which may need root or apt access
 
 ### Start the application
 
@@ -181,10 +192,16 @@ Default surfaces:
 - Search: `http://localhost:3000/search`
 - Grounded Q&A: `http://localhost:3000/grounded`
 - Compare: `http://localhost:3000/compare`
+- LLM status and diagnostics: `http://localhost:3000/llm`
+- Review of a decomposition run: `http://localhost:3000/reviews/{runId}`
 - API: `http://localhost:8000`
 - API docs: `http://localhost:8000/docs`
 
+This Compose stack is a local-development stack with no authentication. Its host ports (postgres, api, web, and ollama under the `llm` profile) are published without a host address, so they are reachable on every network interface of the host. Do not run it on a shared network without binding the ports to loopback or restricting access.
+
 ### Re-run the deterministic proof capture
+
+> **Warning: by default this overwrites the committed Proof assets.** `scripts/capture-v1-07-proof.sh` writes to `docs/proof` and first runs `rm -rf` on `docs/proof/screenshots` and `docs/proof/demo`. To keep the v1.0 snapshot intact, redirect the output first, for example `V1_07_PROOF_DIR=/tmp/claimtrace-proof sh scripts/capture-v1-07-proof.sh`. The script still requires `docs/proof/architecture-v1.svg` to exist.
 
 Install the browser runner in `apps/web`, then execute:
 
@@ -213,11 +230,12 @@ The capture uses the committed deterministic two-document seed, fake embedding p
 
 ## Known limitations
 
-- **Text-based PDFs only.** OCR and scanned/image-only PDF recovery are deliberately unsupported in v1.0 and fail explicitly.
+- **Text-based PDFs only.** OCR is not implemented and was deferred, not selected, as a future candidate. A PDF with no extractable text fails explicitly. Since the D6-01 change, a PDF in which any page has no extractable text (including a blank or drawings-only page in an otherwise text-native file) is rejected as mixed or ambiguous. A scan that already carries an embedded text layer is treated as text, and ClaimTrace does not judge that layer's quality.
+- **Cases and description search have no UI.** They are reachable only through the API (and the `source_url` deep link into the document page). Grounded answers remain claim-only; description evidence is not an input to grounded generation.
 - Korean claim parsing is deterministic and intentionally bounded; it is not represented as a universal patent parser.
 - Citation resolvability proves that a statement points to stored evidence; **it does not prove semantic entailment or legal correctness**.
-- Retrieval and grounded metrics above use committed synthetic corpora intended for regression verification.
-- The V1-07 GitHub-hosted evaluation could not access a local Ollama endpoint. The historical `qwen2.5:1.5b` run remains historical only; **real-local-model quality was not rerun for the current V1-07 proof tier**.
+- Retrieval and grounded metrics above use committed synthetic corpora intended for regression verification. They are v1.0-freeze figures; see the evaluation-artifact caveat under Current state.
+- The V1-07 GitHub-hosted evaluation could not access a local Ollama endpoint. The historical `qwen2.5:1.5b` run remains historical only; **real-local-model quality was not rerun for the V1-07 proof tier** and has not been rerun since.
 - No authentication, RBAC, multi-tenancy, public-cloud deployment, Kubernetes, billing, or admin console is part of this controlled pilot.
 - Human review is an explicit product boundary. Machine decomposition is not silently promoted to reviewer judgement.
 
@@ -227,23 +245,29 @@ The capture uses the committed deterministic two-document seed, fake embedding p
 claim-trace/
 ├── apps/api/                 FastAPI, migrations, tests, evaluations
 ├── apps/web/                 Next.js UI and browser verification
-├── docs/proof/               proof architecture, screenshots, demo asset
+├── docs/proof/               v1.0 proof architecture, screenshots, demo asset (frozen)
 ├── docs/ARCHITECTURE.md      detailed internal architecture
-├── docs/ROADMAP.md           post-v1 possibilities
+├── docs/ROADMAP.md           phase-by-phase build history and status
+├── docs/CONTROLLED_PILOT_HANDOFF.md   one-command handoff verifier
+├── docs/D4_DESCRIPTION_AWARE_EVIDENCE.md   description-evidence brief
+├── docs/real-public-corpus/  manifest for the hash-pinned public PDFs
 ├── infra/                    PostgreSQL initialization
+├── packages/                 placeholder; nothing extracted yet
+├── tests/                    cross-cutting test notes
 ├── scripts/                  reproducible verification/capture runners
-├── .github/workflows/        PR-visible CI and acceptance workflows
-├── CLAIMTRACE_V1_MASTER.md   authoritative v1.0 execution/evidence ledger
-└── docker-compose.yml        local controlled-pilot runtime
+├── .github/workflows/        16 PR-triggered CI and verification workflows
+├── Makefile                  local development and verification targets
+├── CLAIMTRACE_V1_MASTER.md   authoritative ledger: v1.0 Proof and post-v1 progression
+└── docker-compose.yml        local-development runtime
 ```
 
 ## Status
 
-ClaimTrace v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The reviewed Proof is **`CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`**. Remote annotated tag `v1.0-proof` is verified to dereference to reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`.
+The v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The reviewed Proof is **`CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`**. Remote annotated tag `v1.0-proof` is verified to dereference to reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`. The tag is frozen and unchanged, and `docs/proof/` on `main` is byte-identical to it.
 
-The repository remains frozen at the documented v1.0 Proof boundary; later documentation-only closure reconciliation does not alter the tagged product/runtime state.
+`main` has moved past the tag. As of the 2026-11-11 first wrap-up, the post-v1 milestones P1-P14 and destinations D1-D6 are recorded as closed in the ledger (D6 at the fail-closed boundary; OCR deferred), and **no milestone is active**. The next destination needs a human decision; candidate options are listed in the ledger and none is selected.
 
-For the authoritative current state, exact workflow evidence, limitations, and closure decision, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md).
+For the current state, exact workflow evidence, open items, and limitations, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md), starting with Section 16.
 
 ---
 

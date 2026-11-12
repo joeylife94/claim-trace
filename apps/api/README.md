@@ -1,7 +1,12 @@
 # ClaimTrace API
 
-FastAPI backend for ClaimTrace. Current scope: document ingestion, deterministic
-Korean claim structural parsing, and claim-level hybrid retrieval.
+FastAPI backend for ClaimTrace. It covers document ingestion (including retry of
+a failed ingestion), deterministic Korean claim structural parsing, claim-level
+hybrid retrieval, a local LLM boundary with evidence-grounded answers, claim
+comparison, claim element decomposition with append-only human review,
+description-evidence derivation and retrieval, and persistent analyst Cases.
+Several of these are API-only: the web app has no UI for Cases or description
+search (see [API-only capabilities](#api-only-capabilities)).
 
 ## Layout
 
@@ -9,22 +14,28 @@ Korean claim structural parsing, and claim-level hybrid retrieval.
 | --- | --- |
 | `src/claimtrace_api/core/` | Settings (`pydantic-settings`), error taxonomy, logging setup |
 | `src/claimtrace_api/api/` | Routers, dependencies, versioned endpoints under `v1/` |
-| `src/claimtrace_api/services/` | Use cases: ingestion, claim parsing, claim indexing, claim search |
-| `src/claimtrace_api/parsing/` | `DocumentParser` (PDF text) and `parsing/claims/` (`ClaimParser`) |
+| `src/claimtrace_api/services/` | Use cases: `ingestion`, `claim_parsing`, `claim_indexing`, `claim_search`, `claim_elements`, `claim_element_reviews`, `claim_comparison`, `description_evidence`, `cases`, `case_grounded_results`, `grounded_generation`, `llm_generation`, `source_resolution` |
+| `src/claimtrace_api/parsing/` | `DocumentParser` (PDF text, `pymupdf_parser.py`), `parsing/claims/` (`ClaimParser`), and `elements.py` (deterministic claim element parser) |
 | `src/claimtrace_api/indexing/` | Search-text normalisation, `IndexProfile`, and `EmbeddingProvider` implementations |
 | `src/claimtrace_api/retrieval/` | Dense (pgvector), lexical (FTS + trigram), and Reciprocal Rank Fusion |
+| `src/claimtrace_api/llm/` | The local LLM boundary: provider protocol, `fake`, `ollama` and `openai_compatible` providers, retry, structured-output handling |
+| `src/claimtrace_api/grounding/` | Request-local evidence catalog, deterministic prompt/context builder, the model output contract (`draft.py`), and post-generation citation validation for grounded answers |
 | `src/claimtrace_api/storage/` | `FileStorage` protocol and the local implementation |
-| `src/claimtrace_api/db/` | Engine, session factory, ORM models, health probe |
+| `src/claimtrace_api/db/` | Engine, session factory, health probe, and ORM models for the `0001`-`0006` tables (`models.py`, `element_models.py`, `review_models.py`) |
 | `src/claimtrace_api/schemas/` | Pydantic request/response models, including locators |
-| `alembic/` | Migration environment and versions |
-| `tests/` | pytest suite; the `integration` tier needs PostgreSQL and skips without it |
-| `evals/` | Offline retrieval evaluation over a synthetic Korean corpus |
+| `alembic/` | Migration environment and versions (linear chain `0001` to `0009`) |
+| `tests/` | pytest suite; the `integration` tier needs PostgreSQL and skips without it. `tests/d3_acceptance/` and `tests/d4_acceptance/` hold the real-public-corpus acceptance tests, excluded from default collection (see [Tests](#tests)) |
+| `evals/` | Offline retrieval evaluation and grounded-generation evaluation over synthetic Korean corpora |
 
 Dependencies point inward: `parsing/`, `storage/`, and `indexing/embeddings/`
 know nothing about FastAPI, SQLAlchemy, or each other. `services/` composes them,
 `api/` only translates HTTP. `retrieval/` is the one exception and deliberately
 so: dense and lexical retrieval *are* SQL, and pretending otherwise would mean
 pulling every vector into Python to compare it.
+
+The tables added by migrations `0007` (description evidence), `0008` and `0009`
+(analyst Cases and their grounded results) have no ORM model; `services/description_evidence.py`,
+`services/cases.py` and `services/case_grounded_results.py` use raw SQL against them.
 
 ## Endpoints
 
