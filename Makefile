@@ -7,6 +7,9 @@ SHELL := /bin/sh
 COMPOSE := docker compose
 API_DIR := apps/api
 WEB_DIR := apps/web
+# Container path (apps/api/evals is mounted at /app/evals) where the regression gate
+# writes, so it never touches the committed evals/results record.
+GATE_RESULTS_DIR := evals/tmp/regression
 
 .DEFAULT_GOAL := help
 .PHONY: help init up up-detached down logs ps build restart \
@@ -100,8 +103,13 @@ verify-v1-02: init ## Run the exact Claim Comparison Backend closure gates in Do
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check .
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check .
 
-verify-deterministic-regression: init ## Run both evaluations with the fake provider, enforce the pinned baseline (rewrites evals/results)
+verify-deterministic-regression: init ## Run both evaluations with the fake provider, enforce the pinned baseline (writes to evals/tmp, not evals/results)
 	$(COMPOSE) config --quiet
+	@# Fake-provider output must not overwrite the committed real-embedding record in
+	@# evals/results. evals/tmp is git-ignored (tmp/) and inside the writable evals mount;
+	@# the container runs as an unprivileged uid, so the host side creates it writable.
+	mkdir -p $(API_DIR)/evals/tmp/regression
+	chmod -R a+rwX $(API_DIR)/evals/tmp
 	$(COMPOSE) build api
 	$(COMPOSE) up -d postgres
 	$(COMPOSE) exec -T postgres sh -ec '\
@@ -111,9 +119,9 @@ verify-deterministic-regression: init ## Run both evaluations with the fake prov
 		done; \
 		echo "postgres did not become ready" >&2; \
 		exit 1'
-	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake
-	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic
-	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/results/results.json").read_text()); assert r["profile"]["embedding_provider"] == "fake"; m=r["metrics"]; assert m["dense"]["recall_at_5"] == 0.7255; assert m["dense"]["mrr_at_10"] == 0.6725; assert m["lexical"]["recall_at_5"] == 0.9118; assert m["lexical"]["mrr_at_10"] == 0.9608; assert m["hybrid"]["recall_at_5"] == 0.8824; assert m["hybrid"]["mrr_at_10"] == 0.8407; g=json.loads(Path("evals/results/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] == 1.0; assert gm["answerability_accuracy"] == 1.0; assert gm["citation_resolution_rate"] == 1.0; assert gm["statement_citation_coverage"] == 1.0; assert gm["selection_recall"] == 1.0; assert gm["end_to_end_success_rate"] == 1.0; assert gm["forbidden_citation_count"] == 0; g01=next(item for item in g["per_case"] if item["id"] == "g01-single-storage"); assert g01["end_to_end_success"] is True; assert "collector#1" in g01["cited"]; assert not g01["forbidden_cited"]; assert all(item["end_to_end_success"] for item in g["per_case"]); assert all(item["refused"] for item in g["guardrails"]); print("deterministic fake-provider regression baseline: PASS")'
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.run --provider fake --output-dir $(GATE_RESULTS_DIR)
+	$(COMPOSE) run --rm -e EMBEDDING_PROVIDER=fake api python -m evals.grounded_run --tier deterministic --output-dir $(GATE_RESULTS_DIR)/grounded
+	$(COMPOSE) run --rm api python -c 'import json; from pathlib import Path; r=json.loads(Path("evals/tmp/regression/results.json").read_text()); assert r["profile"]["embedding_provider"] == "fake"; m=r["metrics"]; assert m["dense"]["recall_at_5"] == 0.7255; assert m["dense"]["mrr_at_10"] == 0.6725; assert m["lexical"]["recall_at_5"] == 0.9118; assert m["lexical"]["mrr_at_10"] == 0.9608; assert m["hybrid"]["recall_at_5"] == 0.8824; assert m["hybrid"]["mrr_at_10"] == 0.8407; g=json.loads(Path("evals/tmp/regression/grounded/results-deterministic.json").read_text()); gm=g["metrics"]; assert gm["structured_output_rate"] == 1.0; assert gm["answerability_accuracy"] == 1.0; assert gm["citation_resolution_rate"] == 1.0; assert gm["statement_citation_coverage"] == 1.0; assert gm["selection_recall"] == 1.0; assert gm["end_to_end_success_rate"] == 1.0; assert gm["forbidden_citation_count"] == 0; g01=next(item for item in g["per_case"] if item["id"] == "g01-single-storage"); assert g01["end_to_end_success"] is True; assert "collector#1" in g01["cited"]; assert not g01["forbidden_cited"]; assert all(item["end_to_end_success"] for item in g["per_case"]); assert all(item["refused"] for item in g["guardrails"]); print("deterministic fake-provider regression baseline: PASS")'
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff check evals
 	$(COMPOSE) run --rm -e RUFF_CACHE_DIR=/tmp/ruff-cache api ruff format --check evals
 
@@ -142,8 +150,8 @@ check: lint fmt-check test web-lint web-typecheck ## Run lint, format check, hos
 # evaluation has no target of its own; run it with
 #   docker compose run --rm api python -m evals.grounded_run
 # (see apps/api/evals/README.md). verify-deterministic-regression, above, runs
-# both evaluations with the fake provider and overwrites the committed files
-# under apps/api/evals/results.
+# both evaluations with the fake provider and writes to apps/api/evals/tmp/regression
+# (git-ignored), leaving the committed files under apps/api/evals/results alone.
 
 eval: ## Run the retrieval evaluation with the configured embedding model
 	$(COMPOSE) run --rm api python -m evals.run
