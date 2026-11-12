@@ -13,8 +13,9 @@ Two further things sit alongside them: the enforced fake-provider
 > `results/` carry `generated_at` timestamps of 2026-07-26
 > (`results/results.json`, 09:20 UTC; `results/grounded/results-deterministic.json`,
 > 23:24 UTC; `results/grounded/results-ollama.json`, 23:27 UTC).
-> `results/results.json` records the `intfloat/multilingual-e5-small` embedding
-> model; the grounded result files do not record an embedding profile. The lexical
+> All three record the `intfloat/multilingual-e5-small` embedding model
+> (`profile` in `results/results.json`, `corpus.retrieval_profile` in the grounded
+> files). The lexical
 > channel (`retrieval/lexical.py`) was last changed after that, on 2026-09-03 (a
 > bounded term-level trigram fallback), so the committed numbers describe the code
 > as it was on the run date. They have not been re-measured against the current

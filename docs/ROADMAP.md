@@ -394,8 +394,8 @@ enforced gate pins fake-provider numbers instead; see
 
 After the `v1.0-proof` freeze, work continued as numbered milestones (P1-P14) toward
 numbered destinations (D1-D6). The authoritative record of each, with its evidence
-and non-claims, is `CLAIMTRACE_V1_MASTER.md` (milestones in Section 10, destinations
-in Sections 11-15, current state in Section 16). This table is only a map.
+and non-claims, is `CLAIMTRACE_V1_MASTER.md` (milestones P1-P13 in Section 10, P14 with
+D2 in Section 11, destinations in Sections 11-15, current state in Section 16). This table is only a map.
 
 | Milestone | What it added | Outcome |
 | --- | --- | --- |

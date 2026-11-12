@@ -1,9 +1,12 @@
 # ClaimTrace Architecture
 
-Status: **Phase 4A-2 - evidence-grounded generation.** This document describes
-what exists today and the boundaries where later phases will attach. It
-intentionally does not specify the internals of reranking or of claim
-decomposition.
+Status: **`main` after the v1.0 Proof (tag `v1.0-proof`), as of the 2026-11-11
+first wrap-up. Alembic head `0009`; no milestone is active.** This document
+describes what exists today and the boundaries where later work attaches.
+Reranking is not built, so it is not specified here. Claim element decomposition
+and claim-to-claim comparison are built (sections 12 and 13). Sections 1-11
+describe the original phases; sections 12-16 cover what was added after them,
+section 17 the extension points, and section 18 the known gaps.
 
 Phase 4A-2 connects the Phase 4A-1 model boundary to Phase 3A retrieval and
 answers questions from stored claim text. Every returned statement carries a
@@ -11,6 +14,12 @@ citation that resolves to a canonical stored source locator, because the model
 selects from server-issued evidence identifiers and never names a source itself
 (section 11). It still reaches no legal conclusion: claim decomposition and
 claim-to-claim comparison are Phase 5.
+
+> **Update (2026-11-11 wrap-up):** Both now exist on `main`. Deterministic claim
+> element decomposition with append-only human review is described in section 12,
+> and claim comparison in section 13. Comparison is retrieval-only: it ranks the
+> claims of one reference document against one target claim, and it still reaches
+> no legal conclusion.
 
 ---
 
@@ -20,8 +29,12 @@ claim-to-claim comparison are Phase 5.
                     ┌──────────────────────────────┐
    browser ────────▶│ web (Next.js, App Router)    │
                     │ apps/web                     │
-                    │ - landing page               │
-                    │ - live system status panel   │
+                    │ - /  system status panel     │
+                    │ - /documents, /documents/[id]│
+                    │ - /search, /grounded         │
+                    │ - /compare, /reviews/[runId] │
+                    │ - /llm diagnostics           │
+                    │ - server actions run POSTs   │
                     └───────────────┬──────────────┘
                                     │ HTTP (JSON), CORS-controlled
                                     ▼
@@ -30,15 +43,27 @@ claim-to-claim comparison are Phase 5.
                     │ apps/api                     │
                     │ - /health   liveness         │
                     │ - /ready    readiness        │
-                    │ - /api/v1/* versioned API    │
+                    │ - /api/v1/* versioned API:   │
+                    │   system, documents, cases,  │
+                    │   claims, claim_elements,    │
+                    │   claim_element_reviews,     │
+                    │   descriptions, search,      │
+                    │   comparison, llm, grounded  │
+                    │ - embedding model, in-process│
                     └───────────────┬──────────────┘
                                     │ SQLAlchemy 2.x async + psycopg 3
                                     ▼
                     ┌──────────────────────────────┐
                     │ postgres 17 + pgvector       │
-                    │ - app_metadata               │
-                    │ - vector extension enabled   │
+                    │ - 20 tables (0001 to 0009)   │
+                    │ - extensions: vector, pg_trgm│
                     └──────────────────────────────┘
+
+   the api container also mounts two named volumes and holds the embedding model:
+
+   document_storage ──▶ /data/uploads   original PDFs      (STORAGE_ROOT)
+   model_cache      ──▶ /models         embedding weights   (EMBEDDING_CACHE_DIR)
+   embedding model      in-process: sentence-transformers, or "fake" (tests, offline)
 
    the API additionally speaks to one optional, configurable model server:
 
@@ -53,7 +78,9 @@ claim-to-claim comparison are Phase 5.
 
 The three core services run as containers described by `docker-compose.yml`. There
 is no message broker, cache, or object store yet; none is needed by the current
-scope.
+scope. Original uploads sit on a local named volume (section 7), and the embedding
+model runs inside the api process with its weights in a second named volume
+(section 9).
 
 The model server is *optional and out of band*. `docker compose up` starts the
 stack with `LLM_PROVIDER=fake`, which needs no model, no weights, and no network;
@@ -85,9 +112,16 @@ apps/api/src/claimtrace_api/
 │   └── v1/
 │       ├── router.py    aggregates every v1 router
 │       ├── system.py    GET /api/v1/system/info
+│       ├── documents.py document upload, retry, listing, detail, page text
+│       ├── claims.py    claim parsing, claim reads, claim indexing
+│       ├── search.py    POST /api/v1/search/claims
+│       ├── claim_elements.py         element decomposition (section 12)
+│       ├── claim_element_reviews.py  append-only review of a run (section 12)
+│       ├── comparison.py             POST /api/v1/compare/claims (section 13)
+│       ├── descriptions.py           description derive, index, search (section 14)
+│       ├── cases.py                  analyst Cases and their results (section 15)
 │       ├── llm.py       LLM status + development generation diagnostics
-│       ├── grounded.py  POST /api/v1/grounded/answers
-│       └── documents.py document upload, listing, detail, page text
+│       └── grounded.py  POST /api/v1/grounded/answers
 ├── services/
 │   ├── ingestion.py     the ingestion use case: validate → store → parse → persist
 │   ├── claim_parsing.py the claim structural parsing use case
@@ -95,7 +129,13 @@ apps/api/src/claimtrace_api/
 │   ├── claim_search.py  the search use case: profile → retrieve → fuse → hydrate
 │   ├── llm_generation.py the generation use case: validate → bound → generate
 │   ├── grounded_generation.py  retrieval + generation: the Phase 4A-2 use case
-│   └── source_resolution.py    locator → the stored page text it addresses
+│   ├── source_resolution.py    locator → the stored page text it addresses
+│   ├── claim_comparison.py     one target claim against one reference document
+│   ├── claim_elements.py       the element decomposition use case
+│   ├── claim_element_reviews.py  append and read review records
+│   ├── description_evidence.py derive, index and search description segments
+│   ├── cases.py                analyst Cases and document association
+│   └── case_grounded_results.py  persist and reopen Case grounded results
 ├── llm/                 the LLM boundary (Phase 4A-1). Imports no web framework
 │   ├── base.py          LLMProvider protocol, StructuredGeneration
 │   ├── models.py        messages, options, response, capabilities, metadata
@@ -127,17 +167,30 @@ apps/api/src/claimtrace_api/
 │   └── fusion.py        Reciprocal Rank Fusion
 ├── parsing/
 │   ├── base.py          DocumentParser protocol, ParsedDocument/ParsedPage
-│   └── pymupdf_parser.py PyMuPDF implementation for digital PDFs
+│   ├── pymupdf_parser.py PyMuPDF implementation for digital PDFs
+│   ├── claims/
+│   │   ├── base.py      ClaimParser protocol and the parsed-claim dataclasses
+│   │   └── korean_rules.py  KoreanRuleBasedClaimParser
+│   └── elements.py      DeterministicElementParser (section 12)
 ├── storage/
 │   ├── base.py          FileStorage protocol, storage-key validation
 │   └── local.py         local filesystem implementation
 ├── db/
 │   ├── base.py          DeclarativeBase, Alembic's target metadata
 │   ├── session.py       async engine + session factory
-│   ├── models.py        ORM models (documents, pages, claims, index runs, search records)
+│   ├── models.py        ORM models (app_metadata, documents, pages, claims, index runs,
+│   │                    search records)
+│   ├── element_models.py ORM models for decomposition runs, elements and spans
+│   ├── review_models.py ORM model for decomposition reviews
 │   └── health.py        SELECT 1 probe
 └── schemas/             Pydantic request/response models, including locators.py
 ```
+
+ORM models are split over three modules: `models.py` (the baseline, ingestion,
+claim parsing, and claim indexing tables), `element_models.py`, and
+`review_models.py`. The tables added by revisions 0007 to 0009 - description
+evidence and analyst Cases - have no ORM model; their services read and write
+them with raw SQL.
 
 Two rules keep this layout honest:
 
@@ -155,6 +208,18 @@ Two rules keep this layout honest:
    `ClaimType` enum, and no provider. That is what lets the citation-integrity
    tests run with no database, no model, and no network - which in turn is what
    makes it affordable to test them exhaustively.
+
+> **Update (2026-11-11 wrap-up):** Both rules were written for the layout at
+> Phase 4A-2, and the later modules depart from them in five places. The routes in
+> `api/v1/cases.py` construct `AnalystCaseService` and `CaseGroundedResultService`
+> inline instead of taking them from `api/deps.py`, and the same module imports the
+> private `_answer_response` mapper from `api/v1/grounded.py`.
+> `api/v1/claim_elements.py` checks the document, the claim parse snapshot, and the
+> claim number in the route before calling its service, which is orchestration in
+> `api/`. `api/v1/descriptions.py` reads `service._settings` to get the RRF `k`.
+> And `services/description_evidence.py` implements dense, lexical, and rank-fusion
+> retrieval in raw SQL itself instead of composing `retrieval/` (section 14). They
+> are listed so that the rules above are not read as stricter than the code.
 
 ---
 
@@ -207,8 +272,10 @@ client → route: read_upload() streams the body, aborting past UPLOAD_MAX_BYTES
          5. register    INSERT documents (status=uploaded) → commit
                         UPDATE status=processing              → commit
          6. parse       LocalFileStorage.read(storage_key)
-                        → PyMuPDFDocumentParser.parse(bytes) → ordered pages
-         7. persist     INSERT every page + UPDATE status=completed  → ONE commit
+                        → PyMuPDFDocumentParser.parse(bytes) → ordered pages,
+                          after its per-page text-layer classification
+         7. persist     reject a document-wide total below MIN_EXTRACTED_CHARACTERS,
+                        then INSERT every page + UPDATE status=completed → ONE commit
               ↓
          201 Created + DocumentResponse
 ```
@@ -218,9 +285,11 @@ Failure branches:
 | When | Result |
 | --- | --- |
 | Validation (step 1) | 4xx, nothing stored, no record |
+| Original cannot be written (4) | `storage_failure`, 500; nothing is registered, so no document record exists |
 | `uploaded → processing` commit fails (5) | The session is rolled back and the already-registered document is terminalized as `failed` with `internal_error` when failure-state persistence succeeds; client receives a safe 500 ingestion failure. P4 verified this service contract with deterministic fault injection, not a real PostgreSQL commit fault. |
 | Stored-file read fails after registration (6) | The document is terminalized as `failed` with `storage_failure` when failure-state persistence succeeds; the raw storage exception is not returned to the client. |
-| Parse or no-text (6) | Document marked `failed` with an error code, 422, and the record is returned inside the error envelope |
+| Parser rejection (6): unreadable, encrypted, or a mixed text layer | Document marked `failed` with the parser's error code (`malformed_pdf`, `encrypted_pdf`, or `no_extractable_text` for a mixed layer), 422, and the record is returned inside the error envelope |
+| Document-wide text below `MIN_EXTRACTED_CHARACTERS` (7) | Document marked `failed` with `no_extractable_text`, 422, record returned in the same envelope |
 | Page/completion persistence fails (7) | The page/completion transaction rolls back, so no partial page set is accepted as `completed`; the document is then terminalized as `failed` with `internal_error` when failure-state persistence succeeds. |
 | Concurrent identical upload | Unique digest violation is caught and resolved to the winner's record, 200 |
 
@@ -240,6 +309,16 @@ second commit records `processing`; accepted P4 handling attempts to persist
 `failed` if that transition commit itself fails. This does not establish crash
 recovery: process termination between commits or during parsing has no automatic
 resume path.
+
+> **Update (2026-11-11 wrap-up):** Explicit retry now exists.
+> `POST /api/v1/documents/{id}/retry` re-runs parsing and persistence for a
+> document whose status is `failed`, from its stored original and under the same
+> document id (section 7, "Failure terminalization and retry"). It is
+> operator-driven. There is still no automatic or background retry, and
+> re-uploading identical bytes still returns the failed row unchanged. A row
+> stranded in `uploaded` or `processing` after a crash is not recoverable this
+> way: retry accepts only `failed` rows and answers 409 `document_retry_not_allowed`
+> for any other status.
 
 Parsing is synchronous. A 20 MB text PDF parses in well under a second, and a queue
 would add a broker, a worker, and a retry policy to buy nothing at this size. When
@@ -275,13 +354,33 @@ for server-side fetches; `NEXT_PUBLIC_API_BASE_URL` (`http://localhost:8000`) is
 the fallback and the value any future browser-side call would use. Only
 `NEXT_PUBLIC_*` values are compiled into the client bundle.
 
+> **Update (2026-11-11 wrap-up):** The flow above is the home page only. The web
+> app now has eight routes under `apps/web/app/`: `/`, `/documents`,
+> `/documents/[id]`, `/search`, `/grounded`, `/compare`, `/llm`, and
+> `/reviews/[runId]`. Pages still read through server components that use `lib/`.
+> Every mutation, and every POST-based query, goes through a Next.js server action
+> that runs in the web runtime and calls the API from there:
+>
+> | Area | Server actions |
+> | --- | --- |
+> | Upload and retry | `uploadDocumentAction`, `retryDocumentAction` (`app/documents/actions.ts`) |
+> | Claim parsing and indexing | `parseClaimsAction`, `indexClaimsAction` (`app/documents/[id]/actions.ts`) |
+> | Decomposition and review | `decomposeAndReviewAction` (`app/documents/[id]/review-actions.ts`), `submitElementReviewAction` (`app/reviews/[runId]/actions.ts`) |
+> | Search, grounded answers, comparison | `searchClaimsAction`, `askGroundedAction`, `compareClaimsAction` |
+> | LLM diagnostics | `generateTextAction`, `generateStructuredAction` |
+>
+> No file marked `"use client"` calls `fetch`, and none imports a `lib/` function
+> that does, so the API still does not have to be exposed to browsers. The flows
+> for decomposition, review, comparison, description evidence, and Cases are in
+> sections 12 to 15; they are not repeated here.
+
 ---
 
 ## 4. Service responsibilities
 
 | Service | Owns | Does not own |
 | --- | --- | --- |
-| `web` | Presentation, server-side status fetching | Business rules, database access, secrets |
+| `web` | Presentation, server-side reads, and server actions that proxy mutations to the API | Business rules, database access, secrets |
 | `api` | HTTP contract, configuration, validation, persistence, migrations | Rendering, UI state |
 | `postgres` | Durable state, `vector` extension | Application logic |
 

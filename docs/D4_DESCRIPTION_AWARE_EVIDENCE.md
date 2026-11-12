@@ -105,4 +105,4 @@ PR exact-head verification → review → merge → Issue close → `CLAIMTRACE_
 
 If D4 is reached, progression may advance only to another explicitly pre-authorized destination recorded in the authoritative MASTER. Otherwise return to Human Review.
 
-_(Note, 2026-11-11: superseded as a statement of what comes next. D4 was reached, D5 and D6 followed, and D6 was closed by Human Review on 2026-11-11. No milestone is active and the next destination is not selected; see MASTER Section 16.)_
+_(Note, 2026-11-11: superseded as a statement of what comes next. D4 was reached, D5 and D6 followed, and D6 was closed at the fail-closed boundary by Human Review on 2026-11-11 (OCR deferred). No milestone is active and the next destination is not selected; see MASTER Section 16.)_

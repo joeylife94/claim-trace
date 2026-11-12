@@ -44,7 +44,7 @@ The v1.0 workflow is:
 
 The `v1.0-proof` tag is frozen and unchanged, and the committed assets under `docs/proof/` are byte-identical to the tag (checked 2026-11-11). `main` has moved on. The additions below are described in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md), whose Section 16 is the current-state summary. Each keeps the product boundary above.
 
-- **Failed-ingestion retry.** A document whose ingestion failed can be retried from its persisted original through the API (`POST /api/v1/documents/{id}/retry`) and a form on the Documents page. Retry is allowed only for failed documents; otherwise the API answers `409 DOCUMENT_RETRY_NOT_ALLOWED`.
+- **Failed-ingestion retry.** A document whose ingestion failed can be retried from its persisted original through the API (`POST /api/v1/documents/{id}/retry`) and a form on the Documents page. Retry is allowed only for failed documents; otherwise the API answers `409` with error code `document_retry_not_allowed`.
 - **Korean term-level lexical fallback.** Lexical retrieval can recover a near-identical token (for example a noun carrying a different particle) through a stricter trigram threshold. It is deliberately bounded and is not a general Korean morphological analyser.
 - **Controlled-pilot handoff verifier.** `scripts/verify-controlled-pilot-handoff.sh` runs the clean-start, real-retry, and golden-path verifications and records hashes of the proof assets. See [`docs/CONTROLLED_PILOT_HANDOFF.md`](docs/CONTROLLED_PILOT_HANDOFF.md). It does not exercise the description, Case, real-public-corpus, or mixed-PDF additions below.
 - **Real-public corpus verifier.** `scripts/verify-d3-real-corpus-inputs.sh` and hash-pinned acceptance tests use two public Korean patent PDFs listed in [`docs/real-public-corpus/manifest.json`](docs/real-public-corpus/manifest.json). The PDFs are downloaded at run time and are not committed.
@@ -173,7 +173,7 @@ Detailed design and historical extension points live in [`docs/ARCHITECTURE.md`]
 - `make` (the scripts call `make init` when `.env` is missing) and `curl`
 - Node.js 22+ and network access for browser proof capture (`npm ci`, Playwright and Chromium download)
 - For the real-public corpus verifier only: `python3` and `pdftotext`, plus network access to download the PDFs
-- For `scripts/verify-controlled-pilot-handoff.sh` additionally: `git` and `sha256sum`. The real-retry step installs Chromium with `--with-deps`, which may need root or apt access
+- For `scripts/verify-controlled-pilot-handoff.sh` additionally: `sha256sum` (`git` is optional and only records the commit). The real-retry step installs Chromium with `--with-deps`, which may need root or apt access
 
 ### Start the application
 
@@ -230,7 +230,7 @@ The capture uses the committed deterministic two-document seed, fake embedding p
 
 ## Known limitations
 
-- **Text-based PDFs only.** OCR is not implemented and was deferred, not selected, as a future candidate. A PDF with no extractable text fails explicitly. Since the D6-01 change, a PDF in which any page has no extractable text (including a blank or drawings-only page in an otherwise text-native file) is rejected as mixed or ambiguous. A scan that already carries an embedded text layer is treated as text, and ClaimTrace does not judge that layer's quality.
+- **Text-based PDFs only.** OCR is not implemented; it is a deferred candidate for a future destination, not a selected one. A PDF with no extractable text fails explicitly. Since the D6-01 change, a PDF in which any page has no extractable text (including a blank or drawings-only page in an otherwise text-native file) is rejected as mixed or ambiguous. A scan that already carries an embedded text layer is treated as text, and ClaimTrace does not judge that layer's quality.
 - **Cases and description search have no UI.** They are reachable only through the API (and the `source_url` deep link into the document page). Grounded answers remain claim-only; description evidence is not an input to grounded generation.
 - Korean claim parsing is deterministic and intentionally bounded; it is not represented as a universal patent parser.
 - Citation resolvability proves that a statement points to stored evidence; **it does not prove semantic entailment or legal correctness**.

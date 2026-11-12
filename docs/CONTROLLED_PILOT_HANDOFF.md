@@ -11,7 +11,7 @@ Prerequisites for a clean checkout:
 - `make`, `curl` and `sha256sum` on the host: the sub-scripts call `make init` when no `.env` exists (which copies `.env.example` to `.env` in the checkout and never overwrites an existing one), poll the services with `curl`, and the handoff step hashes the proof assets with `sha256sum`;
 - network access to pull container images, run `npm ci`, and download Playwright and Chromium;
 - permission to install Chromium's system dependencies: the retry step runs `npx playwright install --with-deps chromium`, which on Linux may need root or `apt` access;
-- free host ports `15434`, `18002`, `15435`, `18003` and `13003` (the script's defaults, overridable through the variables set in the script; the clean-start step uses ephemeral ports).
+- free host ports `15434`, `18002`, `13011`, `15435`, `18003` and `13003` (set by the handoff script and, for `13011`, by the retry step's browser script; changing them means editing those files; the clean-start step uses ephemeral ports).
 
 `git` is optional: it is only used to record the commit SHA in the generated report, which falls back to `unknown`.
 
