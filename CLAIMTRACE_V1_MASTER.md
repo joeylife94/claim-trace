@@ -2,7 +2,7 @@
 
 > **Authoritative execution contract and evidence ledger for ClaimTrace.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records the phase history and candidate directions. **This file controls the frozen v1.0 Proof boundary and records the post-v1 progression.**
 
-**Last execution update:** 2026-11-11  
+**Last execution update:** 2026-11-12  
 **v1.0 target:** L4 Controlled Pilot  
 **v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
@@ -1567,6 +1567,7 @@ No D6 milestone is active. Do not open another automatic progression milestone; 
 **Status:** `CHECKPOINT RECORDED — NO ACTIVE MILESTONE`
 **Base commit:** `main` at `f59f4df1587233dda7efaba2d4a3e053ff8e760d`
 **Scope:** documentation reconciliation and re-verification only. No product code, migration, test, fixture, workflow, script, or Proof asset changed.
+**Dates:** the D6 decision and the local verification below are dated 2026-11-11, which is the checkpoint date used throughout the reconciled documents. The document reconciliation itself was completed on 2026-11-12.
 
 This section is the current-state entry point. It summarizes what the ledger above already records and adds only what the wrap-up itself did. Where this summary and a detailed ledger entry differ, the ledger entry is authoritative.
 

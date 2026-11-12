@@ -163,7 +163,7 @@ FastAPI (addition since v1.0)
   └─ analyst Cases + persisted grounded results     (no UI)
 ```
 
-Detailed design and historical extension points live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The architecture SVG at the top of this page shows the v1.0 boundary only.
+Detailed design, extension points, and known gaps live in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The architecture SVG at the top of this page shows the v1.0 boundary only.
 
 ## Reproduce the controlled pilot
 
