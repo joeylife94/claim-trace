@@ -2,13 +2,13 @@
 
 > **Authoritative execution contract and evidence ledger for ClaimTrace.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records the phase history and candidate directions. **This file controls the frozen v1.0 Proof boundary and records the post-v1 progression.**
 
-**Last execution update:** 2026-11-12  
+**Last execution update:** 2026-11-16  
 **v1.0 target:** L4 Controlled Pilot  
 **v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **UPGRADE TRACK SELECTED (2026-11-12) — D7 active (D7-01) / D8 and D9 queued**  
+**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7-01 implemented, accepted on merge of its pull request / D8 next / D9 queued**  
 **Where to start reading:** Section 17 for the active upgrade track; Section 16 for the state at the first wrap-up; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
@@ -1712,4 +1712,46 @@ Scope is the defects recorded under Section 16 open items 8, 9, and 12, and noth
 8. Documents that describe the old behaviour are updated in the same milestone.
 
 Explicitly out of scope: the read-only Alembic mount in Compose, the General CI path filter that skips documentation-only changes, the development Compose port publishing, and Issue #65.
+
+### D7-01 Implementation Record — 2026-11-16
+
+**Status:** `IMPLEMENTED — ACCEPTED ON MERGE OF THE D7-01 PULL REQUEST`
+
+Exact-head workflow results and the merge commit are recorded on that pull request. The next ledger entry cites them.
+
+#### Changed
+
+- `main.py`: one handler maps an embedding-provider failure raised at request time. Model unavailable returns `503 embedding_model_unavailable`; dimension mismatch returns `500 embedding_dimension_mismatch`; a provider code outside the error taxonomy returns `500 internal_error` with a fixed message and is logged at ERROR. The indexing path is unchanged because it catches the error itself. The Case grounded-results and description-index routes now declare `503`.
+- `api/v1/descriptions.py`: the derive and index routes take a typed document id, so a malformed id returns the standard `422`.
+- `Makefile` and `progression-deterministic-regression.yml`: the regression gate writes to and asserts against the git-ignored `apps/api/evals/tmp/regression`. The pinned assertions are the same expressions at the new location. The committed result files are no longer rewritten.
+- `alembic/env.py`: an `include_object` filter with two named lists, applied in both offline and online configuration. Autogenerate no longer proposes dropping the seven tables from migrations `0007`-`0009` or the three raw-SQL search indexes from migration `0004`.
+- D3 and D4 workflows: the dead path filter entry is replaced with `Makefile`.
+- Two code comments corrected, with no change to constants or behaviour.
+- Three new test files, `tests/test_d7_*.py`. No existing test was changed.
+- `docs/ARCHITECTURE.md`, `apps/api/README.md`, `apps/api/evals/README.md`: the passages that described the old behaviour carry notes dated 2026-11-16. `README.md` and `docs/ROADMAP.md` now state the upgrade track.
+
+This resolves Section 16 open item 12 in full, the autogenerate half of item 8, and the path-filter part of item 9.
+
+#### Actually Executed
+
+Locally on the final tree, against PostgreSQL 16 with pgvector 0.6.0:
+
+- database-free tier: **822 passed** (798 before D7-01);
+- PostgreSQL integration tier: **147 passed** (144 before D7-01);
+- `ruff check` and `ruff format --check`: passed;
+- both evaluation entry points run with the fake provider into a scratch directory, and the pinned assertion expression run against that output: passed;
+- with each fix reverted in a scratch copy, the corresponding tests fail: `500` instead of `503` or `422`, and an autogenerate revision that drops all seven tables.
+
+The work was reviewed independently before the pull request. The review found one defect that would have failed General CI (a test module that could not be imported inside the api image), one test that passed without asserting anything, and one recipe line that would fail on a second local run. All three were corrected.
+
+#### Verified
+
+Against the D7-01 Acceptance Contract: items 1, 2, 4, 5, 6, 7, and 8 are verified by the tests and checks above. Item 3 is verified by reading and by running the two evaluations and the assertions outside the container.
+
+#### Not Verified
+
+- **The Makefile gate itself was not run.** No Docker daemon was available. That the container user can write through the bind mount, and that the gate passes at the new location, is proven only by the workflows on the pull request.
+- A second consecutive local run of the gate was reasoned about, not executed.
+- The local database was PostgreSQL 16, not the PostgreSQL 17 image the project runs. The integration tier on the project image runs in General CI.
+- Still open from Section 16, and out of scope here: the read-only Alembic mount in Compose, so `make migration` still cannot write a revision file from inside the container; the General CI path filter; the development Compose port publishing; Issue #65.
 
