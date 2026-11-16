@@ -8,7 +8,7 @@
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7-01 implemented, accepted on merge of its pull request / D8 next / D9 queued**  
+**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7 reached / D8 active (D8-01) / D9 queued**  
 **Where to start reading:** Section 17 for the active upgrade track; Section 16 for the state at the first wrap-up; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
@@ -1678,14 +1678,14 @@ Do not open an automatic progression milestone. Select a destination from the ca
 
 **Human Review decision date:** `2026-11-12`
 **Decided by:** Human Review (repository owner)
-**Track state:** `SELECTED — D7 ACTIVE`
+**Track state:** `D7 REACHED — D8 ACTIVE`
 
 Section 16 left the next destination to a human decision. The decision is to upgrade in three destinations, in this order. The order is deliberate: fix what is already known to be wrong, then find out how good the system is with a real model, and only then build user-facing surface on top of it.
 
 | Destination | Purpose | State |
 | --- | --- | --- |
-| D7 — Recorded-defect hardening | Fix the defects that Section 16 recorded and left unfixed | Active (D7-01) |
-| D8 — Real-model quality measurement | Measure retrieval and grounded answers on current code with a real embedding model and a real local LLM, and report the result with its limits | Queued; acceptance contract to be recorded here before implementation |
+| D7 — Recorded-defect hardening | Fix the defects that Section 16 recorded and left unfixed | Reached (D7-01, PR #76) |
+| D8 — Real-model quality measurement | Measure retrieval and grounded answers on current code with a real embedding model and a real local LLM, and report the result with its limits | Active (D8-01) |
 | D9 — Visible analyst workspace | Give Cases and description retrieval a web surface | Queued; scope to be set after D8 reports |
 
 The other candidates in Section 16 (OCR, relaxing the mixed-PDF rejection, shared-network deployment hardening) are **not** selected by this decision and stay candidates.
@@ -1755,4 +1755,46 @@ Against the D7-01 Acceptance Contract: items 1, 2, 4, 5, 6, 7, and 8 are verifie
 - A second consecutive local run of the gate was reasoned about, not executed.
 - The local database was PostgreSQL 16, not the PostgreSQL 17 image the project runs. The integration tier on the project image runs in General CI.
 - Still open from Section 16, and out of scope here: the read-only Alembic mount in Compose, so `make migration` still cannot write a revision file from inside the container; the General CI path filter; the development Compose port publishing; Issue #65.
+
+### D7-01 Acceptance Update and D7 Destination Review
+
+**Status:** `ACCEPTED / MERGED`
+**PR:** #76 — `D7-01: fix the recorded defects`
+**Accepted PR exact head:** `e85f64cf42ec72adff9b30f61651f6f77e3a5b0a`
+**Resulting main squash merge SHA:** `53825d8c0a813d35e44d12bde866cdda673953a4`
+
+On the accepted head all 21 check runs across all 16 workflows completed **GREEN**, with no review thread open. That closes the items the implementation record listed as provable only in CI: General CI passed with the new tests inside the api image and with the integration tier on the project's PostgreSQL image; `Progression Deterministic Regression`, `Progression D3 Real Public Corpus`, and `Progression D4 Description Evidence` passed, so the gate runs at its new output location with the container user writing through the bind mount.
+
+The first run, on head `39b47db`, was not green: every job that installs Playwright failed at browser installation, because `ubuntu-latest` resolved to Ubuntu 26.04 and Playwright 1.55.0 has no Chromium build for it. Three of those failures were confirmed in the job logs; a fourth was not read. The runner pin recorded above fixed it, and the same jobs passed on the accepted head.
+
+Still not verified: a second consecutive local run of the gate.
+
+**D7 destination:** `DESTINATION REACHED — RECORDED-DEFECT HARDENING`. The defects in scope are fixed and evidenced. The items recorded as out of scope stay open.
+
+### D8-01 Acceptance Contract — real-model quality measurement
+
+Every piece of evidence since the v1.0 freeze used the fake embedding provider and a scripted or oracle LLM. It shows that provenance mechanics hold. It does not show whether retrieval and grounded answers are any good with a real model on current code. D8-01 measures that and reports it with its limits. It is a measurement, not a benchmark and not a tuning exercise: no product code changes to improve a number.
+
+**Measured**
+
+- M1: retrieval with the real `intfloat/multilingual-e5-small` model on the committed 26-claim, 19-query set, in dense, lexical, and hybrid modes.
+- M2: the grounded pipeline with real embeddings and the oracle in place of a language model, on the committed 16-case set, including whether `g01-single-storage` now succeeds, and the six scripted guardrail payloads.
+- M3: grounded generation with a real local LLM, `qwen2.5:1.5b` through Ollama, run twice, so per-case stability is measured and not assumed.
+
+**Not measured, deliberately**
+
+- Retrieval on the real public documents. The only label-free design is known-item fragment retrieval, which the lexical channel passes by substring matching and which says nothing about relevance.
+- Description-evidence retrieval. It has no relevance labels.
+- Hostile-payload refusals against a real model. A real model cannot be made to emit a specific invalid answer; the guardrail suite is scripted by design.
+
+**Acceptance**
+
+1. A workflow runs M1, M2, and M3 on a GitHub-hosted runner with the real providers. It is triggered manually or by a pull request that changes the workflow or the D8 tooling, and by nothing else. The job that runs models has read-only permission.
+2. A run on the exact head of the D8-01 pull request completes all three measurements with the real providers, and the tooling refuses to produce a summary from a fake-provider run, a wrong model, a missing repeat, or an incomplete input.
+3. The result files are committed under a new dated directory, `apps/api/evals/results/d8/`. Their SHA-256 values match the index the run printed. The 2026-07-26 result files stay byte-identical.
+4. The summary states the M1 metrics per mode, the outcome of g01 in the oracle tier and in each LLM repeat, the outcome of the injection case per repeat, and how many cases agree across repeats. It records the model revisions, the Ollama version, and the runner.
+5. The report leads with its non-claims. It places the 2026-07-26 figures beside the new ones and attributes no difference to a cause, because code, model revision, runtime, and hardware all changed together.
+6. Both test tiers and Ruff pass. Documents that cite evaluation results point at the dated directory and keep every existing caveat.
+
+**Environment constraint recorded with the contract.** The development machine has no Docker, and its network policy blocks the model hosts and the host that serves workflow logs and artifacts. The measurement therefore runs only on GitHub-hosted runners, and results reach the repository through a results branch that a separate, write-permitted job pushes and the implementer fetches with git.
 
