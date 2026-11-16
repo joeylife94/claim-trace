@@ -1702,10 +1702,10 @@ Entries are compact: Changed, Actually Executed, Verified, Not Verified, each a 
 
 Scope is the defects recorded under Section 16 open items 8, 9, and 12, and nothing else. No new capability and no refactor.
 
-1. An embedding-provider failure while embedding a query returns the status and error code the API declares, on every HTTP path that embeds at request time, instead of a generic `500`.
+1. An embedding-provider failure while embedding a query returns the status and error code the API declares, on every HTTP path that embeds at request time, instead of a generic `500`. A provider error code outside the error taxonomy returns `500 internal_error` with a fixed client-safe message.
 2. A malformed document id on the description routes is rejected as a validation error instead of a generic `500`.
 3. Running `make verify-deterministic-regression` no longer rewrites the committed evaluation result files. The pinned baseline assertions are unchanged.
-4. Alembic autogenerate does not propose dropping the tables that migrations `0007`-`0009` create.
+4. Alembic autogenerate does not propose dropping database objects that hand-written migrations own: the tables that migrations `0007`-`0009` create, and the three raw-SQL search indexes on `claim_search_records` that migration `0004` creates. (The indexes were added to this item on 2026-11-16, after review found that autogenerate proposed dropping them as well.)
 5. The dead path filter in the D3 and D4 workflows is corrected.
 6. The two stale code comments are corrected, with no change to behaviour.
 7. Each behavioural fix has a test that fails before the fix and passes after it. No existing test is weakened or skipped.
