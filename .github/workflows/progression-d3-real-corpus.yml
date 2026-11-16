@@ -9,7 +9,7 @@ on:
       - "scripts/verify-d3-real-corpus-inputs.sh"
       - ".github/workflows/progression-d3-real-corpus.yml"
       - "apps/api/**"
-      - "scripts/verify-deterministic-regression.sh"
+      - "Makefile"
 
 permissions:
   contents: read

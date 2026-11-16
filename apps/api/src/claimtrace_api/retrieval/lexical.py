@@ -68,10 +68,11 @@ LEXICAL_STRATEGY_VERSION = "v1"
 #: Score weights. They sum to 1.0 and every component is in [0, 1], so a lexical
 #: score is always in [0, 1] and comparable across queries.
 #:
-#: Exact containment is weighted highest because in patent text an exact phrase
-#: hit is the strongest signal available - it is the query, verbatim, in the
-#: claim. Full-text sits above trigram because a whole-token match is evidence,
-#: whereas trigram overlap is a heuristic that can fire on coincidence.
+#: Full-text carries the most weight because a whole-token match is evidence,
+#: whereas trigram overlap is a heuristic that can fire on coincidence. Exact
+#: phrase containment (the query verbatim inside the claim) is the smallest
+#: component: it is a strong signal but a binary one, and a query that is not a
+#: literal substring of the claim still scores through the other two.
 _WEIGHT_FTS = 0.45
 _WEIGHT_TRIGRAM = 0.30
 _WEIGHT_PHRASE = 0.25

@@ -4,7 +4,7 @@ Six phases, each ending in something runnable and verifiable. Nothing from a lat
 phase is implemented early: the point of the sequence is that every phase can be
 demonstrated on its own.
 
-Current state (updated 2026-11-11): **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, and 5A complete within the accepted controlled-pilot boundary. Phase 3B and Phase 6 are partially delivered; each phase section below says what exists and what does not.** Work after the v1.0 freeze is summarised in [Post-v1 progression](#post-v1-progression). No milestone is active, and the next destination needs a human decision (see [Candidate next destinations](#candidate-next-destinations-not-selected)).
+Current state (updated 2026-11-11): **Phases 1, 2A, 2B, 2C, 3A, 4A-1, 4A-2, and 5A complete within the accepted controlled-pilot boundary. Phase 3B and Phase 6 are partially delivered; each phase section below says what exists and what does not.** Work after the v1.0 freeze is summarised in [Post-v1 progression](#post-v1-progression). As of 2026-11-16 an upgrade track is selected (D7 active, then D8, then D9; see [Candidate next destinations](#candidate-next-destinations) and Section 17 of `CLAIMTRACE_V1_MASTER.md`).
 
 The phase sections below are the plan and delivery record as written; where later work
 makes a sentence read as contradicted, a dated note under it says so rather than
@@ -415,23 +415,28 @@ D2 in Section 11, destinations in Sections 11-15, current state in Section 16). 
 | D5 | Persistent analyst Cases and persisted, reopenable Case-grounded results (API only; migrations `0008`, `0009`) | Reached |
 | D6 | Mixed-PDF input: text-layer classification that fails closed (D6-01) | Closed at the fail-closed boundary by Human Review on 2026-11-11; OCR deferred, no D6-02 |
 
-No milestone is active. The Alembic head is `0009`.
+No milestone was active at the 2026-11-11 wrap-up. The Alembic head is `0009`.
+
+> **Update (2026-11-16):** On 2026-11-12 the repository owner selected an upgrade track of three destinations, in order: D7 recorded-defect hardening (active, D7-01), D8 real-model quality measurement, and D9 a web surface for Cases and description retrieval. D8 and D9 are queued and have not started. The decision is recorded in `CLAIMTRACE_V1_MASTER.md` Section 17.
 
 ---
 
-## Candidate next destinations (not selected)
+## Candidate next destinations
 
-These are candidates only, listed without order and without commitment. None is
-planned, scheduled, or started. Each would need its own Human Review decision and a
-bounded acceptance contract before any work begins. The list mirrors Section 16 of
-`CLAIMTRACE_V1_MASTER.md`, which is authoritative.
+As written on 2026-11-11 this list was candidates only, listed without order and
+without commitment. On 2026-11-12 the repository owner selected part of it into the
+upgrade track recorded in Section 17 of `CLAIMTRACE_V1_MASTER.md`, which is
+authoritative: D7 (recorded-defect hardening, not a candidate below) is active, then D8,
+then D9. D8 and D9 are queued and have not started. Each unselected candidate would
+still need its own Human Review decision and a bounded acceptance contract before any
+work begins. The list mirrors Section 16.
 
-- OCR / scanned-input recovery, behind the OCR Gate recorded in the MASTER (Section 15);
-- a web surface for Cases and description retrieval;
+- OCR / scanned-input recovery, behind the OCR Gate recorded in the MASTER (Section 15); not selected;
+- a web surface for Cases and description retrieval (selected into the track as D9, queued);
 - description evidence in grounded analysis, with or without reranking;
-- real-local-model quality re-measurement and refreshed evaluation artifacts;
-- relaxing the conservative mixed-PDF rejection for text-native PDFs with blank or drawing-only pages;
-- deployment hardening for a shared-network host, starting from Issue #65.
+- real-local-model quality re-measurement and refreshed evaluation artifacts (selected into the track as D8, queued);
+- relaxing the conservative mixed-PDF rejection for text-native PDFs with blank or drawing-only pages; not selected;
+- deployment hardening for a shared-network host, starting from Issue #65; not selected.
 
 ---
 

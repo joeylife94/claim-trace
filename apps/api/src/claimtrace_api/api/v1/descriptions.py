@@ -42,11 +42,11 @@ router = APIRouter(tags=["description evidence"])
     },
 )
 async def derive_description(
-    document_id: str,
+    document_id: uuid.UUID,
     response: Response,
     service: DescriptionEvidenceServiceDep,
 ) -> DescriptionDerivationResponse:
-    outcome = await service.derive(_document_uuid(document_id))
+    outcome = await service.derive(document_id)
     if not outcome.created:
         response.status_code = HTTPStatus.OK
     return _derivation_response(outcome)
@@ -60,14 +60,15 @@ async def derive_description(
     responses={
         HTTPStatus.NOT_FOUND: {"model": ApiErrorResponse},
         HTTPStatus.CONFLICT: {"model": ApiErrorResponse},
+        HTTPStatus.SERVICE_UNAVAILABLE: {"model": ApiErrorResponse},
     },
 )
 async def index_description(
-    document_id: str,
+    document_id: uuid.UUID,
     response: Response,
     service: DescriptionEvidenceServiceDep,
 ) -> DescriptionIndexResponse:
-    outcome = await service.index(_document_uuid(document_id))
+    outcome = await service.index(document_id)
     if not outcome.created:
         response.status_code = HTTPStatus.OK
     profile = outcome.profile
@@ -213,10 +214,3 @@ def _source_url(locator: SourceLocator) -> str:
         f"/documents/{locator.document_id}?page={locator.page_number}"
         f"&start={locator.start_char}&end={locator.end_char}"
     )
-
-
-def _document_uuid(value: str) -> uuid.UUID:
-    try:
-        return uuid.UUID(value)
-    except ValueError as exc:
-        raise ValueError("document_id must be a UUID") from exc

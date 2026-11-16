@@ -2,14 +2,14 @@
 
 > **Authoritative execution contract and evidence ledger for ClaimTrace.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records the phase history and candidate directions. **This file controls the frozen v1.0 Proof boundary and records the post-v1 progression.**
 
-**Last execution update:** 2026-11-12  
+**Last execution update:** 2026-11-16  
 **v1.0 target:** L4 Controlled Pilot  
 **v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **FIRST WRAP-UP CHECKPOINT (2026-11-11) — D1-D6 closed / no active milestone / next destination requires Human Review**  
-**Where to start reading:** Section 16 for the current state; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
+**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7-01 implemented, accepted on merge of its pull request / D8 next / D9 queued**  
+**Where to start reading:** Section 17 for the active upgrade track; Section 16 for the state at the first wrap-up; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
 
@@ -1673,3 +1673,86 @@ The wrap-up adds no capability and no claim. ClaimTrace still provides no legal 
 `HUMAN REVIEW — NEXT DESTINATION DECISION`
 
 Do not open an automatic progression milestone. Select a destination from the candidates above or name a different one, then define its bounded acceptance contract before any implementation.
+
+## 17. Upgrade Track — D7 to D9
+
+**Human Review decision date:** `2026-11-12`
+**Decided by:** Human Review (repository owner)
+**Track state:** `SELECTED — D7 ACTIVE`
+
+Section 16 left the next destination to a human decision. The decision is to upgrade in three destinations, in this order. The order is deliberate: fix what is already known to be wrong, then find out how good the system is with a real model, and only then build user-facing surface on top of it.
+
+| Destination | Purpose | State |
+| --- | --- | --- |
+| D7 — Recorded-defect hardening | Fix the defects that Section 16 recorded and left unfixed | Active (D7-01) |
+| D8 — Real-model quality measurement | Measure retrieval and grounded answers on current code with a real embedding model and a real local LLM, and report the result with its limits | Queued; acceptance contract to be recorded here before implementation |
+| D9 — Visible analyst workspace | Give Cases and description retrieval a web surface | Queued; scope to be set after D8 reports |
+
+The other candidates in Section 16 (OCR, relaxing the mixed-PDF rejection, shared-network deployment hardening) are **not** selected by this decision and stay candidates.
+
+### Delegation recorded with the decision
+
+For this track the owner delegated the per-milestone lifecycle: one pull request per milestone, squash-merged by the implementing agent once every triggered workflow is green on the exact head and review has no unresolved finding. A red workflow or an open finding blocks the merge until it is resolved. The delegation covers this track only.
+
+### Ledger format from D7 onward
+
+Entries are compact: Changed, Actually Executed, Verified, Not Verified, each a short list. Exact-head workflow results are recorded on the pull request, and the entry cites the pull request and merge commit. The standing limitations and non-claims of Sections 6-7 and 16 apply to every entry and are not repeated in each.
+
+### D7-01 Acceptance Contract — fix the recorded defects
+
+Scope is the defects recorded under Section 16 open items 8, 9, and 12, and nothing else. No new capability and no refactor.
+
+1. An embedding-provider failure while embedding a query returns the status and error code the API declares, on every HTTP path that embeds at request time, instead of a generic `500`. A provider error code outside the error taxonomy returns `500 internal_error` with a fixed client-safe message.
+2. A malformed document id on the description routes is rejected as a validation error instead of a generic `500`.
+3. Running `make verify-deterministic-regression` no longer rewrites the committed evaluation result files. The pinned baseline assertions are unchanged.
+4. Alembic autogenerate does not propose dropping database objects that hand-written migrations own: the tables that migrations `0007`-`0009` create, and the three raw-SQL search indexes on `claim_search_records` that migration `0004` creates. (The indexes were added to this item on 2026-11-16, after review found that autogenerate proposed dropping them as well.)
+5. The dead path filter in the D3 and D4 workflows is corrected.
+6. The two stale code comments are corrected, with no change to behaviour.
+7. Each behavioural fix has a test that fails before the fix and passes after it. No existing test is weakened or skipped.
+8. Documents that describe the old behaviour are updated in the same milestone.
+
+Explicitly out of scope: the read-only Alembic mount in Compose, the General CI path filter that skips documentation-only changes, the development Compose port publishing, and Issue #65.
+
+### D7-01 Implementation Record — 2026-11-16
+
+**Status:** `IMPLEMENTED — ACCEPTED ON MERGE OF THE D7-01 PULL REQUEST`
+
+Exact-head workflow results and the merge commit are recorded on that pull request. The next ledger entry cites them.
+
+#### Changed
+
+- `main.py`: one handler maps an embedding-provider failure raised at request time. Model unavailable returns `503 embedding_model_unavailable`; dimension mismatch returns `500 embedding_dimension_mismatch`; a provider code outside the error taxonomy returns `500 internal_error` with a fixed message and is logged at ERROR. The indexing path is unchanged because it catches the error itself. The Case grounded-results and description-index routes now declare `503`.
+- `api/v1/descriptions.py`: the derive and index routes take a typed document id, so a malformed id returns the standard `422`.
+- `Makefile` and `progression-deterministic-regression.yml`: the regression gate writes to and asserts against the git-ignored `apps/api/evals/tmp/regression`. The pinned assertions are the same expressions at the new location. The committed result files are no longer rewritten.
+- `alembic/env.py`: an `include_object` filter with two named lists, applied in both offline and online configuration. Autogenerate no longer proposes dropping the seven tables from migrations `0007`-`0009` or the three raw-SQL search indexes from migration `0004`.
+- D3 and D4 workflows: the dead path filter entry is replaced with `Makefile`.
+- Two code comments corrected, with no change to constants or behaviour.
+- Three new test files, `tests/test_d7_*.py`. No existing test was changed.
+- Seven workflow jobs that install Playwright are pinned to the `ubuntu-24.04` runner. This is outside the acceptance contract and was forced by the environment: on the first pull-request run, `ubuntu-latest` resolved to Ubuntu 26.04, for which the pinned Playwright 1.55.0 has no Chromium build, so every browser job failed before running a test. No test or assertion was changed, skipped, or disabled.
+- `docs/ARCHITECTURE.md`, `apps/api/README.md`, `apps/api/evals/README.md`: the passages that described the old behaviour carry notes dated 2026-11-16. `README.md` and `docs/ROADMAP.md` now state the upgrade track.
+
+This resolves Section 16 open item 12 in full, the autogenerate half of item 8, and the path-filter part of item 9.
+
+#### Actually Executed
+
+Locally on the final tree, against PostgreSQL 16 with pgvector 0.6.0:
+
+- database-free tier: **822 passed** (798 before D7-01);
+- PostgreSQL integration tier: **147 passed** (144 before D7-01);
+- `ruff check` and `ruff format --check`: passed;
+- both evaluation entry points run with the fake provider into a scratch directory, and the pinned assertion expression run against that output: passed;
+- with each fix reverted in a scratch copy, the corresponding tests fail: `500` instead of `503` or `422`, and an autogenerate revision that drops all seven tables.
+
+The work was reviewed independently before the pull request. The review found one defect that would have failed General CI (a test module that could not be imported inside the api image), one test that passed without asserting anything, and one recipe line that would fail on a second local run. All three were corrected.
+
+#### Verified
+
+Against the D7-01 Acceptance Contract: items 1, 2, 4, 5, 6, 7, and 8 are verified by the tests and checks above. Item 3 is verified by reading and by running the two evaluations and the assertions outside the container.
+
+#### Not Verified
+
+- **The Makefile gate itself was not run.** No Docker daemon was available. That the container user can write through the bind mount, and that the gate passes at the new location, is proven only by the workflows on the pull request.
+- A second consecutive local run of the gate was reasoned about, not executed.
+- The local database was PostgreSQL 16, not the PostgreSQL 17 image the project runs. The integration tier on the project image runs in General CI.
+- Still open from Section 16, and out of scope here: the read-only Alembic mount in Compose, so `make migration` still cannot write a revision file from inside the container; the General CI path filter; the development Compose port publishing; Issue #65.
+

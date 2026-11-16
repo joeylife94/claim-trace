@@ -15,7 +15,9 @@ permissions:
 
 jobs:
   retry-ui:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.55.0 (pinned for the frozen Proof capture) has no Chromium
+    # build for the Ubuntu 26.04 image that ubuntu-latest now resolves to.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4

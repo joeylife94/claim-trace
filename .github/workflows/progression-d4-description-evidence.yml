@@ -9,7 +9,7 @@ on:
       - "docs/real-public-corpus/**"
       - "apps/api/**"
       - "scripts/verify-d3-real-corpus-inputs.sh"
-      - "scripts/verify-deterministic-regression.sh"
+      - "Makefile"
       - ".github/workflows/progression-d4-description-evidence.yml"
 
 permissions:

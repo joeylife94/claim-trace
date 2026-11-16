@@ -25,19 +25,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Allow container to write evaluation results
-        run: chmod -R a+rwX apps/api/evals/results
-
       - name: Run one-command deterministic regression verification
         run: make verify-deterministic-regression
 
       - name: Show retrieval report
         if: always()
-        run: cat apps/api/evals/results/REPORT.md || true
+        run: cat apps/api/evals/tmp/regression/REPORT.md || true
 
       - name: Show deterministic grounded report
         if: always()
-        run: cat apps/api/evals/results/grounded/REPORT-deterministic.md || true
+        run: cat apps/api/evals/tmp/regression/grounded/REPORT-deterministic.md || true
 
       - name: Upload deterministic regression artifacts
         if: always()
@@ -45,10 +42,10 @@ jobs:
         with:
           name: progression-deterministic-regression-${{ github.event.pull_request.head.sha }}
           path: |
-            apps/api/evals/results/results.json
-            apps/api/evals/results/REPORT.md
-            apps/api/evals/results/grounded/results-deterministic.json
-            apps/api/evals/results/grounded/REPORT-deterministic.md
+            apps/api/evals/tmp/regression/results.json
+            apps/api/evals/tmp/regression/REPORT.md
+            apps/api/evals/tmp/regression/grounded/results-deterministic.json
+            apps/api/evals/tmp/regression/grounded/REPORT-deterministic.md
           if-no-files-found: error
           retention-days: 14
 

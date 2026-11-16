@@ -1,8 +1,9 @@
 """ORM models.
 
 Phase 2A adds the ingestion tables, Phase 2B claim structural parsing, and
-Phase 3A the claim retrieval index. Description sections and claim elements are
-still out of scope; see ``docs/ROADMAP.md``.
+Phase 3A the claim retrieval index. Claim elements and their reviews are modelled in
+``element_models.py`` and ``review_models.py``. Description segments and analyst Case
+tables (migrations 0007-0009) are deliberately raw-SQL tables with no ORM model.
 """
 
 from __future__ import annotations

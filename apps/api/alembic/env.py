@@ -23,6 +23,48 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Tables created by hand-written migrations (0007-0009) and queried with raw SQL; they
+# have no ORM model on purpose. Autogenerate diffs the live schema against
+# ``Base.metadata``, so without this it would propose ``drop_table`` for every one of
+# them (and their indexes). An explicit list rather than "ignore whatever the metadata
+# lacks": a blanket filter would also hide a table that is genuinely orphaned. If one of
+# these gains an ORM model, remove it here and autogenerate will compare it normally.
+HAND_MANAGED_TABLES = frozenset(
+    {
+        "description_derivation_runs",
+        "description_segments",
+        "description_search_records",
+        "analyst_cases",
+        "analyst_case_documents",
+        "analyst_case_results",
+        "analyst_case_evidence",
+    }
+)
+
+# Indexes on an ORM-modelled table that migration 0004 creates with raw SQL (HNSW,
+# trigram GIN, tsvector GIN). The model does not declare them, so autogenerate sees
+# them as removed and would drop them. Named one by one for the same reason as above.
+HAND_MANAGED_INDEXES = frozenset(
+    {
+        "ix_claim_search_records_embedding_hnsw",
+        "ix_claim_search_records_normalized_trgm",
+        "ix_claim_search_records_search_vector",
+    }
+)
+
+
+def include_object(object_, name, type_, reflected, compare_to):  # noqa: ANN001, ANN201
+    """Leave hand-managed tables, their indexes, and the raw-SQL 0004 indexes out of
+    autogenerate.
+    """
+    if type_ == "table" and reflected and compare_to is None:
+        return name not in HAND_MANAGED_TABLES
+    if type_ == "index" and reflected and compare_to is None:
+        if name in HAND_MANAGED_INDEXES:
+            return False
+        return getattr(getattr(object_, "table", None), "name", None) not in HAND_MANAGED_TABLES
+    return True
+
 
 def _database_url() -> str:
     override = config.attributes.get("sqlalchemy_url")
@@ -38,6 +80,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -54,6 +97,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            include_object=include_object,
         )
         with context.begin_transaction():
             context.run_migrations()
