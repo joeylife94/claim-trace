@@ -133,16 +133,25 @@ async def embedding_error_handler(request: Request, exc: Exception) -> JSONRespo
     Indexing converts the same exception inside ``ClaimIndexingService`` so the failure
     is recorded on the index run. Every other path - embedding a search query,
     comparing, grounded retrieval, indexing description segments - reaches here, so one
-    mapping covers them all. The code and message are the provider's own, exactly as
-    indexing reports them; providers write that message to be shown to a client and
-    keep paths and URLs in their logs only.
+    mapping covers them all. For a code in the taxonomy the code and message are the
+    provider's own, exactly as indexing reports them; providers write that message to
+    be shown to a client and keep paths and URLs in their logs only. An unrecognised
+    code is answered as ``internal_error`` with a fixed sentence.
     """
     assert isinstance(exc, EmbeddingError)  # noqa: S101 - handler is registered for this type
     try:
         code = ErrorCode(exc.code)
     except ValueError:
-        # Same fallback ClaimIndexingService applies to a code outside the taxonomy.
-        code = ErrorCode.CLAIM_INDEX_FAILED
+        # A code outside the taxonomy is a provider defect, not a client error, and its
+        # message has not been vetted for a client: answer as the generic handler would,
+        # with a fixed sentence, and keep the provider's code in the log.
+        logger.error(
+            "embedding provider raised an unrecognised error code",
+            extra={"path": request.url.path, "provider_error_code": exc.code[:64]},
+        )
+        return await app_error_handler(
+            request, AppError(ErrorCode.INTERNAL_ERROR, "Embedding failed unexpectedly.")
+        )
     return await app_error_handler(request, AppError(code, exc.message))
 
 

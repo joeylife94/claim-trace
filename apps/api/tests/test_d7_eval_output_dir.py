@@ -21,8 +21,15 @@ import pytest
 
 from evals import grounded_run, run
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-COMMITTED_RESULTS = REPO_ROOT / "apps" / "api" / "evals" / "results"
+API_ROOT = Path(__file__).resolve().parents[1]
+COMMITTED_RESULTS = API_ROOT / "evals" / "results"
+# The api image holds apps/api only (at /app), so the repository files these tests
+# read exist on a host checkout but not in the container.
+REPO_ROOT = API_ROOT.parent.parent
+requires_repository = pytest.mark.skipif(
+    not (REPO_ROOT / "Makefile").is_file(),
+    reason="Makefile and .gitignore are not in the api image",
+)
 
 
 class _NullClient:
@@ -138,6 +145,7 @@ def _gate_recipe() -> list[str]:
     return recipe
 
 
+@requires_repository
 def test_makefile_gate_never_targets_the_committed_results() -> None:
     recipe = "\n".join(line for line in _gate_recipe() if not line.lstrip("\t").startswith("@#"))
 
@@ -146,6 +154,7 @@ def test_makefile_gate_never_targets_the_committed_results() -> None:
     assert "--output-dir $(GATE_RESULTS_DIR)/grounded" in recipe
 
 
+@requires_repository
 def test_makefile_gate_asserts_against_the_directory_it_wrote() -> None:
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     gate_dir = re.search(r"^GATE_RESULTS_DIR := (\S+)$", makefile, re.MULTILINE)
@@ -157,6 +166,7 @@ def test_makefile_gate_asserts_against_the_directory_it_wrote() -> None:
     assert f'Path("{directory}/grounded/results-deterministic.json")' in recipe
 
 
+@requires_repository
 def test_gate_directory_is_git_ignored_and_inside_the_writable_mount() -> None:
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
     directory = re.search(r"^GATE_RESULTS_DIR := (\S+)$", makefile, re.MULTILINE).group(1)  # type: ignore[union-attr]

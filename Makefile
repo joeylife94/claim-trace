@@ -109,7 +109,7 @@ verify-deterministic-regression: init ## Run both evaluations with the fake prov
 	@# evals/results. evals/tmp is git-ignored (tmp/) and inside the writable evals mount;
 	@# the container runs as an unprivileged uid, so the host side creates it writable.
 	mkdir -p $(API_DIR)/evals/tmp/regression
-	chmod -R a+rwX $(API_DIR)/evals/tmp
+	chmod a+rwx $(API_DIR)/evals/tmp/regression
 	$(COMPOSE) build api
 	$(COMPOSE) up -d postgres
 	$(COMPOSE) exec -T postgres sh -ec '\

@@ -41,12 +41,25 @@ HAND_MANAGED_TABLES = frozenset(
     }
 )
 
+# Indexes on an ORM-modelled table that migration 0004 creates with raw SQL (HNSW,
+# trigram GIN, tsvector GIN). The model does not declare them, so autogenerate sees
+# them as removed and would drop them. Named one by one for the same reason as above.
+HAND_MANAGED_INDEXES = frozenset(
+    {
+        "ix_claim_search_records_embedding_hnsw",
+        "ix_claim_search_records_normalized_trgm",
+        "ix_claim_search_records_search_vector",
+    }
+)
+
 
 def include_object(object_, name, type_, reflected, compare_to):  # noqa: ANN001, ANN201
-    """Leave hand-managed tables, and the indexes on them, out of autogenerate."""
+    """Leave hand-managed tables, their indexes, and the raw-SQL 0004 indexes out of autogenerate."""
     if type_ == "table" and reflected and compare_to is None:
         return name not in HAND_MANAGED_TABLES
     if type_ == "index" and reflected and compare_to is None:
+        if name in HAND_MANAGED_INDEXES:
+            return False
         return getattr(getattr(object_, "table", None), "name", None) not in HAND_MANAGED_TABLES
     return True
 

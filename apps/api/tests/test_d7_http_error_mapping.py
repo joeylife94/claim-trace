@@ -299,19 +299,35 @@ def test_a_dimension_mismatch_keeps_its_declared_500_code(api: Any) -> None:
     )
 
 
-def test_an_unrecognised_provider_code_falls_back_to_index_failed(api: Any) -> None:
-    client = api(EmbeddingError("some_provider_code", "Odd failure."))
+def test_an_unrecognised_provider_code_is_an_internal_error(api: Any) -> None:
+    # Not the client's fault, and the provider's message is unvetted: fixed sentence.
+    client = api(EmbeddingError("some_provider_code", "Odd failure at /srv/models."))
     response = client.post("/api/v1/search/claims", json={"query": "센서", "mode": "dense"})
-    _assert_mapped(response, status=422, code=ErrorCode.CLAIM_INDEX_FAILED, message="Odd failure.")
+    _assert_mapped(
+        response,
+        status=500,
+        code=ErrorCode.INTERNAL_ERROR,
+        message="Embedding failed unexpectedly.",
+    )
+    assert "/srv/models" not in response.text
 
 
 def test_lexical_search_is_unaffected_by_a_failing_embedding_provider(
     api: Any,
 ) -> None:
     # Lexical mode never embeds, so a broken model must not turn it into an error.
+    # Description search embeds before it reads anything in dense mode, so the same
+    # client answering 503 there and 200 here shows the mode, not the stub, decides.
+    class _NoRows(_Session):
+        async def execute(self, *_args: object, **_kwargs: object) -> _Result:
+            return _Result([])
+
     client = api(_unavailable())
-    response = client.post("/api/v1/search/descriptions", json={"query": "센서", "mode": "lexical"})
-    assert response.status_code != 503
+    client.app.dependency_overrides[get_session] = lambda: _NoRows()  # type: ignore[attr-defined]
+    path = "/api/v1/search/descriptions"
+    assert client.post(path, json={"query": "센서", "mode": "dense"}).status_code == 503
+    response = client.post(path, json={"query": "센서", "mode": "lexical"})
+    assert response.status_code == 200, response.text
 
 
 def test_openapi_declares_503_on_every_route_that_can_embed(app: FastAPI) -> None:
@@ -340,14 +356,15 @@ def test_description_routes_return_422_for_a_malformed_document_id(api: Any, suf
     assert response.json()["detail"][0]["loc"] == ["path", "document_id"]
 
 
-def test_description_derive_still_returns_404_for_a_missing_document(api: Any) -> None:
+@pytest.mark.parametrize("suffix", ["derive", "index"])
+def test_description_routes_still_return_404_for_a_missing_document(api: Any, suffix: str) -> None:
     class _Missing(_Session):
         async def get(self, _model: object, _id: object) -> None:
             return None
 
     client = api(_unavailable())
     client.app.dependency_overrides[get_session] = lambda: _Missing()  # type: ignore[attr-defined]
-    response = client.post(f"/api/v1/documents/{uuid.uuid4()}/descriptions/derive")
+    response = client.post(f"/api/v1/documents/{uuid.uuid4()}/descriptions/{suffix}")
     assert response.status_code == 404
     assert response.json()["error_code"] == ErrorCode.DOCUMENT_NOT_FOUND.value
 
