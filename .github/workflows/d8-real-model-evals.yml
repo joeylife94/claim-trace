@@ -66,9 +66,15 @@ jobs:
   measure:
     # Pinned: ubuntu-latest began resolving to Ubuntu 26.04 and broke other jobs here.
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    # A per-case timeout is a recorded result, but a killed job loses the whole run,
+    # so the job and the M3 step are generous (M3 on a CPU runner: roughly 8-30 min/repeat).
+    timeout-minutes: 120
     permissions:
       contents: read
+    # Lets `publish` find the artifact even when only `publish` is re-run (its run_attempt
+    # then differs from the attempt that uploaded the artifact).
+    outputs:
+      artifact: ${{ steps.artifact_name.outputs.artifact }}
     steps:
       - name: Checkout the exact measured commit
         uses: actions/checkout@v4
@@ -80,14 +86,18 @@ jobs:
           set -eu
           # Inputs reach the shell only through env, never by interpolation.
           case "${D8_MODEL}" in
-            ""|*[!A-Za-z0-9._:/-]*) echo "invalid ollama_model: ${D8_MODEL}" >&2; exit 1 ;;
+            ""|*[!A-Za-z0-9._:/-]*) echo "invalid ollama_model (rejected)" >&2; exit 1 ;;
           esac
           case "${D8_REPEATS}" in
             1|2|3) ;;
-            *) echo "invalid ollama_repeats: ${D8_REPEATS}" >&2; exit 1 ;;
+            *) echo "invalid ollama_repeats (rejected)" >&2; exit 1 ;;
           esac
           echo "measured sha: ${MEASURED_SHA}"
           echo "run_ollama=${D8_RUN_OLLAMA} model=${D8_MODEL} repeats=${D8_REPEATS}"
+
+      - name: Expose the artifact name
+        id: artifact_name
+        run: echo "artifact=${D8_ARTIFACT}" >> "${GITHUB_OUTPUT}"
 
       - name: Initialize committed defaults
         run: cp .env.example .env
@@ -179,7 +189,7 @@ jobs:
 
       - name: "M3: grounded generation with the real local LLM (repeats)"
         if: env.D8_RUN_OLLAMA == 'true'
-        timeout-minutes: 45
+        timeout-minutes: 90
         run: |
           set -eu
           for k in $(seq 1 "${D8_REPEATS}"); do
@@ -194,7 +204,7 @@ jobs:
 
       - name: Record the environment
         run: |
-          set -u
+          set -eu
           RUN_HOST="apps/api/${D8_RUN_REL}"
 
           export D8_NPROC="$(nproc || true)"
@@ -301,12 +311,12 @@ jobs:
               handle.write("\n")
           print(json.dumps(payload, ensure_ascii=False, indent=2))
           PY
-          # The api container (uid 10001) rewrites files in this directory later.
-          chmod -R a+rwX "${RUN_HOST}"
+          # Read by the api container (uid 10001); the run directory itself is already a+rwX.
+          chmod a+r "${RUN_HOST}/ENVIRONMENT.json"
 
       - name: Validate and summarize (evals.d8_report, fails closed)
         run: |
-          set -u
+          set -eu
           if [ "${D8_RUN_OLLAMA}" = "true" ]; then
             EXPECTED_REPEATS="${D8_REPEATS}"
           else
@@ -387,21 +397,27 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout the measured commit
+      # Based on the head of the default branch, NOT the measured commit: on the pull
+      # request run the measured commit adds a workflow file, and a GITHUB_TOKEN push
+      # whose ref differs from the default branch in .github/workflows/ can be refused
+      # (no `workflows` permission). The measured SHA is in the commit message, in
+      # ENVIRONMENT.json and in D8-SUMMARY.json.
+      - name: Checkout the default branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.MEASURED_SHA }}
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Download the run directory
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.D8_ARTIFACT }}
+          name: ${{ needs.measure.outputs.artifact }}
           path: ${{ runner.temp }}/d8-run
 
       - name: Push the run directory to a new results branch
         env:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -eu
           SRC="${RUNNER_TEMP}/d8-run"
@@ -414,14 +430,21 @@ jobs:
           fi
 
           BRANCH="d8-results/${RUN_ID}-${RUN_ATTEMPT}"
-          DEST="apps/api/evals/results/d8/$(date -u +%Y-%m-%d)-$(printf '%.7s' "${MEASURED_SHA}")"
+          # The date is the measurement date (from the run itself), not the publish date.
+          RUN_DATE="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["generated_at"][:10])' "${SRC}/D8-SUMMARY.json")"
+          case "${RUN_DATE}" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+            *) echo "D8-SUMMARY.json generated_at does not start with a date; refusing" >&2; exit 1 ;;
+          esac
+          DEST="apps/api/evals/results/d8/${RUN_DATE}-$(printf '%.7s' "${MEASURED_SHA}")"
           if [ -e "${DEST}" ]; then
-            echo "${DEST} already exists in the measured commit; refusing" >&2
+            echo "${DEST} already exists on ${DEFAULT_BRANCH}; refusing" >&2
             exit 1
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BASE_SHA="$(git rev-parse HEAD)"
           git checkout -b "${BRANCH}"
           mkdir -p "${DEST}"
           cp -R "${SRC}/." "${DEST}/"
@@ -429,6 +452,7 @@ jobs:
           git diff --cached --quiet && { echo "nothing to commit" >&2; exit 1; }
           git commit -m "D8: real-model evaluation results, run ${RUN_ID} attempt ${RUN_ATTEMPT}" \
             -m "Measured commit: ${MEASURED_SHA}" \
+            -m "Base: ${DEFAULT_BRANCH} at ${BASE_SHA}" \
             -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}" \
             -m "Regression measurements of this pipeline on synthetic corpora; not a benchmark."
           git push origin "${BRANCH}"
