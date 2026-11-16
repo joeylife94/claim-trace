@@ -46,7 +46,9 @@ jobs:
         run: npm run typecheck
 
   whole-product-golden-path:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.55.0 (pinned for the frozen Proof capture) has no Chromium
+    # build for the Ubuntu 26.04 image that ubuntu-latest now resolves to.
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - name: Checkout exact PR head

@@ -1728,6 +1728,7 @@ Exact-head workflow results and the merge commit are recorded on that pull reque
 - D3 and D4 workflows: the dead path filter entry is replaced with `Makefile`.
 - Two code comments corrected, with no change to constants or behaviour.
 - Three new test files, `tests/test_d7_*.py`. No existing test was changed.
+- Seven workflow jobs that install Playwright are pinned to the `ubuntu-24.04` runner. This is outside the acceptance contract and was forced by the environment: on the first pull-request run, `ubuntu-latest` resolved to Ubuntu 26.04, for which the pinned Playwright 1.55.0 has no Chromium build, so every browser job failed before running a test. No test or assertion was changed, skipped, or disabled.
 - `docs/ARCHITECTURE.md`, `apps/api/README.md`, `apps/api/evals/README.md`: the passages that described the old behaviour carry notes dated 2026-11-16. `README.md` and `docs/ROADMAP.md` now state the upgrade track.
 
 This resolves Section 16 open item 12 in full, the autogenerate half of item 8, and the path-filter part of item 9.
