@@ -265,9 +265,11 @@ claim-trace/
 
 The v1.0 controlled-pilot implementation, deterministic validation, proof packaging, and final Human Review are complete. The reviewed Proof is **`CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED`**. Remote annotated tag `v1.0-proof` is verified to dereference to reviewed commit `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`. The tag is frozen and unchanged, and `docs/proof/` on `main` is byte-identical to it.
 
-`main` has moved past the tag. As of the 2026-11-11 first wrap-up, the post-v1 milestones P1-P14 and destinations D1-D6 are recorded as closed in the ledger (D6 at the fail-closed boundary; OCR deferred), and **no milestone is active**. The next destination needs a human decision; candidate options are listed in the ledger and none is selected.
+`main` has moved past the tag. As of the 2026-11-11 first wrap-up, the post-v1 milestones P1-P14 and destinations D1-D6 are recorded as closed in the ledger (D6 at the fail-closed boundary; OCR deferred), and no milestone was active at that point.
 
-For the current state, exact workflow evidence, open items, and limitations, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md), starting with Section 16.
+> **Update (2026-11-16):** On 2026-11-12 the repository owner selected an upgrade track of three destinations, in order: D7 recorded-defect hardening (active), D8 real-model quality measurement, and D9 a web surface for Cases and description retrieval. D8 and D9 are queued and have not started. OCR, relaxing the mixed-PDF rejection, and shared-network deployment hardening were not selected and remain candidates. The decision and the D7-01 acceptance contract are recorded in [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md) Section 17.
+
+For the current state, exact workflow evidence, open items, and limitations, read [`CLAIMTRACE_V1_MASTER.md`](CLAIMTRACE_V1_MASTER.md), starting with Section 17 (the active upgrade track) and Section 16 (the state at the first wrap-up).
 
 ---
 

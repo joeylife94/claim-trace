@@ -35,6 +35,7 @@ docker compose run --rm api python -m evals.run --provider fake
 ```
 
 Writes `results/results.json` (machine-readable) and `results/REPORT.md`
+by default; `--output-dir <dir>` writes the same two files to `<dir>` instead
 (the summary). Both are committed, so re-running and diffing shows a change in
 retrieval behaviour; the committed copies are a record of the run dated in their
 `generated_at` field (see the note at the top), not a live measurement.
@@ -122,7 +123,8 @@ docker compose run --rm api python -m evals.grounded_run --tier ollama --limit 6
 ```
 
 Writes `results/grounded/results-<tier>.json` and
-`results/grounded/REPORT-<tier>.md`. Both are committed, so re-running and
+`results/grounded/REPORT-<tier>.md` by default; `--output-dir <dir>` writes the same
+two files to `<dir>` instead. Both are committed, so re-running and
 diffing shows a behaviour change; like the retrieval results they record the run
 dated in their `generated_at` field.
 
@@ -256,10 +258,10 @@ make verify-deterministic-regression
 ```
 
 It builds the `api` image, starts PostgreSQL, then runs
-`python -m evals.run --provider fake` and
-`python -m evals.grounded_run --tier deterministic` with
-`EMBEDDING_PROVIDER=fake`, and asserts the following against the files those runs
-just wrote:
+`python -m evals.run --provider fake --output-dir evals/tmp/regression` and
+`python -m evals.grounded_run --tier deterministic --output-dir evals/tmp/regression/grounded`
+with `EMBEDDING_PROVIDER=fake`, and asserts the following against the files those runs
+just wrote under `evals/tmp/regression/` and `evals/tmp/regression/grounded/`:
 
 - retrieval, fake provider (Recall@5 / MRR@10): dense `0.7255` / `0.6725`,
   lexical `0.9118` / `0.9608`, hybrid `0.8824` / `0.8407`;
@@ -276,10 +278,11 @@ deterministic tier uses an in-process oracle instead of a model, so the gate sho
 that the pipeline is wired and that citations resolve; it says nothing about
 retrieval or answer quality with a real model.
 
-Because the evaluations write to `results/`, **running the gate overwrites the
-committed result files** with fake-provider output (the `api` service mounts
-`apps/api/evals` writable). Restore them with `git checkout -- apps/api/evals/results`
-if you do not intend to change the record.
+The gate writes only to `apps/api/evals/tmp/regression/`, which the root `.gitignore`
+(`tmp/`) ignores, so the committed result files are not modified and nothing needs
+restoring. The recipe creates that directory on the host and makes it world-writable
+because the container runs as uid 10001. Files the container writes there belong to
+that user, so on Linux removing them may need `sudo`.
 
 ---
 

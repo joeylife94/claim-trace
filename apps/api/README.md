@@ -60,21 +60,21 @@ The tables added by migrations `0007` (description evidence), `0008` and `0009`
 | POST | `/api/v1/documents/{id}/claims/{claim_number}/elements/decompose` | Deterministic, source-backed element decomposition of one persisted claim. `201` for a new run, `200` when the same request already ran. Machine-produced review material, not a legal conclusion. |
 | POST | `/api/v1/element-decomposition-runs/{run_id}/reviews` | Append a human review (accepted or needs-correction) to one exact decomposition run. The machine decomposition is not changed. |
 | GET | `/api/v1/element-decomposition-runs/{run_id}/reviews` | Review history for one decomposition run. |
-| POST | `/api/v1/documents/{id}/descriptions/derive` | Derive source-verifiable description segments from persisted page text. `201` for a new run, `200` when it already ran, `409` when the document is not completed. |
-| POST | `/api/v1/documents/{id}/descriptions/index` | Embed and index the derived description segments (derives first if needed). `201` for a new index, `200` when it already ran, `409` when the document is not completed. |
-| POST | `/api/v1/search/descriptions` | Hybrid, dense, or lexical search over description segments. A separate endpoint, not merged into claim search. Results carry canonical locators and a `source_url` that opens the range in the document page. |
-| POST | `/api/v1/search/claims` | Hybrid, dense, or lexical claim search. |
-| POST | `/api/v1/compare/claims` | Compare one target claim against one reference document. Retrieval only: the target claim text is the query, restricted to that one document; matches are textual correspondences with locators. |
+| POST | `/api/v1/documents/{id}/descriptions/derive` | Derive source-verifiable description segments from persisted page text. `201` for a new run, `200` when it already ran, `409` when the document is not completed. `422` for a malformed id. |
+| POST | `/api/v1/documents/{id}/descriptions/index` | Embed and index the derived description segments (derives first if needed). `201` for a new index, `200` when it already ran, `409` when the document is not completed. `422` for a malformed id. `503` when the embedding model cannot be loaded. |
+| POST | `/api/v1/search/descriptions` | Hybrid, dense, or lexical search over description segments. A separate endpoint, not merged into claim search. Results carry canonical locators and a `source_url` that opens the range in the document page. `503` when the embedding model cannot be loaded. (dense and hybrid modes) |
+| POST | `/api/v1/search/claims` | Hybrid, dense, or lexical claim search. `503` when the embedding model cannot be loaded. (dense and hybrid modes) |
+| POST | `/api/v1/compare/claims` | Compare one target claim against one reference document. Retrieval only: the target claim text is the query, restricted to that one document; matches are textual correspondences with locators. `503` when the embedding model cannot be loaded. |
 | GET | `/api/v1/llm/status` | Local LLM provider configuration and reachability. Always `200`, including when the provider is unreachable. |
 | POST | `/api/v1/llm/diagnostics/generate` | Plain-text generation for development diagnostics. `404` when `LLM_DIAGNOSTICS_ENABLED` resolves to off (on in development, off elsewhere by default). |
 | POST | `/api/v1/llm/diagnostics/structured` | Schema-constrained generation against one built-in smoke-test schema; same gating as above. |
-| POST | `/api/v1/grounded/answers` | Answer a question from indexed claim text. Stateless: nothing is stored. Only statements whose citations resolve to stored source text are returned; `insufficient_evidence` is a normal `200`. |
+| POST | `/api/v1/grounded/answers` | Answer a question from indexed claim text. Stateless: nothing is stored. Only statements whose citations resolve to stored source text are returned; `insufficient_evidence` is a normal `200`. `503` when the embedding model cannot be loaded. |
 | POST | `/api/v1/cases` | Create an analyst Case (`201`). |
 | GET | `/api/v1/cases` | List Cases. |
 | GET | `/api/v1/cases/{case_id}` | One Case. |
 | PUT | `/api/v1/cases/{case_id}/documents/{document_id}` | Associate an existing document with a Case. The response reports whether the association changed. |
 | DELETE | `/api/v1/cases/{case_id}/documents/{document_id}` | Remove the association (`204`). |
-| POST | `/api/v1/cases/{case_id}/grounded-results` | Run a grounded answer scoped to the Case's documents and persist it with its resolved citations (`201`). An identical request in the same Case returns the stored result. `409` when the requested documents fall outside the Case's scope or the Case has no documents. |
+| POST | `/api/v1/cases/{case_id}/grounded-results` | Run a grounded answer scoped to the Case's documents and persist it with its resolved citations (`201`). An identical request in the same Case returns the stored result. `409` when the requested documents fall outside the Case's scope or the Case has no documents. `503` when the embedding model cannot be loaded. |
 | GET | `/api/v1/cases/{case_id}/grounded-results` | Summaries of the Case's stored grounded results. |
 | GET | `/api/v1/cases/{case_id}/grounded-results/{result_id}` | Reopen one stored result. |
 | GET | `/docs` | OpenAPI UI (disabled when `ENVIRONMENT=production`). |
@@ -175,12 +175,13 @@ docker compose run --rm api python -m evals.grounded_run --tier ollama   # groun
 ```
 
 Both go through the real HTTP API and write under `evals/results/`
+by default; `--output-dir` writes the same files elsewhere
 (`results.json` and `REPORT.md`; `grounded/results-<tier>.json` and
 `grounded/REPORT-<tier>.md`). The committed result files record earlier runs; CI does
 not commit refreshed copies. The `Makefile` target `make verify-deterministic-regression`
-(run from the repository root) re-runs both evaluations with the fake provider, asserts a
-pinned baseline, and **overwrites** the committed result files with fake-provider
-output. It is the enforced regression gate; see `evals/README.md` for what it pins
+(run from the repository root) re-runs both evaluations with the fake provider, writes the
+output to `evals/tmp/regression/` (git-ignored), and asserts the pinned baseline
+there, leaving the committed result files untouched. It is the enforced regression gate; see `evals/README.md` for what it pins
 and why its numbers differ from the committed files.
 
 Configuration is read from environment variables, falling back to the repository
