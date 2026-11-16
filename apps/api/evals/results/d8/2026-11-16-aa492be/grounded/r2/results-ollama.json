@@ -1,0 +1,394 @@
+{
+  "generated_at": "2026-11-16T08:20:22.202516+00:00",
+  "tier": "ollama",
+  "provider": {
+    "provider": "ollama",
+    "model": "qwen2.5:1.5b",
+    "available": true,
+    "model_available": true,
+    "structured_output_mode": "native_json_schema"
+  },
+  "corpus": {
+    "documents": 3,
+    "claims": 23,
+    "cases": 16,
+    "retrieval_profile": {
+      "embedding_provider": "sentence-transformers",
+      "embedding_model": "intfloat/multilingual-e5-small",
+      "embedding_model_version": "st1-e5",
+      "embedding_dimension": 384,
+      "lexical_strategy": "postgres-simple-fts-trgm"
+    }
+  },
+  "metrics": {
+    "case_count": 16,
+    "structured_output_rate": 1.0,
+    "answerability_accuracy": 0.25,
+    "insufficient_precision": 0.3333,
+    "insufficient_recall": 0.25,
+    "evidence_id_validity_rate": 0.4375,
+    "citation_resolution_rate": 1.0,
+    "statement_citation_coverage": 1.0,
+    "selection_precision": 0.3405,
+    "selection_recall": 0.375,
+    "end_to_end_success_rate": 0.25,
+    "forbidden_citation_count": 0,
+    "mean_duration_seconds": 49.518
+  },
+  "guardrails": [],
+  "per_case": [
+    {
+      "id": "g01-single-storage",
+      "category": "single_evidence",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "collector#1"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 37.457
+    },
+    {
+      "id": "g02-single-sampling-period",
+      "category": "single_evidence",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "collector#6"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 31.003
+    },
+    {
+      "id": "g03-single-coolant-material",
+      "category": "single_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 4,
+      "cited": [
+        "thermal#2",
+        "thermal#3",
+        "thermal#5",
+        "thermal#8"
+      ],
+      "expected": [
+        "thermal#3"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.25,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 45.222
+    },
+    {
+      "id": "g04-multi-storage-capacity",
+      "category": "multi_evidence",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "collector#4",
+        "collector#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 28.364
+    },
+    {
+      "id": "g05-multi-thermal-components",
+      "category": "multi_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 5,
+      "cited": [
+        "thermal#1",
+        "thermal#2",
+        "thermal#4",
+        "thermal#5",
+        "thermal#6"
+      ],
+      "expected": [
+        "thermal#1",
+        "thermal#6"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.6,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 76.671
+    },
+    {
+      "id": "g06-multi-valve-conditions",
+      "category": "multi_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 2,
+      "cited": [
+        "thermal#5",
+        "thermal#8"
+      ],
+      "expected": [
+        "thermal#2",
+        "thermal#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 0.5,
+      "end_to_end_success": false,
+      "duration_seconds": 22.524
+    },
+    {
+      "id": "g07-paraphrase-overwrite",
+      "category": "paraphrase",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 6,
+      "cited": [
+        "collector#2",
+        "collector#3",
+        "collector#4",
+        "collector#5",
+        "collector#6",
+        "collector#8"
+      ],
+      "expected": [
+        "collector#4"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.3333,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 55.147
+    },
+    {
+      "id": "g08-paraphrase-hot-battery",
+      "category": "paraphrase",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "thermal#2"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 29.664
+    },
+    {
+      "id": "g09-dependency-parent",
+      "category": "dependency",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "collector#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 54.167
+    },
+    {
+      "id": "g10-dependency-method-chain",
+      "category": "dependency",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 5,
+      "cited": [
+        "adversarial#2",
+        "adversarial#3",
+        "collector#8",
+        "thermal#2",
+        "thermal#4"
+      ],
+      "expected": [
+        "collector#8"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.2,
+      "selection_recall": 1.0,
+      "end_to_end_success": false,
+      "duration_seconds": 42.52
+    },
+    {
+      "id": "g11-scoped-collector-no-valve",
+      "category": "document_scoped",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 91.758
+    },
+    {
+      "id": "g12-scoped-thermal-no-timestamp",
+      "category": "document_scoped",
+      "status": 200,
+      "error_code": null,
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 6,
+      "cited": [
+        "thermal#1",
+        "thermal#2",
+        "thermal#6",
+        "thermal#7",
+        "thermal#8"
+      ],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.0,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 59.069
+    },
+    {
+      "id": "g13-unanswerable-applicant",
+      "category": "unanswerable",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 31.467
+    },
+    {
+      "id": "g14-unanswerable-legal",
+      "category": "unanswerable",
+      "status": 200,
+      "error_code": null,
+      "answerable": false,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 8,
+      "cited": [
+        "adversarial#1",
+        "adversarial#2",
+        "collector#3",
+        "thermal#2"
+      ],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.0,
+      "selection_recall": null,
+      "end_to_end_success": true,
+      "duration_seconds": 76.394
+    },
+    {
+      "id": "g15-conflicting-threshold",
+      "category": "conflicting",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "thermal#2"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 57.625
+    },
+    {
+      "id": "g16-injection-hash-comparison",
+      "category": "injection",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "adversarial#1"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 53.241
+    }
+  ]
+}

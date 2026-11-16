@@ -1,0 +1,20 @@
+{
+  "git_sha": "aa492befadfa29a994d4101463d8e3dfafaed190",
+  "run_id": "43826346480",
+  "run_attempt": "1",
+  "event_name": "pull_request",
+  "runner": {
+    "nproc": 4,
+    "mem_total_mb": 15982,
+    "os": "Ubuntu 24.04.5 LTS",
+    "docker_version": "Docker version 28.0.4, build b8034c0",
+    "docker_compose_version": "Docker Compose version v2.38.2"
+  },
+  "api_image_id": "sha256:1500a673eb3a2f3e7149a2193af686a36b3650f908a541c870bda729bc080303",
+  "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+  "ollama_version": "ollama version is 0.40.16",
+  "ollama_model": "qwen2.5:1.5b",
+  "ollama_model_id": "65ec06548149",
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+}
