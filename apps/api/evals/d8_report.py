@@ -685,7 +685,8 @@ def _render_report(summary: dict[str, Any]) -> str:
     # M2
     oracle = summary["grounded_oracle"]
     lines += [
-        "## M2 Grounded pipeline, oracle tier (real embeddings, oracle in place of a language model)",
+        "## M2 Grounded pipeline, oracle tier "
+        "(real embeddings, oracle in place of a language model)",
         "",
         "The oracle tier measures the pipeline, not a language model.",
         "",
