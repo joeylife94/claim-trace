@@ -366,6 +366,24 @@ def _validate_grounded(
         violations.append(f"{label}: an LLM file must not carry guardrail outcomes")
 
 
+def _guardrail_names(payload: dict[str, Any]) -> list[Any]:
+    guardrails = payload.get("guardrails")
+    if not isinstance(guardrails, list):
+        return []
+    return [g.get("name") if isinstance(g, dict) else None for g in guardrails]
+
+
+def _validate_guardrail_names(
+    oracle: dict[str, Any], base_oracle: dict[str, Any], label: str, violations: list[str]
+) -> None:
+    """The oracle tier must report exactly the guardrail payloads of the committed baseline."""
+    if not isinstance(oracle.get("guardrails"), list) or not oracle["guardrails"]:
+        return  # already reported by _validate_grounded
+    got, wanted = _guardrail_names(oracle), _guardrail_names(base_oracle)
+    if got != wanted:
+        violations.append(f"{label}: guardrail names {got} differ from the baseline's {wanted}")
+
+
 def _validate_environment(
     env: dict[str, Any], expected_model: str, repeats: int, violations: list[str]
 ) -> list[str]:
@@ -667,7 +685,7 @@ def _render_report(summary: dict[str, Any]) -> str:
     # M2
     oracle = summary["grounded_oracle"]
     lines += [
-        "## M2 Grounded pipeline, oracle tier (real embeddings, scripted answers)",
+        "## M2 Grounded pipeline, oracle tier (real embeddings, oracle in place of a language model)",
         "",
         "The oracle tier measures the pipeline, not a language model.",
         "",
@@ -849,6 +867,8 @@ def validate_and_build(
         violations,
     )
     _validate_baseline(base_retrieval, base_oracle, base_llm, violations)
+    if oracle is not None and base_oracle is not None:
+        _validate_guardrail_names(oracle, base_oracle, oracle_label, violations)
 
     if violations:
         raise RunRefused(violations)

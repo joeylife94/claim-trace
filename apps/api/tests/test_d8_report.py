@@ -377,6 +377,31 @@ def test_refuses_oracle_file_without_guardrail_outcomes(
     assert_refused(run, capsys, "recorded no guardrail outcomes")
 
 
+def test_refuses_oracle_file_with_a_dropped_guardrail(
+    run: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    mutate(run / "grounded" / "results-deterministic.json", lambda p: p["guardrails"].pop())
+    assert_refused(run, capsys, "guardrail names")
+
+
+def test_refuses_oracle_file_with_a_renamed_guardrail(
+    run: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def rename(payload: dict[str, Any]) -> None:
+        payload["guardrails"][0]["name"] = "renamed-payload"
+
+    mutate(run / "grounded" / "results-deterministic.json", rename)
+    assert_refused(run, capsys, "guardrail names")
+
+
+def test_m2_heading_does_not_call_oracle_answers_scripted(run: Path) -> None:
+    assert run_tool(run) == 0
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    heading = next(line for line in report.splitlines() if line.startswith("## M2"))
+    assert "oracle in place of a language model" in heading
+    assert "scripted" not in heading
+
+
 def test_refuses_the_wrong_tier_in_a_file(run: Path, capsys: pytest.CaptureFixture[str]) -> None:
     mutate(run / "grounded" / "results-deterministic.json", lambda p: p.update(tier="ollama"))
     assert_refused(run, capsys, "tier is 'ollama', expected 'deterministic'")
