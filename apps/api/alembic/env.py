@@ -54,7 +54,9 @@ HAND_MANAGED_INDEXES = frozenset(
 
 
 def include_object(object_, name, type_, reflected, compare_to):  # noqa: ANN001, ANN201
-    """Leave hand-managed tables, their indexes, and the raw-SQL 0004 indexes out of autogenerate."""
+    """Leave hand-managed tables, their indexes, and the raw-SQL 0004 indexes out of
+    autogenerate.
+    """
     if type_ == "table" and reflected and compare_to is None:
         return name not in HAND_MANAGED_TABLES
     if type_ == "index" and reflected and compare_to is None:
