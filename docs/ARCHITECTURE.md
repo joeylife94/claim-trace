@@ -3108,6 +3108,15 @@ are not current measurements; the committed grounded file still records
 `g01-single-storage` as not succeeding, which the gate now requires. Current real-embedding
 numbers were not re-measured.
 
+> **Update (2026-11-16, D8-01):** a real-model measurement was recorded on 2026-11-16 for commit `aa492be` (GitHub Actions run 43826346480, Ubuntu 24.04 runner with 4 vCPU; embedding model `intfloat/multilingual-e5-small` at revision `614241f622f53c4eeff9890bdc4f31cfecc418b3`; LLM `qwen2.5:1.5b` on Ollama 0.40.16). Report and data: [`apps/api/evals/results/d8/2026-11-16-aa492be/`](../apps/api/evals/results/d8/2026-11-16-aa492be/D8-REPORT.md) (with `D8-SUMMARY.json` beside it). The 2026-07-26 files are unchanged and remain the v1.0-era record. The result is mixed:
+>
+> - **Retrieval, real embeddings.** Recall@1/3/5 and MRR@10 for dense, lexical and hybrid are the same as in the 2026-07-26 record (hybrid: Recall@5 0.9412, MRR@10 1.0). One recorded value differs: the lexical `empty_query_hit_rate` is 1.0 in this run and was 0.5 in the 2026-07-26 record.
+> - **Grounded pipeline, real embeddings, oracle in place of a language model.** All 16 cases succeed end to end (`end_to_end_success_rate` 1.0), including `g01-single-storage` (cited `collector#1`, `collector#4`, `collector#8`), which did not succeed in the 2026-07-26 record. 6 of 6 scripted guardrail payloads were refused. This tier measures the pipeline, not a language model, and the guardrails only against scripted output.
+> - **Grounded generation, real 1.5B local LLM (`qwen2.5:1.5b`).** This is where the system did poorly in this run. End-to-end success was 0.1875 (3 of 16 cases) in the first repeat and 0.25 (4 of 16) in the second, against 0.5625 (9 of 16) in the 2026-07-26 record. Most cases did not return a served answer: 11 (first repeat) and 9 (second repeat) of the 16 cases ended in `502 grounded_repair_failed`. `g01-single-storage` ended in that 502 in both repeats. Citation resolution was 1.0 for the answers that were served, and no forbidden citation occurred. 15 of 16 cases had the same end-to-end outcome in both repeats. Mean time per case was 54.734 s and 49.518 s on the CPU runner (7.666 s in the 2026-07-26 record).
+> - **No cause is attributed.** Between the two records the application code, the Ollama version, the model build and the hardware all differ, and the measurement does not separate them.
+> - **What to take from it.** The provenance and refusal mechanics held (nothing unresolvable or out of scope was served), and answer quality with this small model on this runner was low.
+> - **Not measured:** real public documents, description retrieval, guardrails against a real model, and any other model. The corpora are synthetic (26 claims / 19 queries for retrieval, 23 claims / 16 cases for grounded), so these are regression measurements of this pipeline, not benchmarks, and they do not rank models. A resolved citation shows that a quote is the stored text at its locator; it is not semantic entailment and no output is a legal determination. The figures describe that run only and are not current beyond 2026-11-16.
+
 ### Real-public corpus tier (D3, D4)
 
 `docs/real-public-corpus/manifest.json` lists two public Korean patent PDFs, each with a
@@ -3332,6 +3341,8 @@ The remaining gaps:
   result files were generated on 2026-07-26, before the term-level lexical change,
   and still show g01 failing. Whether g01 passes with the real embedding model has not
   been re-measured.
+
+  > **Update (2026-11-16, D8-01):** in the run recorded on 2026-11-16 at commit `aa492be` (real `intfloat/multilingual-e5-small` embeddings, oracle in place of a language model), `g01-single-storage` succeeds end to end and cites `collector#1`, `collector#4` and `collector#8`; it did not succeed in the 2026-07-26 record. With the real `qwen2.5:1.5b`, g01 ended in `502 grounded_repair_failed` in both repeats. That run does not attribute the change in the oracle tier to any cause. See section 16 and [`D8-REPORT.md`](../apps/api/evals/results/d8/2026-11-16-aa492be/D8-REPORT.md).
 - A grounded answer still cites whole claims. Decomposition exists (section 12), but
   grounding does not use elements, so an answer about one limitation points at the
   entire claim it sits in.
