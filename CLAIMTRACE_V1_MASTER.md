@@ -1823,7 +1823,7 @@ Every piece of evidence since the v1.0 freeze used the fake embedding provider a
 
 All figures are from `D8-SUMMARY.json`. They are regression measurements on small synthetic corpora with one embedding model and one 1.5B-parameter LLM on a CPU runner. They are not a benchmark.
 
-- **M1, retrieval with real embeddings.** Recall@1/3/5 and MRR@10 are the same as the 2026-07-26 record in all three modes. Hybrid: Recall@5 `0.9412`, MRR@10 `1.0`.
+- **M1, retrieval with real embeddings.** Recall@1/3/5 and MRR@10 are the same as the 2026-07-26 record in all three modes. Hybrid: Recall@5 `0.9412`, MRR@10 `1.0`. One value differs: the lexical false-positive rate on the two queries that have no relevant claim is `1.0`, against `0.5` in the 2026-07-26 record. Lexical mode now returns results for both of those queries.
 - **M2, grounded pipeline with real embeddings and the oracle.** End-to-end success `1.0`, against `0.9375` in the 2026-07-26 record. `g01-single-storage` succeeds and cites `collector#1`; it did not in the 2026-07-26 record. Six of six scripted guardrail payloads refused.
 - **M3, grounded generation with the real LLM.** End-to-end success `0.1875` in the first repeat and `0.25` in the second, against `0.5625` in the 2026-07-26 record. Eleven of 16 cases in the first repeat and nine in the second returned `502 grounded_repair_failed` and served no answer; one case did so in the 2026-07-26 record. Evidence-id validity `0.3125` and `0.4375`, against `0.9375`. Citation resolution `1.0` in both repeats, and no forbidden citation. Mean time per case `54.734` and `49.518` seconds, against `7.666`. Fifteen of 16 cases had the same end-to-end outcome in both repeats.
 
