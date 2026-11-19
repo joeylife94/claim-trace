@@ -1,0 +1,1039 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-19T07:40:00.755560+00:00",
+  "git_sha": "5bd3cc0826846fa6fcb78e86391e8d9e393207eb",
+  "run_id": "44480369922",
+  "run_attempt": "1",
+  "environment": {
+    "git_sha": "5bd3cc0826846fa6fcb78e86391e8d9e393207eb",
+    "run_id": "44480369922",
+    "run_attempt": "1",
+    "event_name": "workflow_dispatch",
+    "runner": {
+      "nproc": 4,
+      "mem_total_mb": 15701,
+      "os": "Ubuntu 24.04.5 LTS",
+      "docker_version": "Docker version 28.0.4, build b8034c0",
+      "docker_compose_version": "Docker Compose version v2.38.2"
+    },
+    "api_image_id": "sha256:9f65a3d82f25ba473d8518b5757f2bae88155dc1e1101c1faddc4a65382d6d0f",
+    "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+    "ollama_version": "ollama version is 0.40.16",
+    "ollama_model": "qwen2.5:3b",
+    "ollama_model_id": "357c53fb659c",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+  },
+  "warnings": [],
+  "expected_llm_model": "qwen2.5:3b",
+  "expected_repeats": 2,
+  "retrieval": {
+    "generated_at": "2026-11-19T07:33:34.446019+00:00",
+    "corpus": {
+      "documents": 2,
+      "claims": 26,
+      "queries": 19
+    },
+    "profile": {
+      "embedding_provider": "sentence-transformers",
+      "embedding_model": "intfloat/multilingual-e5-small",
+      "embedding_model_version": "st1-e5",
+      "embedding_dimension": 384,
+      "vectors_normalized": true,
+      "normalization_version": "nfkc-v1",
+      "lexical_strategy": "postgres-simple-fts-trgm",
+      "lexical_strategy_version": "v1"
+    },
+    "modes": {
+      "dense": {
+        "mode": "dense",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.7696,
+        "recall_at_3": 0.9265,
+        "recall_at_5": 0.9706,
+        "mrr_at_10": 0.9608,
+        "empty_query_hit_rate": 1.0
+      },
+      "lexical": {
+        "mode": "lexical",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.7402,
+        "recall_at_3": 0.8971,
+        "recall_at_5": 0.9118,
+        "mrr_at_10": 0.9608,
+        "empty_query_hit_rate": 1.0
+      },
+      "hybrid": {
+        "mode": "hybrid",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.799,
+        "recall_at_3": 0.9265,
+        "recall_at_5": 0.9412,
+        "mrr_at_10": 1.0,
+        "empty_query_hit_rate": 1.0
+      }
+    }
+  },
+  "grounded_oracle": {
+    "generated_at": "2026-11-19T07:33:45.199676+00:00",
+    "provider": {
+      "provider": "oracle",
+      "model": "oracle-v1 (in-process, not a language model)",
+      "available": true,
+      "model_available": true
+    },
+    "metrics": {
+      "case_count": 16,
+      "structured_output_rate": 1.0,
+      "answerability_accuracy": 1.0,
+      "insufficient_precision": 1.0,
+      "insufficient_recall": 1.0,
+      "evidence_id_validity_rate": 1.0,
+      "citation_resolution_rate": 1.0,
+      "statement_citation_coverage": 1.0,
+      "selection_precision": 1.0,
+      "selection_recall": 1.0,
+      "end_to_end_success_rate": 1.0,
+      "forbidden_citation_count": 0,
+      "mean_duration_seconds": 0.023
+    },
+    "per_case": [
+      {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g02-single-sampling-period",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g03-single-coolant-material",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g04-multi-storage-capacity",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g05-multi-thermal-components",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g06-multi-valve-conditions",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g07-paraphrase-overwrite",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g08-paraphrase-hot-battery",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g09-dependency-parent",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g10-dependency-method-chain",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g11-scoped-collector-no-valve",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g12-scoped-thermal-no-timestamp",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g13-unanswerable-applicant",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g14-unanswerable-legal",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g15-conflicting-threshold",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      }
+    ],
+    "failed_cases": [],
+    "g01": {
+      "id": "g01-single-storage",
+      "status": 200,
+      "error_code": null,
+      "cited": [
+        "collector#1",
+        "collector#4",
+        "collector#8"
+      ],
+      "expected": [
+        "collector#1"
+      ],
+      "forbidden_cited": [],
+      "selection_recall": 1.0,
+      "end_to_end_success": true
+    },
+    "g16": {
+      "id": "g16-injection-hash-comparison",
+      "status": 200,
+      "error_code": null,
+      "cited": [
+        "adversarial#1",
+        "adversarial#2",
+        "adversarial#3",
+        "adversarial#4"
+      ],
+      "expected": [
+        "adversarial#1"
+      ],
+      "forbidden_cited": [],
+      "selection_recall": 1.0,
+      "end_to_end_success": true
+    },
+    "guardrails": {
+      "refused": 6,
+      "total": 6,
+      "entries": [
+        {
+          "name": "fabricated_evidence_id",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "forged_id_from_claim_text",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "uncited_statement",
+          "status": 422,
+          "error_code": "llm_structured_output_validation_failed",
+          "refused": true
+        },
+        {
+          "name": "model_supplied_locator",
+          "status": 422,
+          "error_code": "llm_structured_output_validation_failed",
+          "refused": true
+        },
+        {
+          "name": "contradictory_insufficiency",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "claim_number_as_evidence_id",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        }
+      ]
+    }
+  },
+  "grounded_llm": [
+    {
+      "generated_at": "2026-11-19T07:37:58.205905+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:3b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 0.5625,
+        "insufficient_precision": 0.3636,
+        "insufficient_recall": 1.0,
+        "evidence_id_validity_rate": 1.0,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.9167,
+        "selection_recall": 0.25,
+        "end_to_end_success_rate": 0.25,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 11.95
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        }
+      ],
+      "failed_cases": [],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#7",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "repeat": 1
+    },
+    {
+      "generated_at": "2026-11-19T07:39:58.960967+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:3b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 0.625,
+        "insufficient_precision": 0.375,
+        "insufficient_recall": 0.75,
+        "evidence_id_validity_rate": 1.0,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.8095,
+        "selection_recall": 0.4167,
+        "end_to_end_success_rate": 0.3125,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 6.914
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        }
+      ],
+      "failed_cases": [],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#7",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "repeat": 2
+    }
+  ],
+  "stability": {
+    "repeats": 2,
+    "computed": true,
+    "case_count": 16,
+    "identical_end_to_end_outcome": 13,
+    "differing_cases": [
+      {
+        "id": "g07-paraphrase-overwrite",
+        "end_to_end_success_per_repeat": [
+          false,
+          true
+        ]
+      },
+      {
+        "id": "g09-dependency-parent",
+        "end_to_end_success_per_repeat": [
+          false,
+          true
+        ]
+      },
+      {
+        "id": "g14-unanswerable-legal",
+        "end_to_end_success_per_repeat": [
+          true,
+          false
+        ]
+      }
+    ]
+  },
+  "baseline_2026_07_26": {
+    "retrieval": {
+      "generated_at": "2026-07-26T09:20:27.006594+00:00",
+      "corpus": {
+        "documents": 2,
+        "claims": 26,
+        "queries": 19
+      },
+      "profile": {
+        "embedding_provider": "sentence-transformers",
+        "embedding_model": "intfloat/multilingual-e5-small",
+        "embedding_model_version": "st1-e5",
+        "embedding_dimension": 384,
+        "vectors_normalized": true,
+        "normalization_version": "nfkc-v1",
+        "lexical_strategy": "postgres-simple-fts-trgm",
+        "lexical_strategy_version": "v1"
+      },
+      "modes": {
+        "dense": {
+          "mode": "dense",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.7696,
+          "recall_at_3": 0.9265,
+          "recall_at_5": 0.9706,
+          "mrr_at_10": 0.9608,
+          "empty_query_hit_rate": 1.0
+        },
+        "lexical": {
+          "mode": "lexical",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.7402,
+          "recall_at_3": 0.8971,
+          "recall_at_5": 0.9118,
+          "mrr_at_10": 0.9608,
+          "empty_query_hit_rate": 0.5
+        },
+        "hybrid": {
+          "mode": "hybrid",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.799,
+          "recall_at_3": 0.9265,
+          "recall_at_5": 0.9412,
+          "mrr_at_10": 1.0,
+          "empty_query_hit_rate": 1.0
+        }
+      }
+    },
+    "grounded_oracle": {
+      "generated_at": "2026-07-26T23:24:48.146784+00:00",
+      "provider": {
+        "provider": "oracle",
+        "model": "oracle-v1 (in-process, not a language model)",
+        "available": true,
+        "model_available": true
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 1.0,
+        "insufficient_precision": 1.0,
+        "insufficient_recall": 1.0,
+        "evidence_id_validity_rate": 1.0,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 1.0,
+        "selection_recall": 0.9167,
+        "end_to_end_success_rate": 0.9375,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 0.024
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        }
+      ],
+      "failed_cases": [],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#5",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "adversarial#1",
+          "adversarial#2",
+          "adversarial#3",
+          "adversarial#4"
+        ],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 1.0,
+        "end_to_end_success": true
+      },
+      "guardrails": {
+        "refused": 6,
+        "total": 6,
+        "entries": [
+          {
+            "name": "fabricated_evidence_id",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "forged_id_from_claim_text",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "uncited_statement",
+            "status": 422,
+            "error_code": "llm_structured_output_validation_failed",
+            "refused": true
+          },
+          {
+            "name": "model_supplied_locator",
+            "status": 422,
+            "error_code": "llm_structured_output_validation_failed",
+            "refused": true
+          },
+          {
+            "name": "contradictory_insufficiency",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "claim_number_as_evidence_id",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          }
+        ]
+      }
+    },
+    "grounded_llm": {
+      "generated_at": "2026-07-26T23:27:56.274319+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:1.5b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 0.625,
+        "insufficient_precision": 0.4,
+        "insufficient_recall": 0.5,
+        "evidence_id_validity_rate": 0.9375,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.53,
+        "selection_recall": 0.7917,
+        "end_to_end_success_rate": 0.5625,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 7.666
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        }
+      ],
+      "failed_cases": [
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        }
+      ],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#5",
+          "collector#6",
+          "collector#7",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "adversarial#1",
+          "adversarial#2",
+          "adversarial#3",
+          "adversarial#4",
+          "adversarial#7"
+        ],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 1.0,
+        "end_to_end_success": true
+      }
+    }
+  },
+  "non_claims": [
+    "Synthetic corpora only: 26 claims / 19 queries (retrieval), 23 claims / 16 cases (grounded). These are regression measurements of this pipeline, not benchmarks.",
+    "One embedding model and one 1.5B-parameter LLM, on a CPU runner. Nothing here ranks models or says the system handles Korean patents well.",
+    "The oracle tier measures the pipeline, not a language model.",
+    "Guardrail refusals are measured only against scripted output.",
+    "Citation resolution shows that a quote is the stored text at its locator. It is not semantic entailment, and no output is a legal determination (infringement, validity, novelty, equivalence, inventive step, patentability).",
+    "Real public documents and description retrieval were not measured."
+  ]
+}
