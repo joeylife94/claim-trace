@@ -1,0 +1,460 @@
+name: D8 Real-Model Evaluations
+
+# Measures the pipeline with the REAL embedding model (intfloat/multilingual-e5-small)
+# and a REAL local LLM served by Ollama (default qwen2.5:1.5b) on a CPU runner.
+# These are regression measurements of this pipeline on synthetic corpora. They
+# are not benchmarks, do not rank models, and are not legal determinations.
+#
+# The `pull_request` trigger exists because `workflow_dispatch` is only offered
+# once this file is on the default branch, so the first proof must come from the
+# pull request that adds it. Its path filter keeps it off unrelated pull requests.
+#
+# Delivery of results: the `measure` job (read-only) writes a run directory under
+# the git-ignored apps/api/evals/tmp, validates it with evals.d8_report, prints
+# every file between D8-FILE-BEGIN/END markers and uploads it as an artifact. The
+# separate `publish` job (the only job with write permission; it runs no model
+# code) pushes that run directory as ONE commit to a NEW branch
+# d8-results/<run_id>-<run_attempt>. It never pushes to main or to the PR branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ollama_model:
+        description: "Ollama model tag to measure"
+        type: string
+        default: "qwen2.5:1.5b"
+      ollama_repeats:
+        description: "How many times to repeat the Ollama grounded run"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "2"
+      run_ollama:
+        description: "Run the real-LLM tier (M3)"
+        type: boolean
+        default: true
+      commit_results:
+        description: "Push the run directory to a new d8-results/<run_id>-<attempt> branch"
+        type: boolean
+        default: false
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/d8-real-model-evals.yml"
+      - "apps/api/evals/d8_*.py"
+
+concurrency:
+  group: d8-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The exact commit measured: the PR head (not the merge commit) or the dispatched SHA.
+  MEASURED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  # On a pull_request run `inputs.*` is empty, so every value falls back to its default.
+  # `run_ollama` is compared by event name because an empty value would coerce to false.
+  D8_MODEL: ${{ inputs.ollama_model || 'qwen2.5:1.5b' }}
+  D8_REPEATS: ${{ inputs.ollama_repeats || '2' }}
+  D8_RUN_OLLAMA: ${{ (github.event_name == 'workflow_dispatch' && !inputs.run_ollama) && 'false' || 'true' }}
+  # Relative to /app inside the api container, where ./apps/api/evals is mounted
+  # read-write. Git-ignored (`tmp/`), and never under evals/results.
+  D8_RUN_REL: evals/tmp/d8/${{ github.run_id }}-${{ github.run_attempt }}
+  D8_ARTIFACT: d8-run-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  measure:
+    # Pinned: ubuntu-latest began resolving to Ubuntu 26.04 and broke other jobs here.
+    runs-on: ubuntu-24.04
+    # A per-case timeout is a recorded result, but a killed job loses the whole run,
+    # so the job and the M3 step are generous (M3 on a CPU runner: roughly 8-30 min/repeat).
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    # Lets `publish` find the artifact even when only `publish` is re-run (its run_attempt
+    # then differs from the attempt that uploaded the artifact).
+    outputs:
+      artifact: ${{ steps.artifact_name.outputs.artifact }}
+    steps:
+      - name: Checkout the exact measured commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.MEASURED_SHA }}
+
+      - name: Validate inputs
+        run: |
+          set -eu
+          # Inputs reach the shell only through env, never by interpolation.
+          case "${D8_MODEL}" in
+            ""|*[!A-Za-z0-9._:/-]*) echo "invalid ollama_model (rejected)" >&2; exit 1 ;;
+          esac
+          case "${D8_REPEATS}" in
+            1|2|3) ;;
+            *) echo "invalid ollama_repeats (rejected)" >&2; exit 1 ;;
+          esac
+          echo "measured sha: ${MEASURED_SHA}"
+          echo "run_ollama=${D8_RUN_OLLAMA} model=${D8_MODEL} repeats=${D8_REPEATS}"
+
+      - name: Expose the artifact name
+        id: artifact_name
+        run: echo "artifact=${D8_ARTIFACT}" >> "${GITHUB_OUTPUT}"
+
+      - name: Initialize committed defaults
+        run: cp .env.example .env
+
+      - name: Prepare writable run directory
+        run: |
+          set -eu
+          RUN_HOST="apps/api/${D8_RUN_REL}"
+          mkdir -p "${RUN_HOST}/retrieval" "${RUN_HOST}/grounded"
+          if [ "${D8_RUN_OLLAMA}" = "true" ]; then
+            for k in $(seq 1 "${D8_REPEATS}"); do
+              mkdir -p "${RUN_HOST}/grounded/r${k}"
+            done
+          fi
+          # The container runs as uid 10001; the directories must accept its writes.
+          chmod -R a+rwX apps/api/evals/tmp
+          ls -la "${RUN_HOST}"
+
+      - name: Validate Compose configuration
+        run: docker compose --profile llm config --quiet
+
+      - name: Build API evaluation image
+        run: docker compose build api
+
+      - name: Start PostgreSQL
+        run: docker compose up -d postgres
+
+      - name: Wait for PostgreSQL readiness
+        run: |
+          docker compose exec -T postgres sh -ec '
+            for attempt in $(seq 1 30); do
+              if pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "postgres did not become ready" >&2
+            exit 1'
+
+      - name: "M1: retrieval with the real embedding model"
+        run: |
+          docker compose run --rm api python -m evals.run \
+            --provider sentence-transformers \
+            --output-dir "${D8_RUN_REL}/retrieval"
+
+      - name: "M2: grounded pipeline, real embeddings, oracle LLM"
+        run: |
+          docker compose run --rm api python -m evals.grounded_run \
+            --tier deterministic \
+            --output-dir "${D8_RUN_REL}/grounded"
+
+      - name: Start Ollama and pull the model
+        if: env.D8_RUN_OLLAMA == 'true'
+        timeout-minutes: 25
+        run: |
+          set -eu
+          docker compose --profile llm up -d ollama
+          ready=0
+          for attempt in $(seq 1 60); do
+            if docker compose exec -T ollama ollama list >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "${ready}" != "1" ]; then
+            echo "ollama did not become ready" >&2
+            exit 1
+          fi
+          docker compose exec -T ollama ollama pull "${D8_MODEL}"
+          docker compose exec -T ollama ollama list
+
+      - name: Verify the api container reaches Ollama and sees the model
+        if: env.D8_RUN_OLLAMA == 'true'
+        run: |
+          docker compose run --rm --no-deps -e D8_MODEL="${D8_MODEL}" api python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          model = os.environ["D8_MODEL"]
+          with urllib.request.urlopen("http://ollama:11434/api/tags", timeout=15) as response:
+              names = [item["name"] for item in json.load(response)["models"]]
+          print("ollama models visible from the api container:", names)
+          accepted = {model, model + ":latest"}
+          if not accepted.intersection(names):
+              raise SystemExit(f"model {model!r} is not available on the Ollama server")
+          PY
+
+      - name: "M3: grounded generation with the real local LLM (repeats)"
+        if: env.D8_RUN_OLLAMA == 'true'
+        timeout-minutes: 90
+        run: |
+          set -eu
+          for k in $(seq 1 "${D8_REPEATS}"); do
+            echo "=== Ollama grounded run ${k} of ${D8_REPEATS} ==="
+            docker compose run --rm \
+              -e LLM_OLLAMA_BASE_URL=http://ollama:11434 \
+              -e LLM_OLLAMA_MODEL="${D8_MODEL}" \
+              api python -m evals.grounded_run \
+                --tier ollama \
+                --output-dir "${D8_RUN_REL}/grounded/r${k}"
+          done
+
+      - name: Record the environment
+        run: |
+          set -eu
+          RUN_HOST="apps/api/${D8_RUN_REL}"
+
+          export D8_NPROC="$(nproc || true)"
+          export D8_MEM_MB="$(awk '/^MemTotal:/ {printf "%d", $2/1024}' /proc/meminfo || true)"
+          export D8_OS="$(. /etc/os-release && printf '%s' "${PRETTY_NAME:-}" || true)"
+          export D8_DOCKER_VERSION="$(docker --version 2>/dev/null || true)"
+          export D8_COMPOSE_VERSION="$(docker compose version 2>/dev/null || true)"
+          export D8_EMBEDDING_MODEL="$(sed -n 's/^EMBEDDING_MODEL=//p' .env | head -n 1)"
+          export D8_API_IMAGE_JSON="$(docker image inspect claimtrace-api --format '{{json .RepoDigests}}|{{.Id}}' 2>/dev/null || true)"
+
+          # Snapshot directory of the e5-small weights in the model_cache volume.
+          # sentence-transformers is given cache_folder=/models, and the Dockerfile sets
+          # HF_HOME=/models, so the layout is /models/models--*/snapshots/<rev> or
+          # /models/hub/models--*/snapshots/<rev>; both are searched.
+          export D8_SNAPSHOT_PATHS="$(docker compose run --rm --no-deps api find /models -maxdepth 5 -type d \
+            -path '*models--intfloat--multilingual-e5-small/snapshots/*' 2>/dev/null || true)"
+
+          export D8_OLLAMA_IMAGE=""
+          export D8_OLLAMA_VERSION=""
+          export D8_OLLAMA_LIST=""
+          if [ "${D8_RUN_OLLAMA}" = "true" ]; then
+            D8_OLLAMA_IMAGE="$(docker image inspect ollama/ollama:latest --format '{{json .RepoDigests}}|{{.Id}}' 2>/dev/null || true)"
+            D8_OLLAMA_VERSION="$(docker compose exec -T ollama ollama --version 2>&1 | head -n 3 || true)"
+            D8_OLLAMA_LIST="$(docker compose exec -T ollama ollama list 2>/dev/null || true)"
+          fi
+
+          python3 - "${RUN_HOST}/ENVIRONMENT.json" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          env = os.environ
+
+
+          def text(name):
+              value = env.get(name, "").strip()
+              return value or None
+
+
+          def image_digest(name):
+              raw = env.get(name, "").strip()
+              if not raw or "|" not in raw:
+                  return None
+              digests_json, image_id = raw.split("|", 1)
+              try:
+                  digests = json.loads(digests_json) or []
+              except ValueError:
+                  digests = []
+              return digests[0] if digests else (image_id.strip() or None)
+
+
+          def warn(message):
+              print(f"::warning::{message}")
+
+
+          revisions = sorted(
+              {
+                  match.group(1)
+                  for line in env.get("D8_SNAPSHOT_PATHS", "").splitlines()
+                  for match in [re.search(r"/snapshots/([^/\s]+)", line)]
+                  if match
+              }
+          )
+          revision = ",".join(revisions) if revisions else None
+          if revision is None:
+              warn("e5-small snapshot revision not found in the model_cache volume")
+
+          model = env["D8_MODEL"]
+          ran_ollama = env.get("D8_RUN_OLLAMA") == "true"
+          model_id = None
+          if ran_ollama:
+              wanted = {model, model + ":latest"}
+              for line in env.get("D8_OLLAMA_LIST", "").splitlines()[1:]:
+                  columns = line.split()
+                  if len(columns) >= 2 and columns[0] in wanted:
+                      model_id = columns[1]
+                      break
+              if model_id is None:
+                  warn("model id not found in `ollama list`")
+
+          payload = {
+              "git_sha": env["MEASURED_SHA"],
+              "run_id": env["GITHUB_RUN_ID"],
+              "run_attempt": env["GITHUB_RUN_ATTEMPT"],
+              "event_name": env["GITHUB_EVENT_NAME"],
+              "runner": {
+                  "nproc": int(env["D8_NPROC"]) if env.get("D8_NPROC", "").isdigit() else None,
+                  "mem_total_mb": int(env["D8_MEM_MB"]) if env.get("D8_MEM_MB", "").isdigit() else None,
+                  "os": text("D8_OS"),
+                  "docker_version": text("D8_DOCKER_VERSION"),
+                  "docker_compose_version": text("D8_COMPOSE_VERSION"),
+              },
+              "api_image_id": image_digest("D8_API_IMAGE_JSON"),
+              "ollama_image_digest": image_digest("D8_OLLAMA_IMAGE") if ran_ollama else None,
+              "ollama_version": text("D8_OLLAMA_VERSION") if ran_ollama else None,
+              "ollama_model": model if ran_ollama else None,
+              "ollama_model_id": model_id,
+              "embedding_model": text("D8_EMBEDDING_MODEL"),
+              "embedding_model_revision": revision,
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          PY
+          # Read by the api container (uid 10001); the run directory itself is already a+rwX.
+          chmod a+r "${RUN_HOST}/ENVIRONMENT.json"
+
+      - name: Validate and summarize (evals.d8_report, fails closed)
+        run: |
+          set -eu
+          if [ "${D8_RUN_OLLAMA}" = "true" ]; then
+            EXPECTED_REPEATS="${D8_REPEATS}"
+          else
+            EXPECTED_REPEATS=0
+          fi
+          # stdout (the report and the emitted files) goes to a file so the report can be
+          # printed once, on its own, before the per-file dumps. stderr stays in the log.
+          if ! docker compose run --rm --no-deps -T api python -m evals.d8_report \
+              --run-dir "${D8_RUN_REL}" \
+              --expected-llm-model "${D8_MODEL}" \
+              --expected-repeats "${EXPECTED_REPEATS}" \
+              --emit > "${RUNNER_TEMP}/d8-emit.log"; then
+            echo "evals.d8_report failed; its stdout follows" >&2
+            TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+            echo "::stop-commands::${TOKEN}"
+            cat "${RUNNER_TEMP}/d8-emit.log" || true
+            echo "::${TOKEN}::"
+            exit 1
+          fi
+          test -s "apps/api/${D8_RUN_REL}/D8-SUMMARY.json"
+          test -s "apps/api/${D8_RUN_REL}/D8-REPORT.md"
+          grep -c '^D8-INDEX ' "${RUNNER_TEMP}/d8-emit.log"
+
+      - name: Show D8 report
+        run: |
+          TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${TOKEN}"
+          cat "apps/api/${D8_RUN_REL}/D8-REPORT.md"
+          echo "::${TOKEN}::"
+
+      - name: Emit every file of the run directory to the log
+        run: |
+          # Result text is printed verbatim; stop-commands keeps any line that begins with
+          # "::" from being interpreted as a workflow command.
+          TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${TOKEN}"
+          cat "${RUNNER_TEMP}/d8-emit.log"
+          echo "::${TOKEN}::"
+
+      - name: Upload the run directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.D8_ARTIFACT }}
+          path: apps/api/${{ env.D8_RUN_REL }}/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          docker compose --profile llm ps || true
+          docker compose --profile llm logs --no-color --tail 200 postgres || true
+          docker compose --profile llm logs --no-color --tail 200 ollama || true
+
+      - name: Tear down evaluation runtime
+        if: always()
+        run: docker compose --profile llm down -v --remove-orphans || true
+
+      - name: D8 file index (last lines of the job)
+        run: |
+          TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${TOKEN}"
+          grep '^D8-INDEX ' "${RUNNER_TEMP}/d8-emit.log"
+          echo "::${TOKEN}::"
+
+  publish:
+    # Runs no model code. The only job with write permission; pushes only to a new
+    # d8-results/* branch, never to main and never to the pull request branch.
+    needs: measure
+    if: >-
+      ${{
+        (github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository)
+        || (github.event_name == 'workflow_dispatch' && inputs.commit_results)
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # Based on the head of the default branch, NOT the measured commit: on the pull
+      # request run the measured commit adds a workflow file, and a GITHUB_TOKEN push
+      # whose ref differs from the default branch in .github/workflows/ can be refused
+      # (no `workflows` permission). The measured SHA is in the commit message, in
+      # ENVIRONMENT.json and in D8-SUMMARY.json.
+      - name: Checkout the default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Download the run directory
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.measure.outputs.artifact }}
+          path: ${{ runner.temp }}/d8-run
+
+      - name: Push the run directory to a new results branch
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -eu
+          SRC="${RUNNER_TEMP}/d8-run"
+          for required in ENVIRONMENT.json D8-SUMMARY.json D8-REPORT.md retrieval/results.json; do
+            test -s "${SRC}/${required}" || { echo "artifact is missing ${required}" >&2; exit 1; }
+          done
+          if [ -n "$(find "${SRC}" -type l)" ]; then
+            echo "artifact contains symbolic links; refusing" >&2
+            exit 1
+          fi
+
+          BRANCH="d8-results/${RUN_ID}-${RUN_ATTEMPT}"
+          # The date is the measurement date (from the run itself), not the publish date.
+          RUN_DATE="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["generated_at"][:10])' "${SRC}/D8-SUMMARY.json")"
+          case "${RUN_DATE}" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+            *) echo "D8-SUMMARY.json generated_at does not start with a date; refusing" >&2; exit 1 ;;
+          esac
+          DEST="apps/api/evals/results/d8/${RUN_DATE}-$(printf '%.7s' "${MEASURED_SHA}")"
+          if [ -e "${DEST}" ]; then
+            echo "${DEST} already exists on ${DEFAULT_BRANCH}; refusing" >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BASE_SHA="$(git rev-parse HEAD)"
+          git checkout -b "${BRANCH}"
+          mkdir -p "${DEST}"
+          cp -R "${SRC}/." "${DEST}/"
+          git add -- "${DEST}"
+          git diff --cached --quiet && { echo "nothing to commit" >&2; exit 1; }
+          git commit -m "D8: real-model evaluation results, run ${RUN_ID} attempt ${RUN_ATTEMPT}" \
+            -m "Measured commit: ${MEASURED_SHA}" \
+            -m "Base: ${DEFAULT_BRANCH} at ${BASE_SHA}" \
+            -m "Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}" \
+            -m "Regression measurements of this pipeline on synthetic corpora; not a benchmark."
+          git push origin "${BRANCH}"
+          echo "results branch: ${BRANCH}"
+          echo "results commit: $(git rev-parse HEAD)"

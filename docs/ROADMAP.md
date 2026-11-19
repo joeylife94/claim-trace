@@ -388,6 +388,8 @@ lexical fallback change. Current real-embedding numbers were not re-measured. Th
 enforced gate pins fake-provider numbers instead; see
 [apps/api/evals/README.md](../apps/api/evals/README.md).
 
+> **Update (2026-11-16, D8-01):** a real-model measurement of commit `aa492be` was recorded on 2026-11-16 (Actions run 43826346480, 4 vCPU CPU runner), with the data in [`apps/api/evals/results/d8/2026-11-16-aa492be/`](../apps/api/evals/results/d8/2026-11-16-aa492be/D8-REPORT.md). The 2026-07-26 files are unchanged and remain the v1.0-era record. In that run, retrieval with `intfloat/multilingual-e5-small` has the same Recall@1/3/5 and MRR@10 as the 2026-07-26 record for all three modes; the oracle tier succeeds on all 16 cases including `g01-single-storage`, with 6 of 6 scripted guardrail payloads refused; and grounded generation with the real `qwen2.5:1.5b` was poor: end-to-end success 0.1875 and 0.25 in two repeats against 0.5625 in the 2026-07-26 record, with 11 and 9 of 16 cases ending in `502 grounded_repair_failed`. Citation resolution was 1.0 for served answers and no forbidden citation occurred. No cause is attributed: code, Ollama version, model build and hardware all differ between the two records. Synthetic corpora only; real public documents, description retrieval, guardrails against a real model and other models were not measured. Not a benchmark; not current beyond the run date.
+
 ---
 
 ## Post-v1 progression

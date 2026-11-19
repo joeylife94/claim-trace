@@ -2,13 +2,13 @@
 
 > **Authoritative execution contract and evidence ledger for ClaimTrace.** Read this before every batch. `README.md` is external-facing, `docs/ARCHITECTURE.md` explains design, and `docs/ROADMAP.md` records the phase history and candidate directions. **This file controls the frozen v1.0 Proof boundary and records the post-v1 progression.**
 
-**Last execution update:** 2026-11-16  
+**Last execution update:** 2026-11-19  
 **v1.0 target:** L4 Controlled Pilot  
 **v1.0 final batch:** V1-07 — Final Validation + Wishket Proof  
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7-01 implemented, accepted on merge of its pull request / D8 next / D9 queued**  
+**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7 reached / D8-01 measured, accepted on merge of its pull request / next step requires Human Review (see Section 17)**  
 **Where to start reading:** Section 17 for the active upgrade track; Section 16 for the state at the first wrap-up; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
@@ -1678,14 +1678,14 @@ Do not open an automatic progression milestone. Select a destination from the ca
 
 **Human Review decision date:** `2026-11-12`
 **Decided by:** Human Review (repository owner)
-**Track state:** `SELECTED — D7 ACTIVE`
+**Track state:** `D7 REACHED — D8 ACTIVE`
 
 Section 16 left the next destination to a human decision. The decision is to upgrade in three destinations, in this order. The order is deliberate: fix what is already known to be wrong, then find out how good the system is with a real model, and only then build user-facing surface on top of it.
 
 | Destination | Purpose | State |
 | --- | --- | --- |
-| D7 — Recorded-defect hardening | Fix the defects that Section 16 recorded and left unfixed | Active (D7-01) |
-| D8 — Real-model quality measurement | Measure retrieval and grounded answers on current code with a real embedding model and a real local LLM, and report the result with its limits | Queued; acceptance contract to be recorded here before implementation |
+| D7 — Recorded-defect hardening | Fix the defects that Section 16 recorded and left unfixed | Reached (D7-01, PR #76) |
+| D8 — Real-model quality measurement | Measure retrieval and grounded answers on current code with a real embedding model and a real local LLM, and report the result with its limits | Active (D8-01) |
 | D9 — Visible analyst workspace | Give Cases and description retrieval a web surface | Queued; scope to be set after D8 reports |
 
 The other candidates in Section 16 (OCR, relaxing the mixed-PDF rejection, shared-network deployment hardening) are **not** selected by this decision and stay candidates.
@@ -1755,4 +1755,102 @@ Against the D7-01 Acceptance Contract: items 1, 2, 4, 5, 6, 7, and 8 are verifie
 - A second consecutive local run of the gate was reasoned about, not executed.
 - The local database was PostgreSQL 16, not the PostgreSQL 17 image the project runs. The integration tier on the project image runs in General CI.
 - Still open from Section 16, and out of scope here: the read-only Alembic mount in Compose, so `make migration` still cannot write a revision file from inside the container; the General CI path filter; the development Compose port publishing; Issue #65.
+
+### D7-01 Acceptance Update and D7 Destination Review
+
+**Status:** `ACCEPTED / MERGED`
+**PR:** #76 — `D7-01: fix the recorded defects`
+**Accepted PR exact head:** `e85f64cf42ec72adff9b30f61651f6f77e3a5b0a`
+**Resulting main squash merge SHA:** `53825d8c0a813d35e44d12bde866cdda673953a4`
+
+On the accepted head all 21 check runs across all 16 workflows completed **GREEN**, with no review thread open. That closes the items the implementation record listed as provable only in CI: General CI passed with the new tests inside the api image and with the integration tier on the project's PostgreSQL image; `Progression Deterministic Regression`, `Progression D3 Real Public Corpus`, and `Progression D4 Description Evidence` passed, so the gate runs at its new output location with the container user writing through the bind mount.
+
+The first run, on head `39b47db`, was not green: every job that installs Playwright failed at browser installation, because `ubuntu-latest` resolved to Ubuntu 26.04 and Playwright 1.55.0 has no Chromium build for it. Three of those failures were confirmed in the job logs; a fourth was not read. The runner pin recorded above fixed it, and the same jobs passed on the accepted head.
+
+Still not verified: a second consecutive local run of the gate.
+
+**D7 destination:** `DESTINATION REACHED — RECORDED-DEFECT HARDENING`. The defects in scope are fixed and evidenced. The items recorded as out of scope stay open.
+
+### D8-01 Acceptance Contract — real-model quality measurement
+
+Every piece of evidence since the v1.0 freeze used the fake embedding provider and a scripted or oracle LLM. It shows that provenance mechanics hold. It does not show whether retrieval and grounded answers are any good with a real model on current code. D8-01 measures that and reports it with its limits. It is a measurement, not a benchmark and not a tuning exercise: no product code changes to improve a number.
+
+**Measured**
+
+- M1: retrieval with the real `intfloat/multilingual-e5-small` model on the committed 26-claim, 19-query set, in dense, lexical, and hybrid modes.
+- M2: the grounded pipeline with real embeddings and the oracle in place of a language model, on the committed 16-case set, including whether `g01-single-storage` now succeeds, and the six scripted guardrail payloads.
+- M3: grounded generation with a real local LLM, `qwen2.5:1.5b` through Ollama, run twice, so per-case stability is measured and not assumed.
+
+**Not measured, deliberately**
+
+- Retrieval on the real public documents. The only label-free design is known-item fragment retrieval, which the lexical channel passes by substring matching and which says nothing about relevance.
+- Description-evidence retrieval. It has no relevance labels.
+- Hostile-payload refusals against a real model. A real model cannot be made to emit a specific invalid answer; the guardrail suite is scripted by design.
+
+**Acceptance**
+
+1. A workflow runs M1, M2, and M3 on a GitHub-hosted runner with the real providers. It is triggered manually or by a pull request that changes the workflow or the D8 tooling, and by nothing else. The job that runs models has read-only permission.
+2. A run on the exact head of the D8-01 pull request completes all three measurements with the real providers, and the tooling refuses to produce a summary from a fake-provider run, a wrong model, a missing repeat, or an incomplete input.
+3. The result files are committed under a new dated directory, `apps/api/evals/results/d8/`. Their SHA-256 values match the index the run printed. The 2026-07-26 result files stay byte-identical.
+4. The summary states the M1 metrics per mode, the outcome of g01 in the oracle tier and in each LLM repeat, the outcome of the injection case per repeat, and how many cases agree across repeats. It records the model revisions, the Ollama version, and the runner.
+5. The report leads with its non-claims. It places the 2026-07-26 figures beside the new ones and attributes no difference to a cause, because code, model revision, runtime, and hardware all changed together.
+6. Both test tiers and Ruff pass. Documents that cite evaluation results point at the dated directory and keep every existing caveat.
+
+**Environment constraint recorded with the contract.** The development machine has no Docker, and its network policy blocks the model hosts and the host that serves workflow logs and artifacts. The measurement therefore runs only on GitHub-hosted runners, and results reach the repository through a results branch that a separate, write-permitted job pushes and the implementer fetches with git.
+
+### D8-01 Implementation Record — measured 2026-11-16, recorded 2026-11-19
+
+**Status:** `MEASURED — ACCEPTED ON MERGE OF THE D8-01 PULL REQUEST`
+**PR:** #77 — `D8-01: real-model quality measurement`
+**Measured commit:** `aa492befadfa29a994d4101463d8e3dfafaed190`
+**Workflow run:** `43826346480`, attempt 1. `measure` took 32 minutes and `publish` 16 seconds; both **GREEN** on the first attempt.
+**Results:** `apps/api/evals/results/d8/2026-11-16-aa492be/`
+
+#### Changed
+
+- `.github/workflows/d8-real-model-evals.yml`, `apps/api/evals/d8_report.py`, `apps/api/evals/d8_recover.py`, and tests for both tools. No product code changed.
+- The 11 result files of the run, taken unchanged from the results branch `d8-results/43826346480-1` (commit `56c28449e930891a149e03c078da620aaad9090f`).
+- Documents that cite evaluation results carry notes dated 2026-11-16.
+
+#### Actually Executed
+
+- On a GitHub-hosted runner (Ubuntu 24.04, 4 vCPU): M1, M2, and M3 twice, with `intfloat/multilingual-e5-small` at revision `614241f622f53c4eeff9890bdc4f31cfecc418b3` and `qwen2.5:1.5b` (model id `65ec06548149`) on Ollama 0.40.16.
+- Locally: all 11 fetched files match the SHA-256 and byte count in the `D8-INDEX` lines the measuring job printed. Re-running `d8_report` on the fetched inputs passes its validation and recomputes the same summary. The 2026-07-26 result files are byte-identical to `main`.
+- Locally on the tooling head: database-free tier **937 passed**, integration tier **147 passed**, Ruff clean.
+- The tooling was reviewed independently before the pull request. The review found one defect that would have failed every run and one that could have lost the results; both were fixed before the first run.
+
+#### What the run measured
+
+All figures are from `D8-SUMMARY.json`. They are regression measurements on small synthetic corpora with one embedding model and one 1.5B-parameter LLM on a CPU runner. They are not a benchmark.
+
+- **M1, retrieval with real embeddings.** Recall@1/3/5 and MRR@10 are the same as the 2026-07-26 record in all three modes. Hybrid: Recall@5 `0.9412`, MRR@10 `1.0`. One value differs: the lexical false-positive rate on the two queries that have no relevant claim is `1.0`, against `0.5` in the 2026-07-26 record. Lexical mode now returns results for both of those queries.
+- **M2, grounded pipeline with real embeddings and the oracle.** End-to-end success `1.0`, against `0.9375` in the 2026-07-26 record. `g01-single-storage` succeeds and cites `collector#1`; it did not in the 2026-07-26 record. Six of six scripted guardrail payloads refused.
+- **M3, grounded generation with the real LLM.** End-to-end success `0.1875` in the first repeat and `0.25` in the second, against `0.5625` in the 2026-07-26 record. Eleven of 16 cases in the first repeat and nine in the second returned `502 grounded_repair_failed` and served no answer; one case did so in the 2026-07-26 record. Evidence-id validity `0.3125` and `0.4375`, against `0.9375`. Citation resolution `1.0` in both repeats, and no forbidden citation. Mean time per case `54.734` and `49.518` seconds, against `7.666`. Fifteen of 16 cases had the same end-to-end outcome in both repeats.
+
+#### Verified
+
+Against the D8-01 Acceptance Contract: items 1, 2, 3, 4, and 5 are met by the run and the checks above. Item 6 is met for the test tiers and Ruff; the document updates are part of the same pull request.
+
+Read together: what the server serves stayed checkable. Nothing unresolvable and nothing out of scope was served, and invalid model output was refused rather than passed through. Answer quality with this model on this runner was low: most questions got no served answer.
+
+#### Not Verified
+
+- **Why M3 is lower than the 2026-07-26 record.** No cause is established. Between the two records the application code, the Ollama version, the model build, and the hardware all differ, and this measurement does not separate them.
+- One lead, unexamined: the deployment-lineage branch `agent/proof-dataset-spec` carries commits about grounded generation with a real model ("Fix Proof grounded output truncation", "Guide grounded model toward concise supported output", "Bound Proof Grounded statements") that are not on `main`. Only the commit titles were read.
+- Any model other than `qwen2.5:1.5b`, any hardware other than this runner, real public documents, description retrieval, and guardrail behaviour against a real model.
+- `d8_recover` against a real job log: the log could not be downloaded to the development machine, so results were delivered by branch and the tool was exercised only by its tests.
+
+#### D8 Destination Review
+
+**Status:** `DESTINATION REACHED — REAL-MODEL QUALITY MEASUREMENT`
+
+D8 was to measure and report with limits, and it has. It did not set out to improve a number and did not.
+
+The measurement changes what should come next. D9 was to give Cases and description retrieval a web surface, with its scope set after D8 reported. Case grounded results depend on grounded generation, and with the measured model most grounded questions return no answer. Building that surface first would put a user interface on a path that mostly fails.
+
+#### Exact Next Action
+
+`HUMAN REVIEW — CHOOSE THE NEXT MILESTONE`
+
+The track's order was decided before this result existed, so the choice goes back to the owner. The options are: diagnose the real-LLM result first (separate code, runtime, model build, and hardware; examine the deployment-branch lead), or proceed to D9 with a scope that does not depend on grounded generation.
 
