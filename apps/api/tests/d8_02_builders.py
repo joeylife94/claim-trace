@@ -210,7 +210,9 @@ def _default_raw(tag: str | None, repeat_index: int, case_id: str) -> str:
     return "same"
 
 
-def _default_outcome(tag: str | None, repeat_index: int, case_id: str, case: dict[str, Any]) -> bool:
+def _default_outcome(
+    tag: str | None, repeat_index: int, case_id: str, case: dict[str, Any]
+) -> bool:
     return case["status"] == 200
 
 
