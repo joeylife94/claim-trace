@@ -185,3 +185,23 @@ def test_sentinel_text_never_reaches_the_output_and_raw_files_are_not_opened(
     assert "ollama-server.log" not in opened
     assert "[A] cpu_model: other" in lines
     assert "[A] git_sha: other" in lines
+
+
+def test_header_names_the_llm_model_and_flags_different_models(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    a = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1, name="a")
+    b = builders.build_run(
+        tmp_path,
+        tags=["0.40.16"],
+        legacy_repeats=1,
+        name="b",
+        environment=dict(builders.ENVIRONMENT, ollama_model="qwen2.5:3b", ollama_model_id="abc123"),
+    )
+    code, lines, _ = compare(capsys, a, b)
+    assert code == 0
+    assert "[A] llm model: qwen2.5:1.5b (id 65ec06548149)" in lines
+    assert "[B] llm model: qwen2.5:3b (id abc123)" in lines
+    assert any(line.startswith("NOTE: the two sides used different LLM models") for line in lines)
+    code, lines, _ = compare(capsys, a, a)
+    assert not any(line.startswith("NOTE:") for line in lines)

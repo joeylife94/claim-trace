@@ -34,6 +34,8 @@ from evals.d8_report import (
     CODE_PATTERN,
     CPU_NAME_PATTERN,
     GROUNDED_VIOLATIONS,
+    IDENTIFIER_PATTERN,
+    MODEL_PATTERN,
     SHORT_FACT_PATTERN,
     TAG_PATTERN,
 )
@@ -191,10 +193,13 @@ def _violations(case: dict[str, Any]) -> str:
     return ">".join(_attempt_label(a) for a in attempts)
 
 
-def _outcome(case: dict[str, Any]) -> str:
+def _status(case: dict[str, Any]) -> int | str:
     status = case.get("status")
-    shown = status if isinstance(status, int) and not isinstance(status, bool) else "?"
-    return f"{shown}/{'ok' if case.get('end_to_end_success') is True else 'fail'}"
+    return status if isinstance(status, int) and not isinstance(status, bool) else "?"
+
+
+def _outcome(case: dict[str, Any]) -> str:
+    return f"{_status(case)}/{'ok' if case.get('end_to_end_success') is True else 'fail'}"
 
 
 def _equal(a: Any, b: Any) -> str:
@@ -239,6 +244,8 @@ def _header(side: str, run: Run) -> list[str]:
         f"[{side}] run_id: {_clean(env.get('run_id'), SHORT_FACT_PATTERN) or 'not recorded'}",
         f"[{side}] cpu_fingerprint: {fingerprint_text or 'not recorded'}",
         f"[{side}] cpu_model: {_clean(cpu.get('model_name'), CPU_NAME_PATTERN) or 'not recorded'}",
+        f"[{side}] llm model: {_clean(env.get('ollama_model'), MODEL_PATTERN) or 'not recorded'} "
+        f"(id {_clean(env.get('ollama_model_id'), IDENTIFIER_PATTERN) or 'not recorded'})",
         f"[{side}] ollama tags: {tag_text}",
         f"[{side}] llm segments: {len(run.segments) or 'none (LLM tier not run)'}",
         f"[{side}] diagnostics: oracle {'yes' if _has_diagnostics(run.oracle) else 'no'}, "
@@ -270,7 +277,7 @@ def _oracle_section(a: Run, b: Run) -> list[str]:
         differing_prompt += prompt == "DIFFERENT"
         lines.append(
             f"{case_id}  catalog={catalog}  prompt_hash={prompt}  "
-            f"status A={case_a.get('status')} B={case_b.get('status')}"
+            f"status A={_status(case_a)} B={_status(case_b)}"
         )
         if catalog_a is not None and catalog_b is not None and catalog == "DIFFERENT":
             detail.append(f"  {case_id} catalog A: {_format_catalog(catalog_a)}")
@@ -351,9 +358,18 @@ def _llm_section(a: Run, b: Run) -> list[str]:
     return lines
 
 
+def _model_note(a: Run, b: Run) -> list[str]:
+    model_a, model_b = a.env.get("ollama_model"), b.env.get("ollama_model")
+    if a.segments and b.segments and model_a != model_b:
+        return [
+            "NOTE: the two sides used different LLM models; LLM-tier differences are not comparable"
+        ]
+    return []
+
+
 def compare(path_a: Path, path_b: Path) -> list[str]:
     run_a, run_b = load_run(path_a, "A"), load_run(path_b, "B")
-    lines = [*_header("A", run_a), *_header("B", run_b)]
+    lines = [*_header("A", run_a), *_header("B", run_b), *_model_note(run_a, run_b)]
     lines += _oracle_section(run_a, run_b)
     lines += _llm_section(run_a, run_b)
     return lines

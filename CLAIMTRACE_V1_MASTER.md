@@ -1920,3 +1920,40 @@ The owner directed that development continue. D8-02 is the recommended next step
 
 **Separate exploratory run, not part of the contract.** On 2026-11-19 the D8-01 workflow was dispatched on `main` with `qwen2.5:3b` in place of `qwen2.5:1.5b`, to see whether model size is a large lever under the same contract. It is one run on one machine and compares across machines, so only a large difference would mean anything. It ranks no models. Its result is recorded with D8-02's findings.
 
+### D8-02 Implementation Record (tooling) — 2026-11-19
+
+**Status:** `TOOLING IMPLEMENTED — FIRST DIAGNOSTIC RUN IS THE PULL REQUEST'S OWN`
+
+This entry covers the tooling. The diagnostic runs and their findings are recorded in a later entry, with their run directories.
+
+#### Changed
+
+- `apps/api/evals/grounded_capture.py` (new) and `apps/api/evals/grounded_run.py`: `--capture-diagnostics`. Per attempt it records the grounding rule violated, the outcome, Ollama's `done_reason`, token counts, durations, a prompt hash, and a raw-output hash, plus the evidence catalog and whether a repair was used. Prompts and raw model output go only to a separate `diagnostics-<tier>.json`. With the flag off the harness writes the same files and keys as before.
+- `.github/workflows/d8-real-model-evals.yml`: the LLM tier runs as interleaved segments over one or two Ollama image tags in one job, with a fresh container per segment and one model store per tag. The job records the CPU identity of the machine. The results path includes the run id. Two dispatched runs can run at the same time.
+- `apps/api/evals/d8_report.py`: segments grouped by runtime; failure reasons by rule; tokens against the context length; within-machine contrasts with the decision rule fixed in the contract. The second non-claim sentence names the model the run used. `apps/api/evals/d8_compare.py` (new) compares two run directories.
+- `docker-compose.yml`: the Ollama image tag is a variable, default `latest`. `.env.example` documents it. Nothing under `apps/api/src/` changed.
+- Two more run directories as data: the second run on identical software, and the exploratory `qwen2.5:3b` run.
+
+#### Actually Executed
+
+- Locally: database-free tier **1009 passed**, integration tier **149 passed**, Ruff clean.
+- An independent review ran the real harness with the capture on and confirmed that the report and compare tools consume its output; that requests sent to Ollama are unchanged by the capture; that planted model text reaches only the raw diagnostics file; and that the three existing run directories still validate.
+- The review found two defects in the workflow before any run: a `chmod` on a file the container had written, which would have stopped the job after the first segment, and an input check that a newline could bypass. Both were fixed. The decision rule gained tests that fail if it is loosened.
+- Both image tags, `ollama/ollama:0.40.16` and `ollama/ollama:0.17.1`, were confirmed to exist on the registry.
+
+#### The exploratory `qwen2.5:3b` run
+
+Run `44480369922` on `main`, one machine, two repeats; files at `apps/api/evals/results/d8/2026-11-19-5bd3cc0/`. Ten of its eleven files were checked against the index the run printed and match.
+
+- Every one of the 16 cases was served in both repeats; no `502 grounded_repair_failed`. Mean time per case `11.95` and `6.914` seconds.
+- End-to-end success `0.25` and `0.3125`. In the first repeat the model declared insufficient evidence on 8 of the 12 answerable cases.
+- Citation resolution `1.0`; no forbidden citation.
+
+Read with the 1.5B runs: the larger model did not break grounding rules, and it did not answer more questions correctly. The two models fail in different ways at a similar rate. This is one run on one machine, compared across machines, and it ranks no models. Its committed report was written by the D8-01 tool and still says "one 1.5B-parameter LLM", which is wrong for this run.
+
+#### Not Verified
+
+- **The changed workflow has not been executed.** No Docker daemon or runner was available. Its segment mechanism was checked by reading and by a dry run with Docker stubbed.
+- The capture against a real Ollama server, in either version.
+- Whether the runner has disk for two Ollama images and two model stores, and whether the 0.17.1 server can pull the current model manifest.
+

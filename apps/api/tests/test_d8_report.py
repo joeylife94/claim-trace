@@ -1087,9 +1087,9 @@ def test_sentinel_text_never_reaches_the_report_or_the_summary(tmp_path: Path) -
         )
         mutate(
             run / "grounded" / f"r{number}" / "results-ollama.json",
-            lambda p: p["per_case"][0]["diagnostics"]["attempts"][0].update(
-                provider_error_code=hostile
-            ),
+            lambda p: next(c for c in p["per_case"] if c["status"] != 200)["diagnostics"][
+                "attempts"
+            ][0].update(provider_error_code=hostile),
         )
         # Raw model text and prompt text sit in the case diagnostics too.
         mutate(
@@ -1133,3 +1133,56 @@ def test_emit_carries_the_new_files_of_a_segment_run(tmp_path: Path) -> None:
     paths = [path for path, _, _ in d8_report.emit(run, buffer)]
     assert "grounded/r1/segment.json" in paths
     assert "grounded/r1/ollama-runtime.json" in paths
+
+
+# -- D8-02: the fixed version-effect rule is pinned at its edges ------------------
+
+
+def _contrast_of(run: Path) -> dict[str, Any]:
+    assert run_segments(run) == 0
+    contrasts: dict[str, Any] = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["contrasts"]
+    return contrasts
+
+
+def test_a_version_pair_exactly_at_the_margin_shows_the_effect(tmp_path: Path) -> None:
+    # Repeat pairs differ in 1 case, every version pair in exactly 5 = 1 + 4.
+    contrasts = _contrast_of(_contrast_run(tmp_path, version_differs=5, repeat_differs=1))
+    key = "different_first_attempt_raw_output_hash"
+    assert {p[key] for p in contrasts["pairs"] if p["kind"] == "version pair"} == {5}
+    assert contrasts["largest_repeat_pair_count"] == 1
+    assert contrasts["version_effect"] == "shown"
+
+
+def test_every_version_pair_must_meet_the_margin(tmp_path: Path) -> None:
+    case_ids = [c["id"] for c in _read_json(builders.REAL_OLLAMA)["per_case"]]
+
+    def raw_variant(tag: str | None, index: int, case_id: str) -> str:
+        position = case_ids.index(case_id)
+        if tag == "0.40.16":
+            return "t"
+        # The second repeat of the other tag matches the first tag in more cases.
+        return "u" if position < (6 if index == 1 else 4) else "t"
+
+    run = builders.build_run(tmp_path, tags=TAGS, raw_variant=raw_variant)
+    contrasts = _contrast_of(run)
+    key = "different_first_attempt_raw_output_hash"
+    version = sorted(p[key] for p in contrasts["pairs"] if p["kind"] == "version pair")
+    assert version == [4, 4, 6, 6]
+    assert contrasts["largest_repeat_pair_count"] == 2
+    # Some version pairs meet the margin (6 >= 2 + 4) and some do not (4 < 6).
+    assert contrasts["version_effect"] == "not_shown"
+
+
+def test_a_missing_raw_output_hash_withholds_the_verdict(tmp_path: Path) -> None:
+    run = _contrast_run(tmp_path, version_differs=8, repeat_differs=0)
+
+    def drop(payload: dict[str, Any]) -> None:
+        payload["per_case"][0]["diagnostics"]["attempts"][0]["raw_output_sha256"] = None
+
+    mutate(run / "grounded" / "r3" / "results-ollama.json", drop)
+    contrasts = _contrast_of(run)
+    assert contrasts["version_effect"] == "not_shown"
+    assert "missing" in contrasts["reason"]
+    assert "Reason: first-attempt raw-output hashes are missing" in (
+        run / "D8-REPORT.md"
+    ).read_text(encoding="utf-8")

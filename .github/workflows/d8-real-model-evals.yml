@@ -136,6 +136,9 @@ jobs:
           # One or two tags, comma-separated; spaces are dropped. A rejected value is
           # never echoed.
           tags="${D8_OLLAMA_IMAGE_TAGS// /}"
+          case "${tags}" in
+            ""|*[!0-9A-Za-z._,-]*) echo "invalid ollama_image_tags (rejected)" >&2; exit 1 ;;
+          esac
           without_commas="${tags//,/}"
           commas=$(( ${#tags} - ${#without_commas} ))
           if [ -z "${tags}" ] || [ "${commas}" -gt 1 ]; then
@@ -167,12 +170,28 @@ jobs:
             echo "too many segments (tags x repeats must be at most 6)" >&2
             exit 1
           fi
-          # Only validated values reach GITHUB_ENV (no newline can pass the checks above).
+          # Only validated values reach GITHUB_ENV (the character-set check above admits no newline).
           echo "D8_TAG_LIST=${tags}" >> "${GITHUB_ENV}"
           echo "D8_SEGMENTS=${segments}" >> "${GITHUB_ENV}"
           echo "measured sha: ${MEASURED_SHA}"
           echo "run_ollama=${D8_RUN_OLLAMA} model=${D8_MODEL} repeats=${D8_REPEATS}"
           echo "ollama image tags=${tags} segments=${segments} context_length=${D8_OLLAMA_CONTEXT_LENGTH:-unset}"
+
+      - name: Pull the Ollama images (fail closed before any measurement)
+        if: env.D8_RUN_OLLAMA == 'true'
+        timeout-minutes: 30
+        run: |
+          set -eu
+          df -h / || true
+          IFS=',' read -r -a TAGS <<< "${D8_TAG_LIST}"
+          for tag in "${TAGS[@]}"; do
+            if ! docker pull "ollama/ollama:${tag}"; then
+              echo "cannot pull ollama/ollama:${tag}; the tag does not exist or the registry is unreachable" >&2
+              exit 1
+            fi
+          done
+          df -h / || true
+          docker system df || true
 
       - name: Expose the artifact name
         id: artifact_name
@@ -321,6 +340,8 @@ jobs:
         timeout-minutes: 40
         run: |
           set -eu
+          df -h / || true
+          docker system df || true
           IFS=',' read -r -a TAGS <<< "${D8_TAG_LIST}"
           for i in "${!TAGS[@]}"; do
             tag="${TAGS[$i]}"
@@ -340,11 +361,6 @@ jobs:
             echo "=== override for tag ${tag} (index ${n}) ==="
             cat "docker-compose.d8-ollama-${n}.yml"
 
-            if ! docker pull "ollama/ollama:${tag}"; then
-              echo "cannot pull ollama/ollama:${tag}; the tag does not exist or the registry is unreachable" >&2
-              exit 1
-            fi
-
             export OLLAMA_IMAGE_TAG="${tag}"
             export COMPOSE_FILE="docker-compose.yml:docker-compose.d8-ollama-${n}.yml"
             docker compose --profile llm up -d --force-recreate ollama
@@ -360,7 +376,10 @@ jobs:
               echo "ollama ${tag} did not become ready" >&2
               exit 1
             fi
-            docker compose exec -T ollama ollama pull "${D8_MODEL}"
+            if ! docker compose exec -T ollama ollama pull "${D8_MODEL}"; then
+              echo "ollama ${tag} could not pull ${D8_MODEL}" >&2
+              exit 1
+            fi
             docker compose exec -T ollama ollama list
             # Keep the model store (volume); drop the container.
             docker compose --profile llm stop ollama
@@ -547,6 +566,7 @@ jobs:
               # than LF and TAB and invalid UTF-8 are dropped so a log can carry the file.
               docker compose logs --no-color ollama 2>&1 | tail -n 4000 | tr -d '\r' \
                 | LC_ALL=C tr -d '\000-\010\013-\037\177' \
+                | cut -c1-2000 | head -c 2000000 \
                 | iconv -c -f UTF-8 -t UTF-8 > "${SEG_DIR}/ollama-server.log" || true
               touch "${SEG_DIR}/ollama-server.log"
 
@@ -600,7 +620,8 @@ jobs:
           print(json.dumps(payload, indent=2))
           PY
               chmod a+r "${SEG_DIR}/segment.json" "${SEG_DIR}/ollama-server.log"
-              if [ -f "${SEG_DIR}/ollama-runtime.json" ]; then chmod a+r "${SEG_DIR}/ollama-runtime.json"; fi
+              # ollama-runtime.json was written by the api container (uid 10001); the runner
+              # user cannot chmod it, and it is already world-readable (umask 022).
 
               # The container is removed so the next segment starts fresh.
               docker compose --profile llm stop ollama
@@ -813,8 +834,11 @@ jobs:
         if: failure()
         run: |
           docker compose --profile llm ps || true
+          TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${TOKEN}"
           docker compose --profile llm logs --no-color --tail 200 postgres || true
           docker compose --profile llm logs --no-color --tail 200 ollama || true
+          echo "::${TOKEN}::"
           ls -la "apps/api/${D8_RUN_REL}/grounded" || true
 
       - name: Tear down evaluation runtime
