@@ -16,14 +16,17 @@ from __future__ import annotations
 import copy
 import io
 import json
+import random
 import re
 import shutil
+import string
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from evals import d8_report
+from tests import d8_02_builders as builders
 
 API_ROOT = Path(__file__).resolve().parents[1]
 COMMITTED = API_ROOT / "evals" / "results"
@@ -143,9 +146,9 @@ def test_valid_run_writes_summary_and_report(run: Path, capsys: pytest.CaptureFi
     assert summary["environment"]["runner"]["nproc"] == 4
     assert summary["warnings"] == []
     # Every non-claim is verbatim, in the summary and in the report, and first.
-    assert summary["non_claims"] == list(d8_report.NON_CLAIMS)
+    assert summary["non_claims"] == d8_report.non_claims(MODEL)
     assert len(d8_report.NON_CLAIMS) == 6
-    for sentence in d8_report.NON_CLAIMS:
+    for sentence in d8_report.non_claims(MODEL):
         assert f"- {sentence}\n" in report
     assert report.index("## Non-claims") < report.index("## Environment")
     assert "Real public documents and description retrieval were not measured." in report
@@ -711,3 +714,422 @@ def test_validation_failure_content_is_a_copy_not_a_view() -> None:
     payload = copy.deepcopy(_read_json(REAL_RETRIEVAL))
     payload["profile"]["embedding_provider"] = "fake"
     assert _read_json(REAL_RETRIEVAL)["profile"]["embedding_provider"] == "sentence-transformers"
+
+
+# -- D8-02: compatibility with the committed run directories --------------------
+
+
+COMMITTED_RUN = COMMITTED / "d8" / "2026-11-16-aa492be"
+requires_committed_run = pytest.mark.skipif(
+    not (COMMITTED_RUN / "ENVIRONMENT.json").is_file(), reason="committed D8-01 run not present"
+)
+
+
+def _copy_tree(source: Path, target: Path) -> Path:
+    shutil.copytree(source, target)
+    for stale in ("D8-SUMMARY.json", "D8-REPORT.md"):
+        (target / stale).unlink(missing_ok=True)
+    return target
+
+
+def _normalised(report: str) -> list[str]:
+    """A report without the two lines that legitimately change (timestamp, model sentence)."""
+    return [
+        line
+        for line in report.splitlines()
+        if not line.startswith(("Report generated at", "- One embedding model and one"))
+    ]
+
+
+@requires_committed_run
+def test_committed_d8_01_run_still_validates_and_renders_as_before(tmp_path: Path) -> None:
+    run = _copy_tree(COMMITTED_RUN, tmp_path / "committed")
+    assert run_tool(run) == 0
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    committed = (COMMITTED_RUN / "D8-REPORT.md").read_text(encoding="utf-8")
+    assert _normalised(report) == _normalised(committed)
+    for heading in (
+        "## Machine",
+        "## Why M3 cases failed",
+        "## Rejections by rule",
+        "## Tokens and context",
+        "## Within-machine contrasts",
+        "## Ollama runtime",
+    ):
+        assert heading not in report
+    summary = _read_json(run / "D8-SUMMARY.json")
+    assert "diagnostics" not in summary
+    assert "stability_by_tag" not in summary
+    committed_summary = _read_json(COMMITTED_RUN / "D8-SUMMARY.json")
+    for key in committed_summary:
+        if key not in ("generated_at", "non_claims"):
+            assert summary[key] == committed_summary[key], key
+
+
+def test_a_run_of_another_model_names_that_model_in_the_second_non_claim(tmp_path: Path) -> None:
+    run = make_run(tmp_path)
+    for number in (1, 2):
+        mutate(
+            run / "grounded" / f"r{number}" / "results-ollama.json",
+            lambda p: p["provider"].update(model="qwen2.5:3b"),
+        )
+    env = dict(ENVIRONMENT, ollama_model="qwen2.5:3b")
+    _write_json(run / "ENVIRONMENT.json", env)
+    assert (
+        d8_report.main(
+            ["--run-dir", str(run), "--expected-llm-model", "qwen2.5:3b", "--expected-repeats", "2"]
+        )
+        == 0
+    )
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    assert "one local LLM (`qwen2.5:3b`), on a CPU runner" in report
+    assert "1.5B" not in report
+    assert report.index("one local LLM") < report.index("## Environment")
+
+
+def test_second_non_claim_without_an_llm_tier_names_no_model(tmp_path: Path) -> None:
+    run = make_run(tmp_path, repeats=0)
+    assert run_tool(run, repeats=0) == 0
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    assert "the LLM tier was not run" in report.split("## How to read")[0]
+
+
+def test_violation_constant_equals_the_product_enum() -> None:
+    from claimtrace_api.grounding.validation import GroundedViolation
+
+    assert tuple(v.value for v in GroundedViolation) == d8_report.GROUNDED_VIOLATIONS
+
+
+# -- D8-02: a run with segments and diagnostics ---------------------------------
+
+
+TAGS = ["0.40.16", "0.17.1", "0.40.16", "0.17.1"]
+
+
+def _contrast_run(tmp_path: Path, *, version_differs: int, repeat_differs: int = 0) -> Path:
+    """Four segments A,B,A,B. The first ``version_differs`` cases differ between tags and the
+    first ``repeat_differs`` differ between the two repeats of a tag (second repeat only)."""
+    case_ids = [c["id"] for c in _read_json(builders.REAL_OLLAMA)["per_case"]]
+
+    def raw_variant(tag: str | None, index: int, case_id: str) -> str:
+        position = case_ids.index(case_id)
+        token = "t" if tag == "0.40.16" else "u"
+        if position >= version_differs:
+            token = "t"
+        if index == 2 and position < repeat_differs:
+            token += "-second"
+        return token
+
+    return builders.build_run(tmp_path, tags=TAGS, raw_variant=raw_variant)
+
+
+def run_segments(run: Path, segments: int = 4) -> int:
+    return run_tool(run, repeats=segments)
+
+
+def test_a_run_with_segments_validates_and_renders_every_new_section(tmp_path: Path) -> None:
+    run = _contrast_run(tmp_path, version_differs=6, repeat_differs=1)
+    assert run_segments(run) == 0
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    summary = _read_json(run / "D8-SUMMARY.json")
+    for heading in (
+        "## Machine",
+        "## Ollama runtime",
+        "## Why M3 cases failed",
+        "## Rejections by rule",
+        "## Tokens and context",
+        "## Same evidence in both tiers",
+        "## Within-machine contrasts",
+    ):
+        assert heading in report, heading
+    assert (
+        "Raw prompts and model output are in diagnostics-<tier>.json; they are untrusted text "
+        "and are not reproduced in this report."
+    ) in report
+    # Machine: sanitised name, 12 hex of the fingerprint, selected flags, kernel, image.
+    assert "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz" in report
+    assert "fedcba987654" in report and "fedcba9876540" not in report
+    assert "avx512_vnni" in report and "6.8.0-1017-azure" in report and "20261110.1.0" in report
+    # Columns carry the tag.
+    assert "r1 (0.40.16)" in report and "r2 (0.17.1)" in report
+    # Stability is per tag when there are two tags.
+    assert "Tag `0.40.16`:" in report and "Tag `0.17.1`:" in report
+
+    diag = summary["diagnostics"]
+    assert [s["ollama_image_tag"] for s in diag["segments"]] == TAGS
+    assert [s["repeat_index"] for s in diag["segments"]] == [1, 1, 2, 2]
+    assert diag["machine"]["cpu_fingerprint"].startswith("fedcba987654")
+    base = _read_json(builders.REAL_OLLAMA)["per_case"]
+    failed = [c for c in base if c["status"] != 200]
+    first = diag["m3"][0]
+    assert len(first["failed_cases"]) == len(failed)
+    assert first["repaired_200_cases"] == 0
+    # Each failed case had two rejected attempts: one count per attempt, per rule.
+    assert sum(first["rejections_by_rule"]["attempt_0"].values()) == len(failed)
+    assert sum(first["rejections_by_rule"]["attempt_1"].values()) == len(failed)
+    assert set(first["rejections_by_rule"]["attempt_0"]) <= set(d8_report.GROUNDED_VIOLATIONS)
+    assert first["tokens"]["context_length_in_use"] == 4096
+    assert first["tokens"]["max_prompt_plus_output"] == 1140  # 800 + 200 repair prompt + 140
+    assert first["tokens"]["attempts_done_reason_length"] == 0
+    assert diag["same_evidence"]["r1"]["differing_cases"] == []
+    assert summary["stability_by_tag"].keys() == {"0.40.16", "0.17.1"}
+
+
+def test_contrast_counts_and_the_fixed_rule_when_a_version_effect_is_shown(
+    tmp_path: Path,
+) -> None:
+    # Repeats of one tag differ in 1 case; the two tags differ in 6: 6 >= 1 + 4 for every pair.
+    run = _contrast_run(tmp_path, version_differs=6, repeat_differs=1)
+    assert run_segments(run) == 0
+    contrasts = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["contrasts"]
+    pairs = {tuple(p["segments"]): p for p in contrasts["pairs"]}
+    assert len(pairs) == 6
+    key = "different_first_attempt_raw_output_hash"
+    assert pairs[(1, 3)]["kind"] == pairs[(2, 4)]["kind"] == "repeat pair"
+    assert pairs[(1, 2)]["kind"] == "version pair"
+    assert pairs[(1, 3)][key] == 1 and pairs[(2, 4)][key] == 1
+    assert pairs[(1, 2)][key] == 6
+    assert contrasts["largest_repeat_pair_count"] == 1
+    assert contrasts["version_effect"] == "shown"
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    assert "Version effect on this machine: **shown**" in report
+
+
+def test_version_effect_is_not_shown_when_the_margin_is_three(tmp_path: Path) -> None:
+    run = _contrast_run(tmp_path, version_differs=4, repeat_differs=1)  # 4 < 1 + 4
+    assert run_segments(run) == 0
+    contrasts = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["contrasts"]
+    assert contrasts["version_effect"] == "not_shown"
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    assert "Version effect on this machine: **not shown**" in report
+    assert "largest repeat-pair count 1, smallest version-pair count" in report
+
+
+def test_one_tag_has_repeat_pairs_only_and_no_version_verdict(tmp_path: Path) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16", "0.40.16"])
+    assert run_segments(run, 2) == 0
+    contrasts = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["contrasts"]
+    assert [p["kind"] for p in contrasts["pairs"]] == ["repeat pair"]
+    assert contrasts["version_effect"] is None
+    assert "not assessed" in (run / "D8-REPORT.md").read_text(encoding="utf-8")
+
+
+def test_two_tags_without_a_repeat_pair_do_not_claim_an_effect(tmp_path: Path) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16", "0.17.1"])
+    assert run_segments(run, 2) == 0
+    contrasts = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["contrasts"]
+    assert contrasts["version_effect"] == "not_shown"
+    assert "no repeat pair" in contrasts["reason"]
+
+
+def test_prompt_hash_difference_against_the_oracle_tier_is_listed(tmp_path: Path) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1)
+    target = run / "grounded" / "r1" / "results-ollama.json"
+
+    def change(payload: dict[str, Any]) -> None:
+        payload["per_case"][2]["diagnostics"]["attempts"][0]["prompt_sha256"] = "f" * 64
+
+    mutate(target, change)
+    assert run_segments(run, 1) == 0
+    same = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["same_evidence"]["r1"]
+    assert same["differing_cases"] == [_read_json(target)["per_case"][2]["id"]]
+    assert same["differing_cases"][0] in (run / "D8-REPORT.md").read_text(encoding="utf-8")
+
+
+def test_tokens_at_the_context_and_length_stops_are_counted(tmp_path: Path) -> None:
+    run = builders.build_run(
+        tmp_path, tags=["0.40.16"], done_reason="length", prompt_tokens=3900, context_length=4096
+    )
+    assert run_segments(run, 1) == 0
+    tokens = _read_json(run / "D8-SUMMARY.json")["diagnostics"]["m3"][0]["tokens"]
+    assert tokens["attempts_done_reason_length"] > 0
+    assert tokens["attempts_at_or_over_context"] > 0
+    assert tokens["max_prompt"] == 4100
+
+
+def test_a_missing_context_length_is_reported_as_not_recorded(tmp_path: Path) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], context_length=None)
+    assert run_segments(run, 1) == 0
+    assert "not recorded" in (run / "D8-REPORT.md").read_text(encoding="utf-8")
+
+
+# -- D8-02: malformed new facts are refused -------------------------------------
+
+
+def _mutate_case_diag(run: Path, change: Any) -> None:
+    mutate(
+        run / "grounded" / "r1" / "results-ollama.json",
+        lambda payload: change(payload["per_case"][0]["diagnostics"]),
+    )
+
+
+@pytest.mark.parametrize(
+    ("change", "needle"),
+    [
+        (lambda d: d["attempts"].extend([d["attempts"][0]] * 2), "at most 2 entries"),
+        (lambda d: d["attempts"][0].update(outcome="exploded"), "outcome is outside"),
+        (lambda d: d["attempts"][0].update(violation="made_up_rule"), "violation is outside"),
+        (lambda d: d["attempts"][0].update(eval_count=-1), "eval_count"),
+        (lambda d: d["attempts"][0].update(prompt_eval_count="12"), "prompt_eval_count"),
+        (lambda d: d["attempts"][0].update(raw_output_sha256="xyz"), "raw_output_sha256"),
+        (lambda d: d["attempts"][0].update(wall_seconds=-0.5), "wall_seconds"),
+        (lambda d: d.update(schema_version=2), "schema_version"),
+    ],
+)
+def test_refuses_malformed_diagnostics(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: Any, needle: str
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1)
+    _mutate_case_diag(run, change)
+    assert run_tool(run, repeats=1) == 1
+    assert needle in capsys.readouterr().err
+    assert not (run / "D8-SUMMARY.json").exists()
+
+
+def test_refuses_diagnostics_present_for_only_some_cases(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1)
+    mutate(
+        run / "grounded" / "r1" / "results-ollama.json",
+        lambda payload: payload["per_case"][3].pop("diagnostics"),
+    )
+    assert run_tool(run, repeats=1) == 1
+    assert "only some of the cases" in capsys.readouterr().err
+
+
+def test_refuses_when_the_environment_says_diagnostics_were_captured_but_a_tier_has_none(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1)
+
+    def strip(payload: dict[str, Any]) -> None:
+        for case in payload["per_case"]:
+            case.pop("diagnostics")
+
+    mutate(run / "grounded" / "results-deterministic.json", strip)
+    assert run_tool(run, repeats=1) == 1
+    assert "oracle tier has none" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("change", "needle"),
+    [
+        (lambda m: m.update(ollama_image_tag="bad tag!"), "ollama_image_tag is missing"),
+        (lambda m: m.update(segment=7), "segment is 7"),
+        (lambda m: m.update(repeat_index=3), "repeat_index is 3"),
+        (lambda m: m.update(schema_version=9), "schema_version"),
+    ],
+)
+def test_refuses_a_malformed_segment_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], change: Any, needle: str
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16", "0.40.16"])
+    mutate(run / "grounded" / "r2" / "segment.json", change)
+    assert run_tool(run, repeats=2) == 1
+    assert needle in capsys.readouterr().err
+
+
+def test_refuses_segment_files_present_for_only_some_segments(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16", "0.40.16"])
+    (run / "grounded" / "r2" / "segment.json").unlink()
+    assert run_tool(run, repeats=2) == 1
+    assert "only some of the segments" in capsys.readouterr().err
+
+
+def test_refuses_runtimes_that_disagree_with_the_segments(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16", "0.17.1"])
+    mutate(run / "ENVIRONMENT.json", lambda e: e["ollama_runtimes"].pop())
+    assert run_tool(run, repeats=2) == 1
+    assert "ollama_runtimes tags" in capsys.readouterr().err
+
+
+def test_a_malformed_runtime_file_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1)
+    mutate(run / "grounded" / "r1" / "ollama-runtime.json", lambda r: r.update(ps="nope"))
+    assert run_tool(run, repeats=1) == 1
+    assert "ps is not a list" in capsys.readouterr().err
+
+
+# -- D8-02: nothing a model or a server wrote reaches the report -----------------
+
+
+def test_sentinel_text_never_reaches_the_report_or_the_summary(tmp_path: Path) -> None:
+    token = "SENTINEL-" + "".join(random.choices(string.ascii_lowercase, k=12))
+    hostile = f"{token} <script>alert(1)</script> | pipe | `tick` [x](http://e)"
+    run = builders.build_run(
+        tmp_path, tags=["0.40.16", "0.17.1"], raw_files=hostile, done_reason="bogus " + hostile
+    )
+
+    # A bogus CPU model name, a bogus kernel and a bogus done_reason / error code.
+    def hostile_env(env: dict[str, Any]) -> None:
+        env["runner"]["cpu"]["model_name"] = hostile
+        env["runner"]["cpu"]["vendor_id"] = hostile
+        env["runner"]["kernel"] = hostile
+        env["runner"]["image_version"] = hostile
+        env["ollama_runtimes"][0]["version"] = hostile
+
+    mutate(run / "ENVIRONMENT.json", hostile_env)
+    for number in (1, 2):
+        mutate(
+            run / "grounded" / f"r{number}" / "segment.json",
+            lambda m: m.update(ollama_version=hostile, ollama_image_digest=hostile),
+        )
+        mutate(
+            run / "grounded" / f"r{number}" / "ollama-runtime.json",
+            lambda r: r.update(api_version=hostile),
+        )
+        mutate(
+            run / "grounded" / f"r{number}" / "results-ollama.json",
+            lambda p: p["per_case"][0]["diagnostics"]["attempts"][0].update(
+                provider_error_code=hostile
+            ),
+        )
+        # Raw model text and prompt text sit in the case diagnostics too.
+        mutate(
+            run / "grounded" / f"r{number}" / "results-ollama.json",
+            lambda p: p["per_case"][0]["diagnostics"].update(error_detail=hostile),
+        )
+    assert run_segments(run, 2) == 0
+    report = (run / "D8-REPORT.md").read_text(encoding="utf-8")
+    summary_text = (run / "D8-SUMMARY.json").read_text(encoding="utf-8")
+    for text in (report, summary_text):
+        assert token not in text
+        assert "<script>" not in text
+    assert "other" in report
+    # A bogus done_reason renders as `other` in the failure table.
+    failure_table = report.split("## Why M3 cases failed")[1].split("## Rejections")[0]
+    assert "| other / other |" in failure_table
+
+
+def test_the_report_tool_never_opens_the_raw_text_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1, raw_files="RAW")
+    opened: list[str] = []
+    original = Path.read_text
+
+    def spy(self: Path, *args: Any, **kwargs: Any) -> str:
+        opened.append(self.name)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", spy)
+    assert run_segments(run, 1) == 0
+    assert opened
+    assert not [name for name in opened if name.startswith("diagnostics-")]
+    assert "ollama-server.log" not in opened
+
+
+def test_emit_carries_the_new_files_of_a_segment_run(tmp_path: Path) -> None:
+    run = builders.build_run(tmp_path, tags=["0.40.16"], legacy_repeats=1, raw_files="RAW")
+    assert run_segments(run, 1) == 0
+    buffer = io.BytesIO()
+    paths = [path for path, _, _ in d8_report.emit(run, buffer)]
+    assert "grounded/r1/segment.json" in paths
+    assert "grounded/r1/ollama-runtime.json" in paths

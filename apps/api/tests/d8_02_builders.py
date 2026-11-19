@@ -43,7 +43,7 @@ CPU: dict[str, Any] = {
     "cache_size": "55296 KB",
     "flags_selected": ["sse4_2", "avx", "avx2", "fma", "avx512f", "avx512_vnni"],
     "flags_sha256": "a" * 64,
-    "cpu_fingerprint": "0123456789abcdef" + "b" * 48,
+    "cpu_fingerprint": "fedcba987654" + "b" * 52,
 }
 
 ENVIRONMENT: dict[str, Any] = {
