@@ -137,6 +137,43 @@ two files to `<dir>` instead. Both are committed, so re-running and
 diffing shows a behaviour change; like the retrieval results they record the run
 dated in their `generated_at` field.
 
+### Why did a case fail? `--capture-diagnostics`
+
+```bash
+docker compose run --rm api python -m evals.grounded_run --tier ollama --capture-diagnostics
+```
+
+Off by default; with the flag off the run writes exactly the files and keys described
+above. With it on, the harness records the facts that explain a `502
+grounded_repair_failed` without any change to the product (nothing under `src/` is
+involved, and product responses and logs are unchanged):
+
+- **`results-<tier>.json`**: every `per_case` entry gains a `diagnostics` block with
+  content-free values only: per attempt the grounding rule violated (the product's own
+  `GroundedViolation` value, read from its `grounded output rejected` log record), the
+  outcome (`accepted`, `rejected`, `provider_error`, `not_validated`), Ollama's
+  `done_reason`, `prompt_eval_count` and `eval_count`, the duration breakdown in
+  milliseconds, wall time, prompt size and SHA-256, and a SHA-256 of the raw model output
+  (`raw_output_sha256`, so two runs can be compared for identical output without reading
+  it); plus the evidence catalog the model was shown (`EV-001` = corpus document and
+  claim number), whether a repair was used, the 502 `detail` (at most 500 characters) and
+  the `generation` metadata of a 200. The per-case line on stdout also lists the
+  violations.
+- **`diagnostics-<tier>.json`** (a separate file): the system prompt (once, by hash), each
+  user prompt (cut at 32768 characters), the raw model output (cut at 16384 characters)
+  and the raw per-exchange HTTP facts. **This is untrusted text.** It is model output and
+  prompts built from claim text; it may contain anything. It is for reading in an editor
+  or loading as data, and it must never be rendered as Markdown or HTML or copied into a
+  report. `REPORT-<tier>.md` and every other output never contain it.
+
+How it works: the deterministic tier wraps each oracle in a recording provider; the
+Ollama tier replaces `app.state.llm_provider` with an `OllamaProvider` built from the same
+settings helpers as production, over an `httpx` client whose transport records the
+`/api/chat` exchange and hands the provider an identical response. The environment's
+proxy variables are not applied to that one client (they would bypass the recorder). The
+original provider is put back before the app shuts down. Guardrail runs are not
+captured. The implementation is `evals/grounded_capture.py`.
+
 ### What it actually runs
 
 The real pipeline, end to end, through the real HTTP API:

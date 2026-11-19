@@ -31,6 +31,7 @@ creates and truncates itself, so it never touches development data.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -44,6 +45,12 @@ from fastapi.testclient import TestClient
 
 from claimtrace_api.core.config import Settings
 from claimtrace_api.main import create_app
+from evals.grounded_capture import (
+    DiagnosticsRecorder,
+    RecordingProvider,
+    capture_rejections,
+    recording_ollama_provider,
+)
 from evals.grounded_dataset import (
     GroundedCase,
     GroundedDocument,
@@ -93,6 +100,15 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="run only the first N cases (the real tier is slow on CPU)",
     )
+    parser.add_argument(
+        "--capture-diagnostics",
+        action="store_true",
+        help=(
+            "record why each case ended as it did: per-attempt violations, done_reason, token "
+            "counts and prompt hashes go into results-<tier>.json; prompts and raw model output "
+            "go only into diagnostics-<tier>.json (untrusted text, never rendered)"
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     settings = _eval_settings(arguments.tier)
@@ -103,21 +119,42 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.limit:
         cases = cases[: arguments.limit]
 
+    recorder = DiagnosticsRecorder() if arguments.capture_diagnostics else None
+
     application = create_app(settings)
-    with TestClient(application) as client:
+    with TestClient(application) as client, contextlib.ExitStack() as capture:
+        if recorder is not None:
+            capture.enter_context(capture_rejections(recorder))
+            if arguments.tier == "ollama":
+                capture.enter_context(recording_ollama_provider(client, settings, recorder))
         corpus = _index_corpus(client, documents)
-        outcomes = _run_cases(client, cases, corpus, tier=arguments.tier)
+        if recorder is None:
+            outcomes = _run_cases(client, cases, corpus, tier=arguments.tier)
+        else:
+            outcomes = _run_cases(client, cases, corpus, tier=arguments.tier, recorder=recorder)
         guardrails = _run_guardrails(client, corpus, tier=arguments.tier)
         provider = _provider_facts(client, arguments.tier)
 
     summary = summarise(outcomes)
 
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
-    payload = _results_payload(arguments.tier, provider, corpus, summary, outcomes, guardrails)
+    results_arguments = (arguments.tier, provider, corpus, summary, outcomes, guardrails)
+    if recorder is None:
+        payload = _results_payload(*results_arguments)
+    else:
+        payload = _results_payload(
+            *results_arguments, diagnostics=recorder.case_blocks(corpus.corpus_ids)
+        )
     suffix = arguments.tier
     (arguments.output_dir / f"results-{suffix}.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    if recorder is not None:
+        # Untrusted prompts and model output: a file of its own, never in a report.
+        (arguments.output_dir / f"diagnostics-{suffix}.json").write_text(
+            json.dumps(recorder.raw_document(arguments.tier), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
     (arguments.output_dir / f"REPORT-{suffix}.md").write_text(
         _markdown_report(payload, summary, outcomes, guardrails), encoding="utf-8"
     )
@@ -252,7 +289,12 @@ def _index_corpus(client: TestClient, documents: tuple[GroundedDocument, ...]) -
     )
 
 
-def _install_oracle(client: TestClient, case: GroundedCase, corpus: Corpus) -> None:
+def _install_oracle(
+    client: TestClient,
+    case: GroundedCase,
+    corpus: Corpus,
+    recorder: DiagnosticsRecorder | None = None,
+) -> None:
     """Point the app at an oracle that knows this case's labels.
 
     ``app.state.llm_provider`` is the documented seam. The oracle receives the
@@ -265,8 +307,9 @@ def _install_oracle(client: TestClient, case: GroundedCase, corpus: Corpus) -> N
         (filenames[document_id], number) for document_id, number in case.all_credited
     )
     fallback = next(iter(sorted(case.reasons)), "evidence_not_specific_enough")
-    client.app.state.llm_provider = OracleLLMProvider(  # type: ignore[attr-defined]
-        wanted=wanted, fallback_reason=fallback
+    oracle = OracleLLMProvider(wanted=wanted, fallback_reason=fallback)
+    client.app.state.llm_provider = (  # type: ignore[attr-defined]
+        oracle if recorder is None else RecordingProvider(oracle, recorder)
     )
 
 
@@ -276,25 +319,40 @@ def _run_cases(
     corpus: Corpus,
     *,
     tier: str,
+    recorder: DiagnosticsRecorder | None = None,
 ) -> list[CaseOutcome]:
     outcomes: list[CaseOutcome] = []
 
     for case in cases:
         if tier == "deterministic":
-            _install_oracle(client, case, corpus)
+            _install_oracle(client, case, corpus, recorder)
 
         payload: dict[str, Any] = {"query": case.question, "top_k": TOP_K}
         if case.scope:
             payload["document_ids"] = [corpus.document_ids[case.scope]]
 
+        if recorder is not None:
+            recorder.begin_case(case.id)
         started = time.perf_counter()
         response = client.post("/api/v1/grounded/answers", json=payload)
         duration = time.perf_counter() - started
+        if recorder is not None:
+            recorder.end_case(status=response.status_code, body=_json_or_none(response))
 
         outcomes.append(_score(case, response, corpus, client, duration))
-        print(f"  {case.id:<34} {outcomes[-1].status} {duration:6.2f}s", flush=True)
+        line = f"  {case.id:<34} {outcomes[-1].status} {duration:6.2f}s"
+        if recorder is not None and (violations := recorder.violations(case.id)):
+            line += f"  [{', '.join(violations)}]"
+        print(line, flush=True)
 
     return outcomes
+
+
+def _json_or_none(response: Any) -> Any:
+    try:
+        return response.json() if response.content else None
+    except ValueError:
+        return None
 
 
 def _score(
@@ -468,8 +526,9 @@ def _results_payload(
     summary: GroundedSummary,
     outcomes: list[CaseOutcome],
     guardrails: list[GuardrailOutcome],
+    diagnostics: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "generated_at": datetime.now(tz=UTC).isoformat(),
         "tier": tier,
         "provider": provider,
@@ -511,6 +570,12 @@ def _results_payload(
             for outcome in outcomes
         ],
     }
+    if diagnostics is not None:
+        for entry in payload["per_case"]:
+            block = diagnostics.get(entry["id"])
+            if block is not None:
+                entry["diagnostics"] = block
+    return payload
 
 
 def _markdown_report(
