@@ -149,7 +149,6 @@ class LexicalRetriever:
         }
         parameters["query_text"] = normalized_query
         parameters["like_pattern"] = f"%{_escape_like(normalized_query)}%"
-        parameters["term_similarity_threshold"] = _TERM_WORD_SIMILARITY_THRESHOLD
         parameters["limit"] = limit
 
         # The `<%` operator reads its threshold from a session GUC whose default
@@ -195,7 +194,6 @@ class LexicalRetriever:
                     -- claim only by a particle. Admit only a strong term-level
                     -- match so the normal score and rank fusion can decide
                     -- whether it survives without flooding the candidate set.
-                 OR ({term_similarity_sql}) >= :term_similarity_threshold
               )
             ORDER BY score DESC, r.claim_number ASC, r.claim_id ASC
             LIMIT :limit
