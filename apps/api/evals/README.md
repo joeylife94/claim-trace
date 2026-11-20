@@ -293,6 +293,21 @@ validity, novelty, inventive step, or patentability.
 
 ---
 
+## Offline replay of captured grounded drafts
+
+`evals/grounded_replay.py` re-validates every model draft captured in a D8 run directory (`grounded/r<k>/diagnostics-ollama.json`, written with `--capture-diagnostics`) with the product's own `validate_draft`, and scores it with the harness's own `CaseOutcome` / `summarise` and the committed case labels. It needs no model, network, database or Docker.
+
+```bash
+uv run python -m evals.grounded_replay evals/results/d8/<run> [--rules current drop_stray_reason honour_stray_reason] [--json-out PATH]
+```
+
+- **Self-check.** Under the current rules the replay must reproduce every recorded hash, attempt verdict and served outcome, and rebuild every repair-prompt digest. Otherwise the segment is refused and the exit status is 3; 2 means unusable input; a directory without captured diagnostics prints `no diagnostics captured; nothing to replay` and exits 0.
+- **Counterfactuals.** A small closed set of named rules (`RULES` in the module) is applied to the draft before validation, in two flows: `first_draft` and `two_attempt`. `two_attempt` reports `not_replayable` where the counterfactual repair prompt differs from the recorded one (the model's answer to different feedback is unknown) and aggregates replayable cases only.
+- **Assumption.** `citations_resolve` is assumed true (no database); every output says so.
+- **Untrusted input.** `diagnostics-*.json` holds prompts and raw model output. The tool reads it as data and prints and stores none of its text: output is numbers, hash prefixes, catalog labels, closed-set codes and committed case ids. `--json-out` must point outside the run directory, which is a committed record.
+
+---
+
 ## Enforced regression gate (fake provider)
 
 The committed results above are not what CI enforces. The enforced gate is the
