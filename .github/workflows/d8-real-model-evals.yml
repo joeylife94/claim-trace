@@ -9,12 +9,30 @@ name: D8 Real-Model Evaluations
 # once this file is on the default branch, so the first proof must come from the
 # pull request that adds it. Its path filter keeps it off unrelated pull requests.
 #
+# Within-machine contrasts (D8-02). Two runs of identical software on two runner instances
+# produced different sets of successful LLM cases, so a factor that touches the model can
+# only be varied INSIDE one job on one machine. The LLM tier therefore runs as segments:
+# one segment = one pass over the 16 cases under one Ollama image tag, each in a FRESH
+# Ollama container (own model store per tag), interleaved repeat-major (tags A,B and 2
+# repeats run A, B, A, B). Inputs (workflow_dispatch; a pull_request run uses the defaults):
+#   ollama_model           model tag to measure
+#   ollama_repeats         repeats PER TAG (1-3)
+#   ollama_image_tags      one or two comma-separated Ollama image tags (default 0.40.16);
+#                          at most 2 tags and at most 6 segments in total
+#   ollama_context_length  OLLAMA_CONTEXT_LENGTH for every segment (default: unset)
+#   run_ollama, commit_results
+# Each segment writes grounded/r<k>/{results-ollama.json, diagnostics-ollama.json,
+# segment.json, ollama-runtime.json, ollama-server.log}; ENVIRONMENT.json records the CPU
+# of the machine (runner.cpu) and the Ollama runtimes. evals.d8_report reads none of the
+# raw text files; evals.d8_compare compares two run directories.
+#
 # Delivery of results: the `measure` job (read-only) writes a run directory under
 # the git-ignored apps/api/evals/tmp, validates it with evals.d8_report, prints
 # every file between D8-FILE-BEGIN/END markers and uploads it as an artifact. The
 # separate `publish` job (the only job with write permission; it runs no model
 # code) pushes that run directory as ONE commit to a NEW branch
-# d8-results/<run_id>-<run_attempt>. It never pushes to main or to the PR branch.
+# d8-results/<run_id>-<run_attempt>, under results/d8/<date>-<sha7>-<run_id>/. It never
+# pushes to main or to the PR branch.
 
 on:
   workflow_dispatch:
@@ -24,10 +42,18 @@ on:
         type: string
         default: "qwen2.5:1.5b"
       ollama_repeats:
-        description: "How many times to repeat the Ollama grounded run"
+        description: "Repeats of the Ollama grounded run, per image tag"
         type: choice
         options: ["1", "2", "3"]
         default: "2"
+      ollama_image_tags:
+        description: "One or two comma-separated Ollama image tags (e.g. 0.40.16,0.17.1)"
+        type: string
+        default: "0.40.16"
+      ollama_context_length:
+        description: "OLLAMA_CONTEXT_LENGTH for every segment (empty: server default)"
+        type: string
+        default: ""
       run_ollama:
         description: "Run the real-LLM tier (M3)"
         type: boolean
@@ -42,8 +68,10 @@ on:
       - ".github/workflows/d8-real-model-evals.yml"
       - "apps/api/evals/d8_*.py"
 
+# Pushes to one pull request cancel the previous run; dispatched runs each get their own
+# group, so two of them can run at the same time (two runs = two machines).
 concurrency:
-  group: d8-${{ github.ref }}
+  group: d8-${{ github.event_name == 'pull_request' && github.ref || format('dispatch-{0}', github.run_id) }}
   cancel-in-progress: true
 
 permissions:
@@ -56,6 +84,8 @@ env:
   # `run_ollama` is compared by event name because an empty value would coerce to false.
   D8_MODEL: ${{ inputs.ollama_model || 'qwen2.5:1.5b' }}
   D8_REPEATS: ${{ inputs.ollama_repeats || '2' }}
+  D8_OLLAMA_IMAGE_TAGS: ${{ inputs.ollama_image_tags || '0.40.16' }}
+  D8_OLLAMA_CONTEXT_LENGTH: ${{ inputs.ollama_context_length || '' }}
   D8_RUN_OLLAMA: ${{ (github.event_name == 'workflow_dispatch' && !inputs.run_ollama) && 'false' || 'true' }}
   # Relative to /app inside the api container, where ./apps/api/evals is mounted
   # read-write. Git-ignored (`tmp/`), and never under evals/results.
@@ -67,8 +97,9 @@ jobs:
     # Pinned: ubuntu-latest began resolving to Ubuntu 26.04 and broke other jobs here.
     runs-on: ubuntu-24.04
     # A per-case timeout is a recorded result, but a killed job loses the whole run,
-    # so the job and the M3 step are generous (M3 on a CPU runner: roughly 8-30 min/repeat).
-    timeout-minutes: 120
+    # so the job and the M3 step are generous (M3 on a CPU runner: roughly 8-30 min per
+    # segment, at most 6 segments).
+    timeout-minutes: 240
     permissions:
       contents: read
     # Lets `publish` find the artifact even when only `publish` is re-run (its run_attempt
@@ -92,8 +123,75 @@ jobs:
             1|2|3) ;;
             *) echo "invalid ollama_repeats (rejected)" >&2; exit 1 ;;
           esac
+          case "${D8_OLLAMA_CONTEXT_LENGTH}" in
+            "") ;;
+            *[!0-9]*) echo "invalid ollama_context_length (rejected)" >&2; exit 1 ;;
+            *)
+              if [ "${#D8_OLLAMA_CONTEXT_LENGTH}" -lt 3 ] || [ "${#D8_OLLAMA_CONTEXT_LENGTH}" -gt 6 ]; then
+                echo "invalid ollama_context_length (rejected)" >&2
+                exit 1
+              fi
+              ;;
+          esac
+          # One or two tags, comma-separated; spaces are dropped. A rejected value is
+          # never echoed.
+          tags="${D8_OLLAMA_IMAGE_TAGS// /}"
+          case "${tags}" in
+            ""|*[!0-9A-Za-z._,-]*) echo "invalid ollama_image_tags (rejected)" >&2; exit 1 ;;
+          esac
+          without_commas="${tags//,/}"
+          commas=$(( ${#tags} - ${#without_commas} ))
+          if [ -z "${tags}" ] || [ "${commas}" -gt 1 ]; then
+            echo "invalid ollama_image_tags (rejected)" >&2
+            exit 1
+          fi
+          IFS=',' read -r -a TAG_ARRAY <<< "${tags}"
+          if [ "${#TAG_ARRAY[@]}" -ne $(( commas + 1 )) ]; then
+            echo "invalid ollama_image_tags (rejected)" >&2
+            exit 1
+          fi
+          tag_pattern='^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$'
+          for tag in "${TAG_ARRAY[@]}"; do
+            if ! [[ "${tag}" =~ ${tag_pattern} ]]; then
+              echo "invalid ollama_image_tags (rejected)" >&2
+              exit 1
+            fi
+          done
+          if [ "${#TAG_ARRAY[@]}" -eq 2 ] && [ "${TAG_ARRAY[0]}" = "${TAG_ARRAY[1]}" ]; then
+            echo "invalid ollama_image_tags (rejected)" >&2
+            exit 1
+          fi
+          if [ "${D8_RUN_OLLAMA}" = "true" ]; then
+            segments=$(( ${#TAG_ARRAY[@]} * D8_REPEATS ))
+          else
+            segments=0
+          fi
+          if [ "${segments}" -gt 6 ]; then
+            echo "too many segments (tags x repeats must be at most 6)" >&2
+            exit 1
+          fi
+          # Only validated values reach GITHUB_ENV (the character-set check above admits no newline).
+          echo "D8_TAG_LIST=${tags}" >> "${GITHUB_ENV}"
+          echo "D8_SEGMENTS=${segments}" >> "${GITHUB_ENV}"
           echo "measured sha: ${MEASURED_SHA}"
           echo "run_ollama=${D8_RUN_OLLAMA} model=${D8_MODEL} repeats=${D8_REPEATS}"
+          echo "ollama image tags=${tags} segments=${segments} context_length=${D8_OLLAMA_CONTEXT_LENGTH:-unset}"
+
+      - name: Pull the Ollama images (fail closed before any measurement)
+        if: env.D8_RUN_OLLAMA == 'true'
+        timeout-minutes: 30
+        run: |
+          set -eu
+          df -h / || true
+          IFS=',' read -r -a TAGS <<< "${D8_TAG_LIST}"
+          for tag in "${TAGS[@]}"; do
+            if ! docker pull "ollama/ollama:${tag}"; then
+              echo "cannot pull ollama/ollama:${tag}; the tag does not exist or the registry is unreachable" >&2
+              exit 1
+            fi
+          done
+          df -h / || true
+          docker system df || true
 
       - name: Expose the artifact name
         id: artifact_name
@@ -108,7 +206,7 @@ jobs:
           RUN_HOST="apps/api/${D8_RUN_REL}"
           mkdir -p "${RUN_HOST}/retrieval" "${RUN_HOST}/grounded"
           if [ "${D8_RUN_OLLAMA}" = "true" ]; then
-            for k in $(seq 1 "${D8_REPEATS}"); do
+            for k in $(seq 1 "${D8_SEGMENTS}"); do
               mkdir -p "${RUN_HOST}/grounded/r${k}"
             done
           fi
@@ -137,6 +235,88 @@ jobs:
             echo "postgres did not become ready" >&2
             exit 1'
 
+      - name: Record the machine (CPU identity)
+        run: |
+          # Never fails the job: every probe may be missing, and then its value is null.
+          python3 - "${RUNNER_TEMP}/d8-machine.json" <<'PY' || echo '::warning::machine probe failed'
+          import hashlib
+          import json
+          import os
+          import sys
+
+          SELECTED = (
+              "sse4_2 avx avx2 fma f16c avx512f avx512bw avx512vl avx512_vnni avx512_bf16 "
+              "avx512_fp16 avx_vnni amx_tile amx_bf16 amx_int8"
+          ).split()
+
+
+          def first_block():
+              fields = {}
+              try:
+                  with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as handle:
+                      for line in handle:
+                          if not line.strip():
+                              if fields:
+                                  break
+                              continue
+                          key, _, value = line.partition(":")
+                          fields.setdefault(key.strip(), value.strip())
+              except OSError:
+                  pass
+              return fields
+
+
+          def text(value):
+              return value if value else None
+
+
+          def number(value):
+              return int(value) if value and value.isdigit() else None
+
+
+          cpu = {}
+          try:
+              block = first_block()
+              flag_text = block.get("flags") or block.get("Features") or ""
+              flags = sorted(set(flag_text.split()))
+              flags_sha = hashlib.sha256(" ".join(flags).encode()).hexdigest() if flags else None
+              name = text(block.get("model name"))
+              cpu = {
+                  "model_name": name,
+                  "vendor_id": text(block.get("vendor_id")),
+                  "cpu_family": text(block.get("cpu family")),
+                  "model": text(block.get("model")),
+                  "stepping": text(block.get("stepping")),
+                  "microcode": text(block.get("microcode")),
+                  "cpu_cores": number(block.get("cpu cores")),
+                  "siblings": number(block.get("siblings")),
+                  "cache_size": text(block.get("cache size")),
+                  "flags_selected": [flag for flag in SELECTED if flag in flags] if flags else None,
+                  "flags_sha256": flags_sha,
+                  "cpu_fingerprint": (
+                      hashlib.sha256(f"{name or ''}|{flags_sha or ''}".encode()).hexdigest()
+                      if name or flags_sha
+                      else None
+                  ),
+              }
+          except Exception as error:  # a probe must never fail the job
+              print(f"::warning::cpu probe failed: {type(error).__name__}")
+          try:
+              kernel = os.uname().release
+          except Exception:
+              kernel = None
+          payload = {
+              "cpu": cpu,
+              "kernel": kernel,
+              "image_os": os.environ.get("ImageOS") or None,
+              "image_version": os.environ.get("ImageVersion") or None,
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          PY
+
       - name: "M1: retrieval with the real embedding model"
         run: |
           docker compose run --rm api python -m evals.run \
@@ -147,33 +327,127 @@ jobs:
         run: |
           docker compose run --rm api python -m evals.grounded_run \
             --tier deterministic \
+            --capture-diagnostics \
             --output-dir "${D8_RUN_REL}/grounded"
 
-      - name: Start Ollama and pull the model
+      # One Compose override file per tag (index n = 1, 2): it gives the ollama service its
+      # own model store (volume d8_ollama_models_<n>; Compose merges `volumes` entries by
+      # mount path, so it replaces the base ollama_models mount) and, when set, the context
+      # length. The image comes from OLLAMA_IMAGE_TAG, which the shell sets per segment and
+      # which takes precedence over .env. Nothing is added to docker-compose.yml.
+      - name: Pull the Ollama images and models (one model store per tag)
         if: env.D8_RUN_OLLAMA == 'true'
-        timeout-minutes: 25
+        timeout-minutes: 40
         run: |
           set -eu
-          docker compose --profile llm up -d ollama
-          ready=0
-          for attempt in $(seq 1 60); do
-            if docker compose exec -T ollama ollama list >/dev/null 2>&1; then
-              ready=1
-              break
-            fi
-            sleep 5
-          done
-          if [ "${ready}" != "1" ]; then
-            echo "ollama did not become ready" >&2
-            exit 1
-          fi
-          docker compose exec -T ollama ollama pull "${D8_MODEL}"
-          docker compose exec -T ollama ollama list
+          df -h / || true
+          docker system df || true
+          IFS=',' read -r -a TAGS <<< "${D8_TAG_LIST}"
+          for i in "${!TAGS[@]}"; do
+            tag="${TAGS[$i]}"
+            n=$(( i + 1 ))
+            {
+              echo "services:"
+              echo "  ollama:"
+              echo "    volumes:"
+              echo "      - d8_ollama_models_${n}:/root/.ollama"
+              if [ -n "${D8_OLLAMA_CONTEXT_LENGTH}" ]; then
+                echo "    environment:"
+                echo "      OLLAMA_CONTEXT_LENGTH: \"${D8_OLLAMA_CONTEXT_LENGTH}\""
+              fi
+              echo "volumes:"
+              echo "  d8_ollama_models_${n}:"
+            } > "docker-compose.d8-ollama-${n}.yml"
+            echo "=== override for tag ${tag} (index ${n}) ==="
+            cat "docker-compose.d8-ollama-${n}.yml"
 
-      - name: Verify the api container reaches Ollama and sees the model
+            export OLLAMA_IMAGE_TAG="${tag}"
+            export COMPOSE_FILE="docker-compose.yml:docker-compose.d8-ollama-${n}.yml"
+            docker compose --profile llm up -d --force-recreate ollama
+            ready=0
+            for attempt in $(seq 1 60); do
+              if docker compose exec -T ollama ollama list >/dev/null 2>&1; then
+                ready=1
+                break
+              fi
+              sleep 5
+            done
+            if [ "${ready}" != "1" ]; then
+              echo "ollama ${tag} did not become ready" >&2
+              exit 1
+            fi
+            if ! docker compose exec -T ollama ollama pull "${D8_MODEL}"; then
+              echo "ollama ${tag} could not pull ${D8_MODEL}" >&2
+              exit 1
+            fi
+            docker compose exec -T ollama ollama list
+            # Keep the model store (volume); drop the container.
+            docker compose --profile llm stop ollama
+            docker compose --profile llm rm -f ollama
+          done
+
+      - name: "M3: grounded generation with the real local LLM (interleaved segments)"
         if: env.D8_RUN_OLLAMA == 'true'
+        timeout-minutes: 210
         run: |
-          docker compose run --rm --no-deps -e D8_MODEL="${D8_MODEL}" api python - <<'PY'
+          set -eu
+          RUN_HOST="apps/api/${D8_RUN_REL}"
+          IFS=',' read -r -a TAGS <<< "${D8_TAG_LIST}"
+          declare -A SEEN=()
+          k=0
+          # Repeat-major, so tags A,B with 2 repeats run A, B, A, B.
+          for rep in $(seq 1 "${D8_REPEATS}"); do
+            for i in "${!TAGS[@]}"; do
+              tag="${TAGS[$i]}"
+              n=$(( i + 1 ))
+              k=$(( k + 1 ))
+              SEEN[$tag]=$(( ${SEEN[$tag]:-0} + 1 ))
+              SEG_DIR="${RUN_HOST}/grounded/r${k}"
+              echo "=== segment ${k} of ${D8_SEGMENTS}: tag ${tag}, repeat ${SEEN[$tag]} ==="
+
+              export OLLAMA_IMAGE_TAG="${tag}"
+              export COMPOSE_FILE="docker-compose.yml:docker-compose.d8-ollama-${n}.yml"
+
+              # Show, and check, what Compose will actually run for this segment.
+              docker compose --profile llm config --format json > "${RUNNER_TEMP}/d8-compose.json"
+              D8_CHECK_TAG="${tag}" D8_CHECK_INDEX="${n}" D8_CHECK_CONTEXT="${D8_OLLAMA_CONTEXT_LENGTH}" \
+                python3 - "${RUNNER_TEMP}/d8-compose.json" <<'PY'
+          import json
+          import os
+          import sys
+
+          service = json.load(open(sys.argv[1], encoding="utf-8"))["services"]["ollama"]
+          print("effective ollama service:", json.dumps(service, indent=2, sort_keys=True))
+          tag, index = os.environ["D8_CHECK_TAG"], os.environ["D8_CHECK_INDEX"]
+          if service.get("image") != f"ollama/ollama:{tag}":
+              raise SystemExit(f"ollama image is {service.get('image')!r}, expected tag {tag!r}")
+          mounts = [v for v in service.get("volumes", []) if v.get("target") == "/root/.ollama"]
+          if len(mounts) != 1 or mounts[0].get("source") != f"d8_ollama_models_{index}":
+              raise SystemExit(f"ollama model store is not d8_ollama_models_{index}: {mounts}")
+          wanted = os.environ["D8_CHECK_CONTEXT"]
+          got = (service.get("environment") or {}).get("OLLAMA_CONTEXT_LENGTH")
+          if (got or "") != wanted:
+              raise SystemExit("OLLAMA_CONTEXT_LENGTH in Compose differs from the input")
+          PY
+
+              # A fresh container on this tag's model store.
+              docker compose --profile llm up -d --force-recreate ollama
+              ready=0
+              for attempt in $(seq 1 60); do
+                if docker compose exec -T ollama ollama list >/dev/null 2>&1; then
+                  ready=1
+                  break
+                fi
+                sleep 5
+              done
+              if [ "${ready}" != "1" ]; then
+                echo "ollama ${tag} did not become ready" >&2
+                exit 1
+              fi
+              docker compose exec -T ollama ollama list | tee "${RUNNER_TEMP}/d8-seg${k}-list.txt"
+              docker compose exec -T ollama ollama --version 2>&1 | head -n 3 | tee "${RUNNER_TEMP}/d8-seg${k}-cli-version.txt" || true
+
+              docker compose run --rm --no-deps -e D8_MODEL="${D8_MODEL}" api python - <<'PY'
           import json
           import os
           import urllib.request
@@ -187,19 +461,172 @@ jobs:
               raise SystemExit(f"model {model!r} is not available on the Ollama server")
           PY
 
-      - name: "M3: grounded generation with the real local LLM (repeats)"
-        if: env.D8_RUN_OLLAMA == 'true'
-        timeout-minutes: 90
-        run: |
-          set -eu
-          for k in $(seq 1 "${D8_REPEATS}"); do
-            echo "=== Ollama grounded run ${k} of ${D8_REPEATS} ==="
-            docker compose run --rm \
-              -e LLM_OLLAMA_BASE_URL=http://ollama:11434 \
-              -e LLM_OLLAMA_MODEL="${D8_MODEL}" \
-              api python -m evals.grounded_run \
-                --tier ollama \
-                --output-dir "${D8_RUN_REL}/grounded/r${k}"
+              started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              docker compose run --rm \
+                -e LLM_OLLAMA_BASE_URL=http://ollama:11434 \
+                -e LLM_OLLAMA_MODEL="${D8_MODEL}" \
+                api python -m evals.grounded_run \
+                  --tier ollama \
+                  --capture-diagnostics \
+                  --output-dir "${D8_RUN_REL}/grounded/r${k}"
+              finished="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+              # What the server reports about itself, asked right after the run (the model
+              # is still loaded). Numbers and identifiers only; a missing endpoint is null.
+              docker compose run --rm --no-deps \
+                -e D8_MODEL="${D8_MODEL}" \
+                -e D8_RUNTIME_OUT="${D8_RUN_REL}/grounded/r${k}/ollama-runtime.json" \
+                api python - <<'PY' || echo "::warning::ollama runtime probe failed for segment ${k}"
+          import hashlib
+          import json
+          import os
+          import urllib.request
+
+          base = "http://ollama:11434"
+          model = os.environ["D8_MODEL"]
+
+
+          def call(path, body=None):
+              try:
+                  data = None if body is None else json.dumps(body).encode()
+                  request = urllib.request.Request(
+                      base + path, data=data, headers={"Content-Type": "application/json"}
+                  )
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      loaded = json.load(response)
+                  return loaded if isinstance(loaded, dict) else None
+              except Exception:
+                  return None
+
+
+          def integer(value):
+              return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+          def short(value):
+              return value[:64] if isinstance(value, str) else None
+
+
+          version = call("/api/version")
+          ps = call("/api/ps")
+          show = call("/api/show", {"model": model})
+
+          ps_models = None
+          if ps is not None:
+              ps_models = [
+                  {
+                      "name": short(entry.get("name")),
+                      "digest": short(entry.get("digest")),
+                      "size": integer(entry.get("size")),
+                      "size_vram": integer(entry.get("size_vram")),
+                      "context_length": integer(entry.get("context_length")),
+                  }
+                  for entry in ps.get("models") or []
+                  if isinstance(entry, dict)
+              ]
+
+          show_out = None
+          if show is not None:
+              context_length = None
+              for key, value in (show.get("model_info") or {}).items():
+                  if key.endswith(".context_length") and integer(value) is not None:
+                      context_length = value
+                      break
+              template = show.get("template")
+              details = show.get("details") if isinstance(show.get("details"), dict) else {}
+              parameters = show.get("parameters")
+              show_out = {
+                  "parameters": parameters[:2000] if isinstance(parameters, str) else None,
+                  "details": {
+                      str(key)[:64]: value[:64] if isinstance(value, str) else value
+                      for key, value in details.items()
+                      if isinstance(value, str | int | float) and not isinstance(value, bool)
+                  },
+                  "context_length": context_length,
+                  "template_sha256": (
+                      hashlib.sha256(template.encode()).hexdigest()
+                      if isinstance(template, str)
+                      else None
+                  ),
+              }
+
+          payload = {
+              "schema_version": 1,
+              "api_version": short((version or {}).get("version")),
+              "ps": ps_models,
+              "show": show_out,
+          }
+          with open(os.environ["D8_RUNTIME_OUT"], "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          print(json.dumps({key: payload[key] for key in ("api_version", "ps")}, indent=2))
+          PY
+
+              # Bounded server log of this segment's container: control characters other
+              # than LF and TAB and invalid UTF-8 are dropped so a log can carry the file.
+              docker compose logs --no-color ollama 2>&1 | tail -n 4000 | tr -d '\r' \
+                | LC_ALL=C tr -d '\000-\010\013-\037\177' \
+                | cut -c1-2000 | head -c 2000000 \
+                | iconv -c -f UTF-8 -t UTF-8 > "${SEG_DIR}/ollama-server.log" || true
+              touch "${SEG_DIR}/ollama-server.log"
+
+              export D8_SEG_NUMBER="${k}"
+              export D8_SEG_TAG="${tag}"
+              export D8_SEG_REPEAT_INDEX="${SEEN[$tag]}"
+              export D8_SEG_STARTED="${started}"
+              export D8_SEG_FINISHED="${finished}"
+              export D8_SEG_DIGEST="$(docker image inspect "ollama/ollama:${tag}" --format '{{json .RepoDigests}}|{{.Id}}' 2>/dev/null || true)"
+              python3 - "${SEG_DIR}" <<'PY'
+          import json
+          import os
+          import sys
+
+          directory = sys.argv[1]
+          env = os.environ
+
+
+          def image_digest(raw):
+              raw = raw.strip()
+              if not raw or "|" not in raw:
+                  return None
+              digests_json, image_id = raw.split("|", 1)
+              try:
+                  digests = json.loads(digests_json) or []
+              except ValueError:
+                  digests = []
+              return digests[0] if digests else (image_id.strip() or None)
+
+
+          try:
+              with open(os.path.join(directory, "ollama-runtime.json"), encoding="utf-8") as handle:
+                  version = json.load(handle).get("api_version")
+          except (OSError, ValueError, AttributeError):
+              version = None
+          setting = env.get("D8_OLLAMA_CONTEXT_LENGTH", "")
+          payload = {
+              "schema_version": 1,
+              "segment": int(env["D8_SEG_NUMBER"]),
+              "ollama_image_tag": env["D8_SEG_TAG"],
+              "ollama_image_digest": image_digest(env.get("D8_SEG_DIGEST", "")),
+              "ollama_version": version,
+              "repeat_index": int(env["D8_SEG_REPEAT_INDEX"]),
+              "context_length_setting": int(setting) if setting.isdigit() else None,
+              "started_at": env["D8_SEG_STARTED"],
+              "finished_at": env["D8_SEG_FINISHED"],
+          }
+          with open(os.path.join(directory, "segment.json"), "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          print(json.dumps(payload, indent=2))
+          PY
+              chmod a+r "${SEG_DIR}/segment.json" "${SEG_DIR}/ollama-server.log"
+              # ollama-runtime.json was written by the api container (uid 10001); the runner
+              # user cannot chmod it, and it is already world-readable (umask 022).
+
+              # The container is removed so the next segment starts fresh.
+              docker compose --profile llm stop ollama
+              docker compose --profile llm rm -f ollama
+            done
           done
 
       - name: Record the environment
@@ -225,11 +652,17 @@ jobs:
           export D8_OLLAMA_IMAGE=""
           export D8_OLLAMA_VERSION=""
           export D8_OLLAMA_LIST=""
+          export D8_FIRST_TAG=""
           if [ "${D8_RUN_OLLAMA}" = "true" ]; then
-            D8_OLLAMA_IMAGE="$(docker image inspect ollama/ollama:latest --format '{{json .RepoDigests}}|{{.Id}}' 2>/dev/null || true)"
-            D8_OLLAMA_VERSION="$(docker compose exec -T ollama ollama --version 2>&1 | head -n 3 || true)"
-            D8_OLLAMA_LIST="$(docker compose exec -T ollama ollama list 2>/dev/null || true)"
+            # The top-level ollama_* fields describe the FIRST tag (segment 1 ran on it); the
+            # containers are gone by now, so segment 1's own captures are read back.
+            D8_FIRST_TAG="${D8_TAG_LIST%%,*}"
+            D8_OLLAMA_IMAGE="$(docker image inspect "ollama/ollama:${D8_FIRST_TAG}" --format '{{json .RepoDigests}}|{{.Id}}' 2>/dev/null || true)"
+            D8_OLLAMA_VERSION="$(cat "${RUNNER_TEMP}/d8-seg1-cli-version.txt" 2>/dev/null || true)"
+            D8_OLLAMA_LIST="$(cat "${RUNNER_TEMP}/d8-seg1-list.txt" 2>/dev/null || true)"
           fi
+          export D8_MACHINE_FILE="${RUNNER_TEMP}/d8-machine.json"
+          export D8_RUN_HOST="${RUN_HOST}"
 
           python3 - "${RUN_HOST}/ENVIRONMENT.json" <<'PY'
           import json
@@ -286,6 +719,26 @@ jobs:
               if model_id is None:
                   warn("model id not found in `ollama list`")
 
+          # One entry per Ollama image tag, in order of first use, from the segment files.
+          runtimes = []
+          if ran_ollama:
+              for number in range(1, int(env["D8_SEGMENTS"]) + 1):
+                  path = os.path.join(env["D8_RUN_HOST"], "grounded", f"r{number}", "segment.json")
+                  try:
+                      with open(path, encoding="utf-8") as handle:
+                          segment = json.load(handle)
+                  except (OSError, ValueError):
+                      warn(f"segment.json of segment {number} is missing")
+                      continue
+                  if all(item["tag"] != segment.get("ollama_image_tag") for item in runtimes):
+                      runtimes.append(
+                          {
+                              "tag": segment.get("ollama_image_tag"),
+                              "digest": segment.get("ollama_image_digest"),
+                              "version": segment.get("ollama_version"),
+                          }
+                      )
+
           payload = {
               "git_sha": env["MEASURED_SHA"],
               "run_id": env["GITHUB_RUN_ID"],
@@ -305,7 +758,23 @@ jobs:
               "ollama_model_id": model_id,
               "embedding_model": text("D8_EMBEDDING_MODEL"),
               "embedding_model_revision": revision,
+              "ollama_image_tag": env.get("D8_FIRST_TAG") or None if ran_ollama else None,
+              "ollama_context_length_setting": (
+                  int(env["D8_OLLAMA_CONTEXT_LENGTH"])
+                  if ran_ollama and env.get("D8_OLLAMA_CONTEXT_LENGTH", "").isdigit()
+                  else None
+              ),
+              "ollama_runtimes": runtimes,
+              "diagnostics_captured": True,
           }
+          try:
+              with open(env["D8_MACHINE_FILE"], encoding="utf-8") as handle:
+                  machine = json.load(handle)
+              payload["runner"]["cpu"] = machine.get("cpu") or None
+              for key in ("kernel", "image_os", "image_version"):
+                  payload["runner"][key] = machine.get(key)
+          except (OSError, ValueError, AttributeError):
+              warn("machine record missing; runner.cpu not recorded")
           with open(sys.argv[1], "w", encoding="utf-8") as handle:
               json.dump(payload, handle, ensure_ascii=False, indent=2)
               handle.write("\n")
@@ -317,11 +786,8 @@ jobs:
       - name: Validate and summarize (evals.d8_report, fails closed)
         run: |
           set -eu
-          if [ "${D8_RUN_OLLAMA}" = "true" ]; then
-            EXPECTED_REPEATS="${D8_REPEATS}"
-          else
-            EXPECTED_REPEATS=0
-          fi
+          # Segments (tags x repeats per tag), or 0 when the LLM tier was skipped.
+          EXPECTED_REPEATS="${D8_SEGMENTS}"
           # stdout (the report and the emitted files) goes to a file so the report can be
           # printed once, on its own, before the per-file dumps. stderr stays in the log.
           if ! docker compose run --rm --no-deps -T api python -m evals.d8_report \
@@ -368,8 +834,12 @@ jobs:
         if: failure()
         run: |
           docker compose --profile llm ps || true
+          TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          echo "::stop-commands::${TOKEN}"
           docker compose --profile llm logs --no-color --tail 200 postgres || true
           docker compose --profile llm logs --no-color --tail 200 ollama || true
+          echo "::${TOKEN}::"
+          ls -la "apps/api/${D8_RUN_REL}/grounded" || true
 
       - name: Tear down evaluation runtime
         if: always()
@@ -436,7 +906,7 @@ jobs:
             [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
             *) echo "D8-SUMMARY.json generated_at does not start with a date; refusing" >&2; exit 1 ;;
           esac
-          DEST="apps/api/evals/results/d8/${RUN_DATE}-$(printf '%.7s' "${MEASURED_SHA}")"
+          DEST="apps/api/evals/results/d8/${RUN_DATE}-$(printf '%.7s' "${MEASURED_SHA}")-${RUN_ID}"
           if [ -e "${DEST}" ]; then
             echo "${DEST} already exists on ${DEFAULT_BRANCH}; refusing" >&2
             exit 1

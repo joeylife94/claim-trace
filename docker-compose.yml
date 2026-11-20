@@ -183,7 +183,7 @@ services:
   # *host* (host.docker.internal), which reuses models already pulled there
   # rather than downloading a second copy into this volume.
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
     profiles: ["llm"]
     restart: unless-stopped
     ports:

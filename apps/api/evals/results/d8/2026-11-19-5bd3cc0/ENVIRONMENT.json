@@ -1,0 +1,20 @@
+{
+  "git_sha": "5bd3cc0826846fa6fcb78e86391e8d9e393207eb",
+  "run_id": "44480369922",
+  "run_attempt": "1",
+  "event_name": "workflow_dispatch",
+  "runner": {
+    "nproc": 4,
+    "mem_total_mb": 15701,
+    "os": "Ubuntu 24.04.5 LTS",
+    "docker_version": "Docker version 28.0.4, build b8034c0",
+    "docker_compose_version": "Docker Compose version v2.38.2"
+  },
+  "api_image_id": "sha256:9f65a3d82f25ba473d8518b5757f2bae88155dc1e1101c1faddc4a65382d6d0f",
+  "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+  "ollama_version": "ollama version is 0.40.16",
+  "ollama_model": "qwen2.5:3b",
+  "ollama_model_id": "357c53fb659c",
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+}

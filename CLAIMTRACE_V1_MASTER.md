@@ -8,7 +8,7 @@
 **v1.0 batch state:** **CLAIMTRACE PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**  
 **Reviewed/tagged commit:** `bcb37b1a86ae70e2f35cdab6708da9310d7e9e2d`  
 **Proof tag:** `v1.0-proof`  
-**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7 reached / D8-01 measured, accepted on merge of its pull request / next step requires Human Review (see Section 17)**  
+**Post-v1 progression state:** **UPGRADE TRACK (selected 2026-11-12) — D7 reached / D8-01 measured and merged / D8-02 active: diagnose the real-LLM result / D9 queued, scope depends on D8-02**  
 **Where to start reading:** Section 17 for the active upgrade track; Section 16 for the state at the first wrap-up; Sections 1-9 for the frozen v1.0 Proof; Sections 10-15 for the post-v1 ledger.
 
 ---
@@ -1853,4 +1853,107 @@ The measurement changes what should come next. D9 was to give Cases and descript
 `HUMAN REVIEW — CHOOSE THE NEXT MILESTONE`
 
 The track's order was decided before this result existed, so the choice goes back to the owner. The options are: diagnose the real-LLM result first (separate code, runtime, model build, and hardware; examine the deployment-branch lead), or proceed to D9 with a scope that does not depend on grounded generation.
+
+### D8-01 Acceptance Update, corrections, and a second run — 2026-11-19
+
+**Status:** `ACCEPTED / MERGED`
+**PR:** #77
+**Accepted PR exact head:** `a629ac2e1f6ca2816e2162fde9a1c214ce93268a`
+**Resulting main squash merge SHA:** `5bd3cc0826846fa6fcb78e86391e8d9e393207eb`
+
+All 21 check runs were **GREEN** on the accepted head, with no review thread open.
+
+#### Corrections to the D8-01 Implementation Record above
+
+A read-only analysis after the measurement established the following. Where it differs from the record above, this entry is right and the record is left as written.
+
+- **The generation path did not change between the two records.** From the commit that produced the 2026-07-26 files to the measured commit, the grounded-generation service, the grounding package, the LLM layer, the configuration defaults, the evaluation harness, the datasets, the lockfile, and the Dockerfile are byte-identical. The one application change on the path is the lexical term-level fallback (P11), which can change the evidence list shown to the model. The record's statement that "the application code … differ[s]" was too broad.
+- **The model weights are probably the same.** `docs/ARCHITECTURE.md`, written the day the 2026-07-26 files were generated, records `qwen2.5:1.5b` with id `65ec06548149` on Ollama 0.17.1 — the same id as this run. That the July evaluation used that host is an inference. If it holds, "the model build differs" was wrong, and what differs is the Ollama version (0.17.1 against 0.40.16) and the hardware.
+- **`502 grounded_repair_failed` has one meaning.** Two drafts in a row parsed and passed the schema, and both broke a grounding rule. It is never a timeout and never a truncated output; those return other codes.
+- **Evidence-id validity is not what its name suggests.** The metric counts every repair failure as invalid, so `0.3125` and `0.4375` are one minus the repair-failure rate. They do not show that the model fabricated identifiers.
+- **The deployment-branch lead is closed.** The truncation fixed on `agent/proof-dataset-spec` came from an output-token cap that existed only on that branch; `main` never had it. The prompt and statement-limit changes there are not on `main` and were never measured.
+- **Which rule fails is unknown.** The harness discarded it: it ran at a log level that drops the violation, and it did not keep the response detail.
+- No product defect on `main` that explains the result was found by reading.
+
+#### A second run on identical software
+
+Every push to the D8-01 pull request re-triggered the measurement, because a `pull_request` path filter is evaluated against the whole pull-request diff. The last of those runs completed on a different runner instance. Its files are committed at `apps/api/evals/results/d8/2026-11-19-a629ac2/` (run `44475722143`), unchanged from its results branch, and all 11 match the SHA-256 index the run printed.
+
+Both runs record the same Ollama image digest, the same model id, the same embedding revision, and the same generation-path source. Retrieval and the oracle tier are identical between them. The real-LLM tier is not:
+
+| Run | Repeat | End-to-end success | Cases succeeding end to end |
+| --- | --- | --- | --- |
+| 2026-11-16 | 1 | `0.1875` | g03, g05, g07 |
+| 2026-11-16 | 2 | `0.25` | g03, g05, g07, g14 |
+| 2026-11-19 | 1 | `0.125` | g14, g15 |
+| 2026-11-19 | 2 | `0.0625` | g15 |
+
+Within each run the two repeats agree on 15 of 16 end-to-end outcomes. Across the two runs the sets barely overlap.
+
+What this supports: with software and weights held fixed, which cases succeed depends on the runner instance. What it does not support: any distribution over machines, which hardware property matters, or whether the 2026-07-26 figure was a favourable machine or a systematic difference. Neither run recorded the CPU model. Two instances are two instances.
+
+Consequence for method: a comparison between two separate runs cannot isolate any factor that touches the model. Such a factor has to be varied inside one job on one machine. Retrieval-side facts reproduced exactly and can still be compared across runs.
+
+### D8-02 Acceptance Contract — make a failed grounded case say why
+
+The owner directed that development continue. D8-02 is the recommended next step from the D8 destination review: diagnose before building a user-facing surface on grounded generation.
+
+**Scope.** Observability and measurement only. No fix: no change to prompts, validation rules, repair, output limits, or model choice. No file under `apps/api/src/` changes; product responses and product logs are untouched.
+
+**Built**
+
+1. An opt-in capture in the evaluation harness. For each case it records, per attempt, the grounding rule violated, the outcome, Ollama's `done_reason`, token counts, durations, a prompt hash and a raw-output hash; the evidence catalog; and whether a repair was used. That block carries no model text. Prompts and raw model output go to a separate file that is marked untrusted and never rendered.
+2. The measurement workflow runs the LLM tier as interleaved segments over one or two Ollama image tags inside one job, with a fresh container per segment, and records the machine's CPU identity.
+3. The report groups segments by runtime and adds failure reasons by rule, tokens against the context length, and within-machine contrasts. A compare tool reads two run directories.
+
+**Decision rule, fixed before any run.** A version effect on a machine is *shown* when every pair of segments with different Ollama versions differs in first-attempt raw output on at least four more cases than the largest pair of same-version segments. Otherwise it is *not shown*. Both numbers are reported either way.
+
+**Acceptance**
+
+1. With the capture off, the harness writes the same files with the same keys as before. The deterministic gate and the existing evaluation workflow are unaffected.
+2. In a run on the D8-02 pull request, every LLM case that did not serve an answer records the rule that rejected each attempt, and every attempt records `done_reason` and token counts or a provider error.
+3. The report still validates and renders both committed D8-01-era run directories. No model text, prompt text, or server-log text reaches the report, the summary, or the compare output; a test proves it.
+4. Each new test fails without its change. Both test tiers and Ruff pass.
+5. A within-job version contrast and an evidence-catalog comparison for the lexical change are run and published, and a findings entry states for each hypothesis whether it is supported, ruled out, or still open, citing run directories.
+
+**Not in scope:** log-probability capture, more than two runtimes, running two application versions in one job, any distribution over machines.
+
+**Separate exploratory run, not part of the contract.** On 2026-11-19 the D8-01 workflow was dispatched on `main` with `qwen2.5:3b` in place of `qwen2.5:1.5b`, to see whether model size is a large lever under the same contract. It is one run on one machine and compares across machines, so only a large difference would mean anything. It ranks no models. Its result is recorded with D8-02's findings.
+
+### D8-02 Implementation Record (tooling) — 2026-11-19
+
+**Status:** `TOOLING IMPLEMENTED — FIRST DIAGNOSTIC RUN IS THE PULL REQUEST'S OWN`
+
+This entry covers the tooling. The diagnostic runs and their findings are recorded in a later entry, with their run directories.
+
+#### Changed
+
+- `apps/api/evals/grounded_capture.py` (new) and `apps/api/evals/grounded_run.py`: `--capture-diagnostics`. Per attempt it records the grounding rule violated, the outcome, Ollama's `done_reason`, token counts, durations, a prompt hash, and a raw-output hash, plus the evidence catalog and whether a repair was used. Prompts and raw model output go only to a separate `diagnostics-<tier>.json`. With the flag off the harness writes the same files and keys as before.
+- `.github/workflows/d8-real-model-evals.yml`: the LLM tier runs as interleaved segments over one or two Ollama image tags in one job, with a fresh container per segment and one model store per tag. The job records the CPU identity of the machine. The results path includes the run id. Two dispatched runs can run at the same time.
+- `apps/api/evals/d8_report.py`: segments grouped by runtime; failure reasons by rule; tokens against the context length; within-machine contrasts with the decision rule fixed in the contract. The second non-claim sentence names the model the run used. `apps/api/evals/d8_compare.py` (new) compares two run directories.
+- `docker-compose.yml`: the Ollama image tag is a variable, default `latest`. `.env.example` documents it. Nothing under `apps/api/src/` changed.
+- Two more run directories as data: the second run on identical software, and the exploratory `qwen2.5:3b` run.
+
+#### Actually Executed
+
+- Locally: database-free tier **1009 passed**, integration tier **149 passed**, Ruff clean.
+- An independent review ran the real harness with the capture on and confirmed that the report and compare tools consume its output; that requests sent to Ollama are unchanged by the capture; that planted model text reaches only the raw diagnostics file; and that the three existing run directories still validate.
+- The review found two defects in the workflow before any run: a `chmod` on a file the container had written, which would have stopped the job after the first segment, and an input check that a newline could bypass. Both were fixed. The decision rule gained tests that fail if it is loosened.
+- Both image tags, `ollama/ollama:0.40.16` and `ollama/ollama:0.17.1`, were confirmed to exist on the registry.
+
+#### The exploratory `qwen2.5:3b` run
+
+Run `44480369922` on `main`, one machine, two repeats; files at `apps/api/evals/results/d8/2026-11-19-5bd3cc0/`. Ten of its eleven files were checked against the index the run printed and match.
+
+- Every one of the 16 cases was served in both repeats; no `502 grounded_repair_failed`. Mean time per case `11.95` and `6.914` seconds.
+- End-to-end success `0.25` and `0.3125`. In the first repeat the model declared insufficient evidence on 8 of the 12 answerable cases.
+- Citation resolution `1.0`; no forbidden citation.
+
+Read with the 1.5B runs: the larger model did not break grounding rules, and it did not answer more questions correctly. The two models fail in different ways at a similar rate. This is one run on one machine, compared across machines, and it ranks no models. Its committed report was written by the D8-01 tool and still says "one 1.5B-parameter LLM", which is wrong for this run.
+
+#### Not Verified
+
+- **The changed workflow has not been executed.** No Docker daemon or runner was available. Its segment mechanism was checked by reading and by a dry run with Docker stubbed.
+- The capture against a real Ollama server, in either version.
+- Whether the runner has disk for two Ollama images and two model stores, and whether the 0.17.1 server can pull the current model manifest.
 
