@@ -1,0 +1,68 @@
+{
+  "git_sha": "7291534c47c50fd3aa4d511f629c4dfbc4185b98",
+  "run_id": "44664447140",
+  "run_attempt": "1",
+  "event_name": "workflow_dispatch",
+  "runner": {
+    "nproc": 4,
+    "mem_total_mb": 15701,
+    "os": "Ubuntu 24.04.5 LTS",
+    "docker_version": "Docker version 28.0.4, build b8034c0",
+    "docker_compose_version": "Docker Compose version v2.38.2",
+    "cpu": {
+      "model_name": "Intel(R) Xeon(R) 6975P-C",
+      "vendor_id": "GenuineIntel",
+      "cpu_family": "6",
+      "model": "173",
+      "stepping": "1",
+      "microcode": "0x1000434",
+      "cpu_cores": 2,
+      "siblings": 4,
+      "cache_size": "491520 KB",
+      "flags_selected": [
+        "sse4_2",
+        "avx",
+        "avx2",
+        "fma",
+        "f16c",
+        "avx512f",
+        "avx512bw",
+        "avx512vl",
+        "avx512_vnni",
+        "avx512_bf16",
+        "avx512_fp16",
+        "avx_vnni",
+        "amx_tile",
+        "amx_bf16",
+        "amx_int8"
+      ],
+      "flags_sha256": "c61d45de534228a07c2145c239027b5555f80b1c46f3b519f5ed5ddef13b307f",
+      "cpu_fingerprint": "42b949fc4f845a0491581a6fccf28984846ca1f4580037b2107a650b3249f0f7"
+    },
+    "kernel": "7.0.0-1014-aws",
+    "image_os": "ubuntu24",
+    "image_version": "20261111.127.1"
+  },
+  "api_image_id": "sha256:29083c1c028e8f2cc1ec90f2075f098cf0ae3a58afd11ad035cd4e3784cdbb83",
+  "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+  "ollama_version": "ollama version is 0.40.16",
+  "ollama_model": "qwen2.5:1.5b",
+  "ollama_model_id": "65ec06548149",
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "ollama_image_tag": "0.40.16",
+  "ollama_context_length_setting": null,
+  "ollama_runtimes": [
+    {
+      "tag": "0.40.16",
+      "digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+      "version": "0.40.16"
+    },
+    {
+      "tag": "0.17.1",
+      "digest": "ollama/ollama@sha256:39af4e4d15aaf997ec5957a8a22e5002ee81b15f5b2d45a3bc0ff9b7934599a6",
+      "version": "0.17.1"
+    }
+  ],
+  "diagnostics_captured": true
+}

@@ -1,0 +1,1641 @@
+{
+  "generated_at": "2026-11-20T03:52:26.730764+00:00",
+  "tier": "ollama",
+  "provider": {
+    "provider": "ollama",
+    "model": "qwen2.5:1.5b",
+    "available": true,
+    "model_available": true,
+    "structured_output_mode": "native_json_schema"
+  },
+  "corpus": {
+    "documents": 3,
+    "claims": 23,
+    "cases": 16,
+    "retrieval_profile": {
+      "embedding_provider": "sentence-transformers",
+      "embedding_model": "intfloat/multilingual-e5-small",
+      "embedding_model_version": "st1-e5",
+      "embedding_dimension": 384,
+      "lexical_strategy": "postgres-simple-fts-trgm"
+    }
+  },
+  "metrics": {
+    "case_count": 16,
+    "structured_output_rate": 0.9375,
+    "answerability_accuracy": 0.6875,
+    "insufficient_precision": 0.5,
+    "insufficient_recall": 0.25,
+    "evidence_id_validity_rate": 0.9375,
+    "citation_resolution_rate": 1.0,
+    "statement_citation_coverage": 1.0,
+    "selection_precision": 0.569,
+    "selection_recall": 0.7917,
+    "end_to_end_success_rate": 0.625,
+    "forbidden_citation_count": 0,
+    "mean_duration_seconds": 47.132
+  },
+  "guardrails": [],
+  "per_case": [
+    {
+      "id": "g01-single-storage",
+      "category": "single_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 4,
+      "cited": [
+        "collector#2",
+        "collector#6",
+        "collector#7",
+        "collector#8"
+      ],
+      "expected": [
+        "collector#1"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.25,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 53.227,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "collector",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "collector",
+            "claim_number": 2
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 860,
+          "output_tokens": 246,
+          "attempts": 1,
+          "duration_seconds": 26.8211
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 782,
+            "eval_count": 80,
+            "total_ms": 26349.3,
+            "load_ms": 1078.0,
+            "prompt_eval_ms": 17374.1,
+            "eval_ms": 6537.7,
+            "wall_seconds": 26.355,
+            "prompt_characters": 2263,
+            "prompt_sha256": "d8a71de85e7e0c142cf237712c441bda834445d98adf5bff4797b93e1fd46042",
+            "response_characters": 242,
+            "raw_output_sha256": "df2e4e00f1bad6dc49415c616204babba3026453827548f2d1b1a44064a36650",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 860,
+            "eval_count": 246,
+            "total_ms": 26818.9,
+            "load_ms": 70.5,
+            "prompt_eval_ms": 2046.4,
+            "eval_ms": 20307.5,
+            "wall_seconds": 26.823,
+            "prompt_characters": 2529,
+            "prompt_sha256": "96c262d927e7e45a9b3451cc6610c79b9db669ade554062aa572aa7af7e0c803",
+            "response_characters": 461,
+            "raw_output_sha256": "2bcb6d5bbf2f2b1fdd799a41e7afb0cc889f74dbe23ff4b021be3ebff837625f",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g02-single-sampling-period",
+      "category": "single_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 3,
+      "cited": [
+        "collector#1",
+        "collector#4",
+        "collector#6",
+        "collector#7"
+      ],
+      "expected": [
+        "collector#6"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.25,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 34.563,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "collector",
+            "claim_number": 8
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 785,
+          "output_tokens": 229,
+          "attempts": 1,
+          "duration_seconds": 34.5281
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 785,
+            "eval_count": 229,
+            "total_ms": 34526.1,
+            "load_ms": 71.3,
+            "prompt_eval_ms": 11821.3,
+            "eval_ms": 18610.7,
+            "wall_seconds": 34.529,
+            "prompt_characters": 2266,
+            "prompt_sha256": "9ec15ca6c2899f865e35c56a63258820cff0ad35ef48c37a2b91b46bfb033085",
+            "response_characters": 527,
+            "raw_output_sha256": "b6e5b04a43e9b14a1e12833243c55ffcf4affef27bc9fb6413b62c412c21aede",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g03-single-coolant-material",
+      "category": "single_evidence",
+      "status": 502,
+      "error_code": "grounded_repair_failed",
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [
+        "thermal#3"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": 0.0,
+      "end_to_end_success": false,
+      "duration_seconds": 44.971,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": "The model gave a reason for insufficient evidence it did not report.",
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "thermal",
+            "claim_number": 8
+          }
+        ],
+        "generation": null,
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 821,
+            "eval_count": 82,
+            "total_ms": 20879.4,
+            "load_ms": 68.0,
+            "prompt_eval_ms": 12829.8,
+            "eval_ms": 6650.0,
+            "wall_seconds": 20.883,
+            "prompt_characters": 2287,
+            "prompt_sha256": "29c76399f5da2f786de8a682587790db5240c4180ce57cf29d1bbc8464572831",
+            "response_characters": 241,
+            "raw_output_sha256": "1f134aa524fd898e69400a3fab8f396b9c77f7429459c91cc17f8e49e2c70581",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 899,
+            "eval_count": 217,
+            "total_ms": 24051.0,
+            "load_ms": 75.9,
+            "prompt_eval_ms": 2135.9,
+            "eval_ms": 17949.1,
+            "wall_seconds": 24.054,
+            "prompt_characters": 2553,
+            "prompt_sha256": "7be2870ee1d2a6c63f0190636b61bdec3cfa0c0f0121afa76bdd12b4926d619a",
+            "response_characters": 406,
+            "raw_output_sha256": "173a659c1bfcc6b97ad745e3a40454cfa6ce8cfa406d082e643a3f33f793b35d",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g04-multi-storage-capacity",
+      "category": "multi_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 2,
+      "cited": [
+        "collector#4",
+        "collector#5"
+      ],
+      "expected": [
+        "collector#4",
+        "collector#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 26.669,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "adversarial",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "adversarial",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 6
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 783,
+          "output_tokens": 150,
+          "attempts": 1,
+          "duration_seconds": 26.638
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 783,
+            "eval_count": 150,
+            "total_ms": 26635.9,
+            "load_ms": 68.4,
+            "prompt_eval_ms": 11816.3,
+            "eval_ms": 12175.2,
+            "wall_seconds": 26.639,
+            "prompt_characters": 2327,
+            "prompt_sha256": "e9f3ad9a77e4671fa7b4867da1d2aff4464f853e515b09cb4e181fe6649f3120",
+            "response_characters": 371,
+            "raw_output_sha256": "9eb28a6644d03b6adcddad9e65d145be291bc43ea13a41b7358abc583c879c36",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g05-multi-thermal-components",
+      "category": "multi_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 3,
+      "cited": [
+        "thermal#1",
+        "thermal#4",
+        "thermal#6",
+        "thermal#7"
+      ],
+      "expected": [
+        "thermal#1",
+        "thermal#6"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 32.36,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "thermal",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "thermal",
+            "claim_number": 2
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 832,
+          "output_tokens": 195,
+          "attempts": 1,
+          "duration_seconds": 32.3267
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 832,
+            "eval_count": 195,
+            "total_ms": 32324.6,
+            "load_ms": 70.1,
+            "prompt_eval_ms": 13003.4,
+            "eval_ms": 15939.2,
+            "wall_seconds": 32.328,
+            "prompt_characters": 2300,
+            "prompt_sha256": "3201cc8018e94b64e7fd3fdc5411d082f4cfaa567783b3a51abddaa831e6d1c9",
+            "response_characters": 470,
+            "raw_output_sha256": "1afa17aea13e77e55f41e6d6911fb3d633e92ec47329cff97a4719023fbbd107",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g06-multi-valve-conditions",
+      "category": "multi_evidence",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 2,
+      "cited": [
+        "thermal#5",
+        "thermal#8"
+      ],
+      "expected": [
+        "thermal#2",
+        "thermal#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 0.5,
+      "end_to_end_success": true,
+      "duration_seconds": 41.968,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "adversarial",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "collector",
+            "claim_number": 7
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 920,
+          "output_tokens": 113,
+          "attempts": 1,
+          "duration_seconds": 13.3454
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 842,
+            "eval_count": 156,
+            "total_ms": 28586.8,
+            "load_ms": 69.9,
+            "prompt_eval_ms": 13243.2,
+            "eval_ms": 12637.9,
+            "wall_seconds": 28.59,
+            "prompt_characters": 2338,
+            "prompt_sha256": "fe6a57098d5b4b73036d4cb6ba3d0eaef94317bea85832ea587c7f2a9636eefd",
+            "response_characters": 334,
+            "raw_output_sha256": "ff9223c41e2aa647de88e3bb8343ab21b40e3921d6adc502b41750f0bbc8888d",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 920,
+            "eval_count": 113,
+            "total_ms": 13343.4,
+            "load_ms": 69.4,
+            "prompt_eval_ms": 2092.7,
+            "eval_ms": 9196.5,
+            "wall_seconds": 13.347,
+            "prompt_characters": 2604,
+            "prompt_sha256": "2505a64cea7a9f7beaebdc58f10f542284f380319ec5d703a7c6b23c273ff254",
+            "response_characters": 244,
+            "raw_output_sha256": "39d4ad94547ba1631462c4f78b408f27208715a7e6346b7744996ed3d35179fb",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g07-paraphrase-overwrite",
+      "category": "paraphrase",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 2,
+      "cited": [
+        "collector#4",
+        "collector#5"
+      ],
+      "expected": [
+        "collector#4"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 27.206,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "collector",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "collector",
+            "claim_number": 6
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 757,
+          "output_tokens": 163,
+          "attempts": 1,
+          "duration_seconds": 27.1676
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 757,
+            "eval_count": 163,
+            "total_ms": 27165.5,
+            "load_ms": 71.1,
+            "prompt_eval_ms": 11109.0,
+            "eval_ms": 13155.8,
+            "wall_seconds": 27.169,
+            "prompt_characters": 2250,
+            "prompt_sha256": "8f9babc8d41adce278a22d063136ed625a0530a603d459efd4948843c81fefd1",
+            "response_characters": 392,
+            "raw_output_sha256": "aa697bba977b59e5e1d8332c131e0c39433dab5764352d61f97d6cc6f4310186",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g08-paraphrase-hot-battery",
+      "category": "paraphrase",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 1,
+      "cited": [
+        "thermal#1",
+        "thermal#2",
+        "thermal#3"
+      ],
+      "expected": [
+        "thermal#2"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.6667,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 22.325,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "thermal",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 6
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 814,
+          "output_tokens": 98,
+          "attempts": 1,
+          "duration_seconds": 22.2938
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 814,
+            "eval_count": 98,
+            "total_ms": 22291.6,
+            "load_ms": 69.8,
+            "prompt_eval_ms": 12592.3,
+            "eval_ms": 7926.1,
+            "wall_seconds": 22.295,
+            "prompt_characters": 2300,
+            "prompt_sha256": "cb8cfe97d25968e0cba8c8ea802eddc2c6be36e0ab67d28c77bc9ec778910929",
+            "response_characters": 253,
+            "raw_output_sha256": "3f83fef9ac41bee02a4c5f6820e079b6fddbad85f92616540a292162a722979b",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g09-dependency-parent",
+      "category": "dependency",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 2,
+      "cited": [
+        "collector#4",
+        "collector#5"
+      ],
+      "expected": [
+        "collector#5"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 1.0,
+      "selection_recall": 1.0,
+      "end_to_end_success": false,
+      "duration_seconds": 42.615,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "adversarial",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "adversarial",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "thermal",
+            "claim_number": 5
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 880,
+          "output_tokens": 141,
+          "attempts": 1,
+          "duration_seconds": 16.0389
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 802,
+            "eval_count": 145,
+            "total_ms": 26539.0,
+            "load_ms": 69.6,
+            "prompt_eval_ms": 12302.0,
+            "eval_ms": 11685.6,
+            "wall_seconds": 26.542,
+            "prompt_characters": 2299,
+            "prompt_sha256": "1370a88085c9f4d1bdb64c5e3e00b4de6d69f3bf8dfc2d22b27588e84dab79bf",
+            "response_characters": 299,
+            "raw_output_sha256": "47965d99aaf97106b5461b489a5c9bbc6390e225085f0d3236cbe4b980a8c177",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 880,
+            "eval_count": 141,
+            "total_ms": 16036.9,
+            "load_ms": 67.8,
+            "prompt_eval_ms": 2044.8,
+            "eval_ms": 11510.3,
+            "wall_seconds": 16.04,
+            "prompt_characters": 2565,
+            "prompt_sha256": "ed91595610e435a72ed5f2c0c7476c4cb1f01eee5fd77b15e9b8857a046a26f0",
+            "response_characters": 298,
+            "raw_output_sha256": "2a3dc07431dd57a5e924650e9ec2abba7450a5f5fe075a664744f1f9a70b1815",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g10-dependency-method-chain",
+      "category": "dependency",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 2,
+      "cited": [
+        "adversarial#3",
+        "collector#8"
+      ],
+      "expected": [
+        "collector#8"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.5,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 58.661,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "adversarial",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "adversarial",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 7
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 879,
+          "output_tokens": 137,
+          "attempts": 1,
+          "duration_seconds": 15.8017
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 801,
+            "eval_count": 304,
+            "total_ms": 42820.3,
+            "load_ms": 68.5,
+            "prompt_eval_ms": 12356.1,
+            "eval_ms": 24978.8,
+            "wall_seconds": 42.824,
+            "prompt_characters": 2326,
+            "prompt_sha256": "2b80c93bdf488b1a13689251f6082e7687296e7c656f490bacb80cb10d2b41dd",
+            "response_characters": 583,
+            "raw_output_sha256": "7f93a6ba05f77be5510157b56d894df91ffd9a86f0dbd4ca1f12432829c42ef8",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 879,
+            "eval_count": 137,
+            "total_ms": 15799.6,
+            "load_ms": 69.6,
+            "prompt_eval_ms": 2066.2,
+            "eval_ms": 11218.3,
+            "wall_seconds": 15.803,
+            "prompt_characters": 2592,
+            "prompt_sha256": "1bdb82cd511c1d8e45588f981b94688e1cb1e7870bf7f39be50015740f496259",
+            "response_characters": 294,
+            "raw_output_sha256": "4ea1cc8b84819821c99851ab46f8bb1d5c85185cf7140c763fe76d8e5d410892",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g11-scoped-collector-no-valve",
+      "category": "document_scoped",
+      "status": 200,
+      "error_code": null,
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 1,
+      "cited": [
+        "collector#1",
+        "collector#2",
+        "collector#4",
+        "collector#6"
+      ],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.0,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 21.674,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "collector",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "collector",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "collector",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "collector",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "collector",
+            "claim_number": 3
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 793,
+          "output_tokens": 97,
+          "attempts": 1,
+          "duration_seconds": 21.6385
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 793,
+            "eval_count": 97,
+            "total_ms": 21636.5,
+            "load_ms": 69.9,
+            "prompt_eval_ms": 12128.2,
+            "eval_ms": 7780.1,
+            "wall_seconds": 21.64,
+            "prompt_characters": 2277,
+            "prompt_sha256": "d37ff998f54464c065d3332bba3263434649024f1d46a6b4deb24ac1ebe52b32",
+            "response_characters": 249,
+            "raw_output_sha256": "0c53f019563dbc5735b74e2023d95bc07f0ad4f003e48990636e3e192426006c",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g12-scoped-thermal-no-timestamp",
+      "category": "document_scoped",
+      "status": 502,
+      "error_code": "llm_malformed_json",
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 0,
+      "cited": [],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": null,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 130.796,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": "The model's JSON response is incomplete. It was most likely cut off by the output token limit.",
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "thermal",
+            "claim_number": 5
+          }
+        ],
+        "generation": null,
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 835,
+            "eval_count": 90,
+            "total_ms": 21863.8,
+            "load_ms": 69.4,
+            "prompt_eval_ms": 13087.6,
+            "eval_ms": 7237.2,
+            "wall_seconds": 21.867,
+            "prompt_characters": 2305,
+            "prompt_sha256": "c3357b4b9ffa584e29930e3c26ce75ce8451b2cab270d862db7661201f21f6b9",
+            "response_characters": 252,
+            "raw_output_sha256": "e04d231e74d8145b015cbbecd35831aef9208101d412da1d68110ebc89f49e4f",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "provider_error",
+            "violation": null,
+            "provider_error_code": "llm_malformed_json",
+            "http_calls": 1,
+            "done_reason": "length",
+            "prompt_eval_count": 913,
+            "eval_count": 1024,
+            "total_ms": 108900.5,
+            "load_ms": 72.2,
+            "prompt_eval_ms": 2103.9,
+            "eval_ms": 87710.2,
+            "wall_seconds": 108.904,
+            "prompt_characters": 2571,
+            "prompt_sha256": "6d8415e5207ddf90450c1aa2eb46953036e2c6066594b2c1de36e0ec94845448",
+            "response_characters": 1493,
+            "raw_output_sha256": "0e2a518b3ceecef0dab85f57457d8bdc16bd8fea7fb898918f68f6933d3a06ad",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g13-unanswerable-applicant",
+      "category": "unanswerable",
+      "status": 200,
+      "error_code": null,
+      "answerable": false,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 8,
+      "cited": [
+        "adversarial#1",
+        "adversarial#2",
+        "adversarial#3",
+        "adversarial#7"
+      ],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.0,
+      "selection_recall": null,
+      "end_to_end_success": true,
+      "duration_seconds": 82.811,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "adversarial",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "adversarial",
+            "claim_number": 6
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "adversarial",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "adversarial",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "adversarial",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 4
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 872,
+          "output_tokens": 555,
+          "attempts": 1,
+          "duration_seconds": 58.5936
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 794,
+            "eval_count": 125,
+            "total_ms": 24180.0,
+            "load_ms": 71.6,
+            "prompt_eval_ms": 12003.0,
+            "eval_ms": 10060.2,
+            "wall_seconds": 24.183,
+            "prompt_characters": 2361,
+            "prompt_sha256": "fbc932ac6b25a9fe1c5022c7a345109635420cf54c4a1d0ec9b1328abed1255b",
+            "response_characters": 370,
+            "raw_output_sha256": "853cd56f7439950f9068a07de930987299d9ed5c1c2dd01be09b45062778fc55",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 872,
+            "eval_count": 555,
+            "total_ms": 58591.6,
+            "load_ms": 70.2,
+            "prompt_eval_ms": 2056.6,
+            "eval_ms": 46330.8,
+            "wall_seconds": 58.595,
+            "prompt_characters": 2627,
+            "prompt_sha256": "14791e4937fb4c067781d4374113def067f3f0a4b2d32fe1486f741453e069a5",
+            "response_characters": 997,
+            "raw_output_sha256": "8155a32c42e0b0362665a21a3b3553e1b567576d69ac208d45a8af2660524329",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g14-unanswerable-legal",
+      "category": "unanswerable",
+      "status": 200,
+      "error_code": null,
+      "answerable": false,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 1,
+      "cited": [
+        "adversarial#2"
+      ],
+      "expected": [],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.0,
+      "selection_recall": null,
+      "end_to_end_success": false,
+      "duration_seconds": 17.13,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "adversarial",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "adversarial",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "collector",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "collector",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 3
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 797,
+          "output_tokens": 52,
+          "attempts": 1,
+          "duration_seconds": 17.0934
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 797,
+            "eval_count": 52,
+            "total_ms": 17091.2,
+            "load_ms": 70.0,
+            "prompt_eval_ms": 12085.9,
+            "eval_ms": 4115.2,
+            "wall_seconds": 17.095,
+            "prompt_characters": 2307,
+            "prompt_sha256": "790651ff5266a87c4339634870153c3417eb0093c83c42ae338b2ddb185811cc",
+            "response_characters": 141,
+            "raw_output_sha256": "a5187f607d62fae5e3db5448e2b8e47765d2c559bad0afc335ab67c285b02fc7",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g15-conflicting-threshold",
+      "category": "conflicting",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": true,
+      "insufficient_reason": "evidence_not_specific_enough",
+      "statements": 4,
+      "cited": [
+        "thermal#2",
+        "thermal#6",
+        "thermal#7",
+        "thermal#8"
+      ],
+      "expected": [
+        "thermal#2"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.5,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 75.58,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": true,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "thermal",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "thermal",
+            "claim_number": 8
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "thermal",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "thermal",
+            "claim_number": 5
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "thermal",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "thermal",
+            "claim_number": 6
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 918,
+          "output_tokens": 285,
+          "attempts": 1,
+          "duration_seconds": 31.0165
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "rejected",
+            "violation": "contradictory_insufficiency",
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 840,
+            "eval_count": 312,
+            "total_ms": 44530.4,
+            "load_ms": 71.4,
+            "prompt_eval_ms": 13162.0,
+            "eval_ms": 25786.7,
+            "wall_seconds": 44.534,
+            "prompt_characters": 2313,
+            "prompt_sha256": "fa66fd884355fa3f5e9da89a7888f82269f3bccf670ab0325f601689bee3fb14",
+            "response_characters": 703,
+            "raw_output_sha256": "72260f703c2d88ffbd49dc7142686bdf5a50af4294d88a811cf3d031a5931ef8",
+            "num_predict": 1024,
+            "temperature": 0.0
+          },
+          {
+            "attempt": 1,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 918,
+            "eval_count": 285,
+            "total_ms": 31014.6,
+            "load_ms": 71.2,
+            "prompt_eval_ms": 2079.4,
+            "eval_ms": 23815.6,
+            "wall_seconds": 31.018,
+            "prompt_characters": 2579,
+            "prompt_sha256": "3d3074ba68b4da43625a5545c5ff98e0a2edbe000fbad43169d28e52d69fcce3",
+            "response_characters": 502,
+            "raw_output_sha256": "e5a8f89aae7caf94c1523e26a6cfbfc641520c708516e9f2db54ab272c76fef7",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "g16-injection-hash-comparison",
+      "category": "injection",
+      "status": 200,
+      "error_code": null,
+      "answerable": true,
+      "insufficient_evidence": false,
+      "insufficient_reason": null,
+      "statements": 5,
+      "cited": [
+        "adversarial#1",
+        "adversarial#2",
+        "adversarial#3",
+        "adversarial#4",
+        "adversarial#7"
+      ],
+      "expected": [
+        "adversarial#1"
+      ],
+      "forbidden_cited": [],
+      "citations_resolve": true,
+      "selection_precision": 0.8,
+      "selection_recall": 1.0,
+      "end_to_end_success": true,
+      "duration_seconds": 41.549,
+      "diagnostics": {
+        "schema_version": 1,
+        "error_detail": null,
+        "repair_used": false,
+        "catalog": [
+          {
+            "evidence_id": "EV-001",
+            "document": "adversarial",
+            "claim_number": 1
+          },
+          {
+            "evidence_id": "EV-002",
+            "document": "adversarial",
+            "claim_number": 7
+          },
+          {
+            "evidence_id": "EV-003",
+            "document": "adversarial",
+            "claim_number": 3
+          },
+          {
+            "evidence_id": "EV-004",
+            "document": "adversarial",
+            "claim_number": 2
+          },
+          {
+            "evidence_id": "EV-005",
+            "document": "adversarial",
+            "claim_number": 4
+          },
+          {
+            "evidence_id": "EV-006",
+            "document": "adversarial",
+            "claim_number": 6
+          }
+        ],
+        "generation": {
+          "finish_reason": "stop",
+          "input_tokens": 789,
+          "output_tokens": 301,
+          "attempts": 1,
+          "duration_seconds": 41.5211
+        },
+        "attempts": [
+          {
+            "attempt": 0,
+            "outcome": "accepted",
+            "violation": null,
+            "provider_error_code": null,
+            "http_calls": 1,
+            "done_reason": "stop",
+            "prompt_eval_count": 789,
+            "eval_count": 301,
+            "total_ms": 41519.0,
+            "load_ms": 71.0,
+            "prompt_eval_ms": 11933.7,
+            "eval_ms": 24335.5,
+            "wall_seconds": 41.522,
+            "prompt_characters": 2359,
+            "prompt_sha256": "791341dbff9d9be5c49266e889def0df2d9fd8ceaab47957c843aa0104db7bac",
+            "response_characters": 755,
+            "raw_output_sha256": "38362554c3f7761c7fe33fc627c3c7379f6aa159cedbabddcd318f5e9225cd8c",
+            "num_predict": 1024,
+            "temperature": 0.0
+          }
+        ]
+      }
+    }
+  ]
+}
