@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "segment": 4,
+  "ollama_image_tag": "0.17.1",
+  "ollama_image_digest": "ollama/ollama@sha256:39af4e4d15aaf997ec5957a8a22e5002ee81b15f5b2d45a3bc0ff9b7934599a6",
+  "ollama_version": "0.17.1",
+  "repeat_index": 2,
+  "context_length_setting": null,
+  "started_at": "2026-11-20T03:40:39Z",
+  "finished_at": "2026-11-20T03:53:33Z"
+}
