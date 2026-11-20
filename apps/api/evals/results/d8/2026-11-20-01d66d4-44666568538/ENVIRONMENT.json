@@ -1,0 +1,59 @@
+{
+  "git_sha": "01d66d41d3d6d02348f374fab44950d69526c366",
+  "run_id": "44666568538",
+  "run_attempt": "1",
+  "event_name": "workflow_dispatch",
+  "runner": {
+    "nproc": 4,
+    "mem_total_mb": 15983,
+    "os": "Ubuntu 24.04.5 LTS",
+    "docker_version": "Docker version 28.0.4, build b8034c0",
+    "docker_compose_version": "Docker Compose version v2.38.2",
+    "cpu": {
+      "model_name": "AMD EPYC 9V45 96-Core Processor",
+      "vendor_id": "AuthenticAMD",
+      "cpu_family": "26",
+      "model": "2",
+      "stepping": "1",
+      "microcode": "0xffffffff",
+      "cpu_cores": 2,
+      "siblings": 4,
+      "cache_size": "1024 KB",
+      "flags_selected": [
+        "sse4_2",
+        "avx",
+        "avx2",
+        "fma",
+        "f16c",
+        "avx512f",
+        "avx512bw",
+        "avx512vl",
+        "avx512_vnni",
+        "avx512_bf16",
+        "avx_vnni"
+      ],
+      "flags_sha256": "8b121906e9c6517167bd2f2acc769fbdd0ea135b2e7c3d6e9c906773128b2e52",
+      "cpu_fingerprint": "6de3b935938b7507259a5e6b421e493482a2960e4217dfa0c105c4b0e3ef6bf8"
+    },
+    "kernel": "7.0.0-1017-azure",
+    "image_os": "ubuntu24",
+    "image_version": "20261111.370.1"
+  },
+  "api_image_id": "sha256:ec23380eb3acc98133bead1d56c6e948f7a86a256c1ff2e25af423821cd128ad",
+  "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+  "ollama_version": "ollama version is 0.40.16",
+  "ollama_model": "qwen2.5:1.5b",
+  "ollama_model_id": "65ec06548149",
+  "embedding_model": "intfloat/multilingual-e5-small",
+  "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "ollama_image_tag": "0.40.16",
+  "ollama_context_length_setting": null,
+  "ollama_runtimes": [
+    {
+      "tag": "0.40.16",
+      "digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+      "version": "0.40.16"
+    }
+  ],
+  "diagnostics_captured": true
+}

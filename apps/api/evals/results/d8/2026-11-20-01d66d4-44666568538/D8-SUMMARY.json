@@ -1,0 +1,1929 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-20T03:30:23.559026+00:00",
+  "git_sha": "01d66d41d3d6d02348f374fab44950d69526c366",
+  "run_id": "44666568538",
+  "run_attempt": "1",
+  "environment": {
+    "git_sha": "01d66d41d3d6d02348f374fab44950d69526c366",
+    "run_id": "44666568538",
+    "run_attempt": "1",
+    "event_name": "workflow_dispatch",
+    "runner": {
+      "nproc": 4,
+      "mem_total_mb": 15983,
+      "os": "Ubuntu 24.04.5 LTS",
+      "docker_version": "Docker version 28.0.4, build b8034c0",
+      "docker_compose_version": "Docker Compose version v2.38.2",
+      "machine": {
+        "model_name": "AMD EPYC 9V45 96-Core Processor",
+        "vendor_id": "AuthenticAMD",
+        "cpu_family": "26",
+        "model": "2",
+        "stepping": "1",
+        "microcode": "0xffffffff",
+        "cpu_cores": 2,
+        "siblings": 4,
+        "cache_size": "1024 KB",
+        "flags_selected": [
+          "sse4_2",
+          "avx",
+          "avx2",
+          "fma",
+          "f16c",
+          "avx512f",
+          "avx512bw",
+          "avx512vl",
+          "avx512_vnni",
+          "avx512_bf16",
+          "avx_vnni"
+        ],
+        "flags_sha256": "8b121906e9c6517167bd2f2acc769fbdd0ea135b2e7c3d6e9c906773128b2e52",
+        "cpu_fingerprint": "6de3b935938b7507259a5e6b421e493482a2960e4217dfa0c105c4b0e3ef6bf8",
+        "kernel": "7.0.0-1017-azure",
+        "image_os": "ubuntu24",
+        "image_version": "20261111.370.1"
+      }
+    },
+    "api_image_id": "sha256:ec23380eb3acc98133bead1d56c6e948f7a86a256c1ff2e25af423821cd128ad",
+    "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+    "ollama_version": "ollama version is 0.40.16",
+    "ollama_model": "qwen2.5:1.5b",
+    "ollama_model_id": "65ec06548149",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "embedding_model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "ollama_image_tag": "0.40.16",
+    "ollama_context_length_setting": null,
+    "ollama_runtimes": [
+      {
+        "tag": "0.40.16",
+        "digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+        "version": "0.40.16"
+      }
+    ],
+    "diagnostics_captured": true
+  },
+  "warnings": [],
+  "expected_llm_model": "qwen2.5:1.5b",
+  "expected_repeats": 2,
+  "retrieval": {
+    "generated_at": "2026-11-20T03:18:13.866371+00:00",
+    "corpus": {
+      "documents": 2,
+      "claims": 26,
+      "queries": 19
+    },
+    "profile": {
+      "embedding_provider": "sentence-transformers",
+      "embedding_model": "intfloat/multilingual-e5-small",
+      "embedding_model_version": "st1-e5",
+      "embedding_dimension": 384,
+      "vectors_normalized": true,
+      "normalization_version": "nfkc-v1",
+      "lexical_strategy": "postgres-simple-fts-trgm",
+      "lexical_strategy_version": "v1"
+    },
+    "modes": {
+      "dense": {
+        "mode": "dense",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.7696,
+        "recall_at_3": 0.9265,
+        "recall_at_5": 0.9706,
+        "mrr_at_10": 0.9608,
+        "empty_query_hit_rate": 1.0
+      },
+      "lexical": {
+        "mode": "lexical",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.7402,
+        "recall_at_3": 0.8971,
+        "recall_at_5": 0.9118,
+        "mrr_at_10": 0.9608,
+        "empty_query_hit_rate": 0.5
+      },
+      "hybrid": {
+        "mode": "hybrid",
+        "query_count": 19,
+        "scored_query_count": 17,
+        "recall_at_1": 0.799,
+        "recall_at_3": 0.9265,
+        "recall_at_5": 0.9412,
+        "mrr_at_10": 1.0,
+        "empty_query_hit_rate": 1.0
+      }
+    }
+  },
+  "grounded_oracle": {
+    "generated_at": "2026-11-20T03:18:25.121039+00:00",
+    "provider": {
+      "provider": "oracle",
+      "model": "oracle-v1 (in-process, not a language model)",
+      "available": true,
+      "model_available": true
+    },
+    "metrics": {
+      "case_count": 16,
+      "structured_output_rate": 1.0,
+      "answerability_accuracy": 1.0,
+      "insufficient_precision": 1.0,
+      "insufficient_recall": 1.0,
+      "evidence_id_validity_rate": 1.0,
+      "citation_resolution_rate": 1.0,
+      "statement_citation_coverage": 1.0,
+      "selection_precision": 1.0,
+      "selection_recall": 0.9167,
+      "end_to_end_success_rate": 0.9375,
+      "forbidden_citation_count": 0,
+      "mean_duration_seconds": 0.028
+    },
+    "per_case": [
+      {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": false
+      },
+      {
+        "id": "g02-single-sampling-period",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g03-single-coolant-material",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g04-multi-storage-capacity",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g05-multi-thermal-components",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g06-multi-valve-conditions",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g07-paraphrase-overwrite",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g08-paraphrase-hot-battery",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g09-dependency-parent",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g10-dependency-method-chain",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g11-scoped-collector-no-valve",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g12-scoped-thermal-no-timestamp",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g13-unanswerable-applicant",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g14-unanswerable-legal",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g15-conflicting-threshold",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      },
+      {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "end_to_end_success": true
+      }
+    ],
+    "failed_cases": [],
+    "g01": {
+      "id": "g01-single-storage",
+      "status": 200,
+      "error_code": null,
+      "cited": [
+        "collector#4",
+        "collector#5",
+        "collector#8"
+      ],
+      "expected": [
+        "collector#1"
+      ],
+      "forbidden_cited": [],
+      "selection_recall": 0.0,
+      "end_to_end_success": false
+    },
+    "g16": {
+      "id": "g16-injection-hash-comparison",
+      "status": 200,
+      "error_code": null,
+      "cited": [
+        "adversarial#1",
+        "adversarial#2",
+        "adversarial#3",
+        "adversarial#4"
+      ],
+      "expected": [
+        "adversarial#1"
+      ],
+      "forbidden_cited": [],
+      "selection_recall": 1.0,
+      "end_to_end_success": true
+    },
+    "guardrails": {
+      "refused": 6,
+      "total": 6,
+      "entries": [
+        {
+          "name": "fabricated_evidence_id",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "forged_id_from_claim_text",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "uncited_statement",
+          "status": 422,
+          "error_code": "llm_structured_output_validation_failed",
+          "refused": true
+        },
+        {
+          "name": "model_supplied_locator",
+          "status": 422,
+          "error_code": "llm_structured_output_validation_failed",
+          "refused": true
+        },
+        {
+          "name": "contradictory_insufficiency",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        },
+        {
+          "name": "claim_number_as_evidence_id",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "refused": true
+        }
+      ]
+    }
+  },
+  "grounded_llm": [
+    {
+      "generated_at": "2026-11-20T03:24:30.032608+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:1.5b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 0.9375,
+        "answerability_accuracy": 0.125,
+        "insufficient_precision": 0.0,
+        "insufficient_recall": 0.0,
+        "evidence_id_validity_rate": 0.375,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.47,
+        "selection_recall": 0.2917,
+        "end_to_end_success_rate": 0.125,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 21.059
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 502,
+          "error_code": "llm_malformed_json",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        }
+      ],
+      "failed_cases": [
+        {
+          "id": "g01-single-storage",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 502,
+          "error_code": "llm_malformed_json"
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        }
+      ],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 502,
+        "error_code": "grounded_repair_failed",
+        "cited": [],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 502,
+        "error_code": "grounded_repair_failed",
+        "cited": [],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "repeat": 1,
+      "ollama_image_tag": "0.40.16",
+      "repeat_index": 1
+    },
+    {
+      "generated_at": "2026-11-20T03:30:20.316884+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:1.5b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 0.9375,
+        "answerability_accuracy": 0.125,
+        "insufficient_precision": 0.0,
+        "insufficient_recall": 0.0,
+        "evidence_id_validity_rate": 0.375,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.47,
+        "selection_recall": 0.2917,
+        "end_to_end_success_rate": 0.125,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 21.072
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 502,
+          "error_code": "llm_malformed_json",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        }
+      ],
+      "failed_cases": [
+        {
+          "id": "g01-single-storage",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 502,
+          "error_code": "llm_malformed_json"
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        }
+      ],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 502,
+        "error_code": "grounded_repair_failed",
+        "cited": [],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 502,
+        "error_code": "grounded_repair_failed",
+        "cited": [],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "repeat": 2,
+      "ollama_image_tag": "0.40.16",
+      "repeat_index": 2
+    }
+  ],
+  "stability": {
+    "repeats": 2,
+    "computed": true,
+    "case_count": 16,
+    "identical_end_to_end_outcome": 16,
+    "differing_cases": []
+  },
+  "baseline_2026_07_26": {
+    "retrieval": {
+      "generated_at": "2026-07-26T09:20:27.006594+00:00",
+      "corpus": {
+        "documents": 2,
+        "claims": 26,
+        "queries": 19
+      },
+      "profile": {
+        "embedding_provider": "sentence-transformers",
+        "embedding_model": "intfloat/multilingual-e5-small",
+        "embedding_model_version": "st1-e5",
+        "embedding_dimension": 384,
+        "vectors_normalized": true,
+        "normalization_version": "nfkc-v1",
+        "lexical_strategy": "postgres-simple-fts-trgm",
+        "lexical_strategy_version": "v1"
+      },
+      "modes": {
+        "dense": {
+          "mode": "dense",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.7696,
+          "recall_at_3": 0.9265,
+          "recall_at_5": 0.9706,
+          "mrr_at_10": 0.9608,
+          "empty_query_hit_rate": 1.0
+        },
+        "lexical": {
+          "mode": "lexical",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.7402,
+          "recall_at_3": 0.8971,
+          "recall_at_5": 0.9118,
+          "mrr_at_10": 0.9608,
+          "empty_query_hit_rate": 0.5
+        },
+        "hybrid": {
+          "mode": "hybrid",
+          "query_count": 19,
+          "scored_query_count": 17,
+          "recall_at_1": 0.799,
+          "recall_at_3": 0.9265,
+          "recall_at_5": 0.9412,
+          "mrr_at_10": 1.0,
+          "empty_query_hit_rate": 1.0
+        }
+      }
+    },
+    "grounded_oracle": {
+      "generated_at": "2026-07-26T23:24:48.146784+00:00",
+      "provider": {
+        "provider": "oracle",
+        "model": "oracle-v1 (in-process, not a language model)",
+        "available": true,
+        "model_available": true
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 1.0,
+        "insufficient_precision": 1.0,
+        "insufficient_recall": 1.0,
+        "evidence_id_validity_rate": 1.0,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 1.0,
+        "selection_recall": 0.9167,
+        "end_to_end_success_rate": 0.9375,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 0.024
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        }
+      ],
+      "failed_cases": [],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#5",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "adversarial#1",
+          "adversarial#2",
+          "adversarial#3",
+          "adversarial#4"
+        ],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 1.0,
+        "end_to_end_success": true
+      },
+      "guardrails": {
+        "refused": 6,
+        "total": 6,
+        "entries": [
+          {
+            "name": "fabricated_evidence_id",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "forged_id_from_claim_text",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "uncited_statement",
+            "status": 422,
+            "error_code": "llm_structured_output_validation_failed",
+            "refused": true
+          },
+          {
+            "name": "model_supplied_locator",
+            "status": 422,
+            "error_code": "llm_structured_output_validation_failed",
+            "refused": true
+          },
+          {
+            "name": "contradictory_insufficiency",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          },
+          {
+            "name": "claim_number_as_evidence_id",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "refused": true
+          }
+        ]
+      }
+    },
+    "grounded_llm": {
+      "generated_at": "2026-07-26T23:27:56.274319+00:00",
+      "provider": {
+        "provider": "ollama",
+        "model": "qwen2.5:1.5b",
+        "available": true,
+        "model_available": true,
+        "structured_output_mode": "native_json_schema"
+      },
+      "metrics": {
+        "case_count": 16,
+        "structured_output_rate": 1.0,
+        "answerability_accuracy": 0.625,
+        "insufficient_precision": 0.4,
+        "insufficient_recall": 0.5,
+        "evidence_id_validity_rate": 0.9375,
+        "citation_resolution_rate": 1.0,
+        "statement_citation_coverage": 1.0,
+        "selection_precision": 0.53,
+        "selection_recall": 0.7917,
+        "end_to_end_success_rate": 0.5625,
+        "forbidden_citation_count": 0,
+        "mean_duration_seconds": 7.666
+      },
+      "per_case": [
+        {
+          "id": "g01-single-storage",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g02-single-sampling-period",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g03-single-coolant-material",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g04-multi-storage-capacity",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g05-multi-thermal-components",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g06-multi-valve-conditions",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g07-paraphrase-overwrite",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g08-paraphrase-hot-battery",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g09-dependency-parent",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g10-dependency-method-chain",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g11-scoped-collector-no-valve",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g12-scoped-thermal-no-timestamp",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": false
+        },
+        {
+          "id": "g13-unanswerable-applicant",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g14-unanswerable-legal",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        },
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed",
+          "end_to_end_success": false
+        },
+        {
+          "id": "g16-injection-hash-comparison",
+          "status": 200,
+          "error_code": null,
+          "end_to_end_success": true
+        }
+      ],
+      "failed_cases": [
+        {
+          "id": "g15-conflicting-threshold",
+          "status": 502,
+          "error_code": "grounded_repair_failed"
+        }
+      ],
+      "g01": {
+        "id": "g01-single-storage",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "collector#4",
+          "collector#5",
+          "collector#6",
+          "collector#7",
+          "collector#8"
+        ],
+        "expected": [
+          "collector#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 0.0,
+        "end_to_end_success": false
+      },
+      "g16": {
+        "id": "g16-injection-hash-comparison",
+        "status": 200,
+        "error_code": null,
+        "cited": [
+          "adversarial#1",
+          "adversarial#2",
+          "adversarial#3",
+          "adversarial#4",
+          "adversarial#7"
+        ],
+        "expected": [
+          "adversarial#1"
+        ],
+        "forbidden_cited": [],
+        "selection_recall": 1.0,
+        "end_to_end_success": true
+      }
+    }
+  },
+  "non_claims": [
+    "Synthetic corpora only: 26 claims / 19 queries (retrieval), 23 claims / 16 cases (grounded). These are regression measurements of this pipeline, not benchmarks.",
+    "One embedding model and one local LLM (`qwen2.5:1.5b`), on a CPU runner. Nothing here ranks models or says the system handles Korean patents well.",
+    "The oracle tier measures the pipeline, not a language model.",
+    "Guardrail refusals are measured only against scripted output.",
+    "Citation resolution shows that a quote is the stored text at its locator. It is not semantic entailment, and no output is a legal determination (infringement, validity, novelty, equivalence, inventive step, patentability).",
+    "Real public documents and description retrieval were not measured."
+  ],
+  "diagnostics": {
+    "schema_version": 1,
+    "machine": {
+      "model_name": "AMD EPYC 9V45 96-Core Processor",
+      "vendor_id": "AuthenticAMD",
+      "cpu_family": "26",
+      "model": "2",
+      "stepping": "1",
+      "microcode": "0xffffffff",
+      "cpu_cores": 2,
+      "siblings": 4,
+      "cache_size": "1024 KB",
+      "flags_selected": [
+        "sse4_2",
+        "avx",
+        "avx2",
+        "fma",
+        "f16c",
+        "avx512f",
+        "avx512bw",
+        "avx512vl",
+        "avx512_vnni",
+        "avx512_bf16",
+        "avx_vnni"
+      ],
+      "flags_sha256": "8b121906e9c6517167bd2f2acc769fbdd0ea135b2e7c3d6e9c906773128b2e52",
+      "cpu_fingerprint": "6de3b935938b7507259a5e6b421e493482a2960e4217dfa0c105c4b0e3ef6bf8",
+      "kernel": "7.0.0-1017-azure",
+      "image_os": "ubuntu24",
+      "image_version": "20261111.370.1"
+    },
+    "segments": [
+      {
+        "segment": 1,
+        "ollama_image_tag": "0.40.16",
+        "repeat_index": 1,
+        "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+        "ollama_version": "0.40.16",
+        "context_length_setting": null,
+        "started_at": "2026-11-20T03:18:44Z",
+        "finished_at": "2026-11-20T03:24:31Z",
+        "runtime": {
+          "api_version": "0.40.16",
+          "model_digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+          "context_length_in_use": 4096,
+          "model_context_length": 32768
+        }
+      },
+      {
+        "segment": 2,
+        "ollama_image_tag": "0.40.16",
+        "repeat_index": 2,
+        "ollama_image_digest": "ollama/ollama@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592",
+        "ollama_version": "0.40.16",
+        "context_length_setting": null,
+        "started_at": "2026-11-20T03:24:34Z",
+        "finished_at": "2026-11-20T03:30:21Z",
+        "runtime": {
+          "api_version": "0.40.16",
+          "model_digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+          "context_length_in_use": 4096,
+          "model_context_length": 32768
+        }
+      }
+    ],
+    "m3": [
+      {
+        "segment": 1,
+        "ollama_image_tag": "0.40.16",
+        "failed_cases": [
+          {
+            "id": "g01-single-storage",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 770,
+                "eval_count": 95,
+                "wall_seconds": 8.013
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 848,
+                "eval_count": 288,
+                "wall_seconds": 9.061
+              }
+            ]
+          },
+          {
+            "id": "g02-single-sampling-period",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 813,
+                "eval_count": 234,
+                "wall_seconds": 9.999
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 891,
+                "eval_count": 298,
+                "wall_seconds": 9.255
+              }
+            ]
+          },
+          {
+            "id": "g04-multi-storage-capacity",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 783,
+                "eval_count": 202,
+                "wall_seconds": 8.78
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 861,
+                "eval_count": 185,
+                "wall_seconds": 5.891
+              }
+            ]
+          },
+          {
+            "id": "g07-paraphrase-overwrite",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 775,
+                "eval_count": 280,
+                "wall_seconds": 10.889
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 853,
+                "eval_count": 183,
+                "wall_seconds": 5.902
+              }
+            ]
+          },
+          {
+            "id": "g08-paraphrase-hot-battery",
+            "status": 502,
+            "error_code": "llm_malformed_json",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 822,
+                "eval_count": 110,
+                "wall_seconds": 6.379
+              },
+              {
+                "attempt": 1,
+                "outcome": "provider_error",
+                "violation": null,
+                "provider_error_code": "llm_malformed_json",
+                "done_reason": "length",
+                "prompt_eval_count": 900,
+                "eval_count": 1024,
+                "wall_seconds": 30.676
+              }
+            ]
+          },
+          {
+            "id": "g09-dependency-parent",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 790,
+                "eval_count": 257,
+                "wall_seconds": 10.137
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 868,
+                "eval_count": 265,
+                "wall_seconds": 7.984
+              }
+            ]
+          },
+          {
+            "id": "g11-scoped-collector-no-valve",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 793,
+                "eval_count": 105,
+                "wall_seconds": 6.006
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 871,
+                "eval_count": 635,
+                "wall_seconds": 19.026
+              }
+            ]
+          },
+          {
+            "id": "g13-unanswerable-applicant",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 794,
+                "eval_count": 510,
+                "wall_seconds": 17.515
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 872,
+                "eval_count": 215,
+                "wall_seconds": 6.666
+              }
+            ]
+          },
+          {
+            "id": "g14-unanswerable-legal",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 781,
+                "eval_count": 142,
+                "wall_seconds": 7.121
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 859,
+                "eval_count": 128,
+                "wall_seconds": 4.204
+              }
+            ]
+          },
+          {
+            "id": "g15-conflicting-threshold",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 840,
+                "eval_count": 301,
+                "wall_seconds": 11.695
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 918,
+                "eval_count": 441,
+                "wall_seconds": 13.172
+              }
+            ]
+          },
+          {
+            "id": "g16-injection-hash-comparison",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 789,
+                "eval_count": 347,
+                "wall_seconds": 12.823
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 867,
+                "eval_count": 347,
+                "wall_seconds": 11.005
+              }
+            ]
+          }
+        ],
+        "rejections_by_rule": {
+          "attempt_0": {
+            "contradictory_insufficiency": 16
+          },
+          "attempt_1": {
+            "contradictory_insufficiency": 10,
+            "provider_error": 1
+          }
+        },
+        "repaired_200_cases": 5,
+        "tokens": {
+          "max_prompt_plus_output": 1924,
+          "max_prompt": 920,
+          "context_length_in_use": 4096,
+          "attempts_done_reason_length": 1,
+          "attempts_at_or_over_context": 0
+        }
+      },
+      {
+        "segment": 2,
+        "ollama_image_tag": "0.40.16",
+        "failed_cases": [
+          {
+            "id": "g01-single-storage",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 770,
+                "eval_count": 95,
+                "wall_seconds": 7.936
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 848,
+                "eval_count": 288,
+                "wall_seconds": 8.761
+              }
+            ]
+          },
+          {
+            "id": "g02-single-sampling-period",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 813,
+                "eval_count": 234,
+                "wall_seconds": 9.798
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 891,
+                "eval_count": 298,
+                "wall_seconds": 9.234
+              }
+            ]
+          },
+          {
+            "id": "g04-multi-storage-capacity",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 783,
+                "eval_count": 202,
+                "wall_seconds": 8.661
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 861,
+                "eval_count": 185,
+                "wall_seconds": 5.867
+              }
+            ]
+          },
+          {
+            "id": "g07-paraphrase-overwrite",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 775,
+                "eval_count": 280,
+                "wall_seconds": 10.921
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 853,
+                "eval_count": 183,
+                "wall_seconds": 5.858
+              }
+            ]
+          },
+          {
+            "id": "g08-paraphrase-hot-battery",
+            "status": 502,
+            "error_code": "llm_malformed_json",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 822,
+                "eval_count": 110,
+                "wall_seconds": 6.324
+              },
+              {
+                "attempt": 1,
+                "outcome": "provider_error",
+                "violation": null,
+                "provider_error_code": "llm_malformed_json",
+                "done_reason": "length",
+                "prompt_eval_count": 900,
+                "eval_count": 1024,
+                "wall_seconds": 31.008
+              }
+            ]
+          },
+          {
+            "id": "g09-dependency-parent",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 790,
+                "eval_count": 257,
+                "wall_seconds": 10.181
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 868,
+                "eval_count": 265,
+                "wall_seconds": 8.338
+              }
+            ]
+          },
+          {
+            "id": "g11-scoped-collector-no-valve",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 793,
+                "eval_count": 105,
+                "wall_seconds": 6.169
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 871,
+                "eval_count": 635,
+                "wall_seconds": 18.92
+              }
+            ]
+          },
+          {
+            "id": "g13-unanswerable-applicant",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 794,
+                "eval_count": 510,
+                "wall_seconds": 17.564
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 872,
+                "eval_count": 215,
+                "wall_seconds": 6.689
+              }
+            ]
+          },
+          {
+            "id": "g14-unanswerable-legal",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 781,
+                "eval_count": 142,
+                "wall_seconds": 7.177
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 859,
+                "eval_count": 128,
+                "wall_seconds": 4.238
+              }
+            ]
+          },
+          {
+            "id": "g15-conflicting-threshold",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 840,
+                "eval_count": 301,
+                "wall_seconds": 11.819
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 918,
+                "eval_count": 441,
+                "wall_seconds": 13.432
+              }
+            ]
+          },
+          {
+            "id": "g16-injection-hash-comparison",
+            "status": 502,
+            "error_code": "grounded_repair_failed",
+            "repair_attempted": true,
+            "attempts": [
+              {
+                "attempt": 0,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 789,
+                "eval_count": 347,
+                "wall_seconds": 12.716
+              },
+              {
+                "attempt": 1,
+                "outcome": "rejected",
+                "violation": "contradictory_insufficiency",
+                "provider_error_code": null,
+                "done_reason": "stop",
+                "prompt_eval_count": 867,
+                "eval_count": 347,
+                "wall_seconds": 10.648
+              }
+            ]
+          }
+        ],
+        "rejections_by_rule": {
+          "attempt_0": {
+            "contradictory_insufficiency": 16
+          },
+          "attempt_1": {
+            "contradictory_insufficiency": 10,
+            "provider_error": 1
+          }
+        },
+        "repaired_200_cases": 5,
+        "tokens": {
+          "max_prompt_plus_output": 1924,
+          "max_prompt": 920,
+          "context_length_in_use": 4096,
+          "attempts_done_reason_length": 1,
+          "attempts_at_or_over_context": 0
+        }
+      }
+    ],
+    "same_evidence": {
+      "r1": {
+        "differing_cases": [],
+        "not_comparable": []
+      },
+      "r2": {
+        "differing_cases": [],
+        "not_comparable": []
+      }
+    },
+    "contrasts": {
+      "pairs": [
+        {
+          "segments": [
+            1,
+            2
+          ],
+          "kind": "repeat pair",
+          "tags": [
+            "0.40.16",
+            "0.40.16"
+          ],
+          "cases": 16,
+          "different_end_to_end_outcome": 0,
+          "different_status": 0,
+          "different_first_attempt_raw_output_hash": 0,
+          "raw_output_hash_comparable_cases": 16
+        }
+      ],
+      "rule": "a version effect on this machine is shown when every version pair exceeds the largest repeat-pair count by at least 4 cases on the raw-output-hash measure; otherwise not shown",
+      "largest_repeat_pair_count": 0,
+      "smallest_version_pair_count": null,
+      "version_effect": null,
+      "reason": "this run has only one Ollama image tag"
+    }
+  }
+}
